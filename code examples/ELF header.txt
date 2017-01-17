@@ -1,0 +1,100 @@
+struct ELFHeader {
+
+	// local enums don't affect struct:
+	enum byte ClassBitNumber { Bit32, Bit64 };
+	enum byte Endianness { LittleEndian, BigEndian };
+
+	Byte[4] identification; // Byte[4] is 4 independent bytes. Byte4 is treated like 1 number.
+	ClassBitNumber bitNumber;
+	Endianness endianness;
+	Byte version;
+	Byte targetOSABI;
+	Byte ABIversion;
+	Byte[7] padding;
+}
+
+struct ELFHeader32 expands ELFHeader {
+	include ELFHeader;
+	include ELFHeaderBefore;
+	
+	Byte4 e_entry; // Byte4 or Bytes4? 4Bytes?
+	Byte4 e_phoff;
+	Byte4 e_shoff;
+	
+	include ELFHeaderAfter;
+}
+
+struct ELFHeader64 expands ELFHeader {
+	include ELFHeaderBefore;
+	
+	Byte8 e_entry;
+	Byte8 e_phoff;
+	Byte8 e_shoff;
+	
+	include ELFHeaderAfter;
+}
+
+mixin struct ELFHeaderBefore {
+	Byte2 e_type;
+	Byte2 e_machine;
+}
+
+mixin struct ELFHeaderAfter {
+	@format Byte
+	4 e_flags
+	2 e_ehsize
+	2	e_phnum
+	2	e_shentsize
+	2	e_shnum
+	2	e_shstrndx
+}
+
+function ReadFile() {
+
+	string filename = "C:/somefile.txt"; // @FILLER
+	File file = File.From(filename);
+
+	if (file.size > 0x32) {
+		file.OpenForReading();
+		ELFHeader elfHeader = file.ReadBytes(sizeof ELFHeader);
+		
+		if (elfHeader.identification.Equals(0x7F, 'E', 'L', 'F')) // @QUESTION @SEMANTICS
+			//if (elfHeader.identification == [0x7F, 'E', 'L', 'F']) // Comparing values or address?
+			//if (elfHeader.identification.Equals(Array(0x7F, 'E', 'L', 'F'))) // Array of what?
+			//if (elfHeader.identification.Equals(new Byte[](0x7F, 'E', 'L', 'F'))) // No.
+		{
+			// @FILLER
+			
+		} else {
+			goto NotElf;
+		}
+		
+		if (elfHeader.bitNumber == ClassBitNumber.Bit32) {
+			elfHeader.ExpandTo(ELFHeader32); // Do we want to be able to change types? @QUESTION
+			/*
+			// Maybe instead:
+			ELFHeader32 elfHeader32 = elfHeader; // Is it tedious to refer to different types just because some values have more bytes?
+			*/
+			elfHeader[sizeof ELFHeader ..] = file.ReadBytes(sizeof ELFHeader32 - sizeof ELFHeader, from: sizeof ELFHeader);
+			// coule be:
+			//elfHeader = file.ReadBytes(sizeof ELFHeader32);
+			
+		} else if (elfHeader.bitNumber == ClassBitNumber.Bit64) {
+			elfHeader.ExpandTo(ELFHeader64);
+			elfHeader[sizeof ELFHeader ..] = file.ReadBytes(sizeof ELFHeader64 - sizeof ELFHeader, from: sizeof ELFHeader);
+			
+		} else {
+			FILLER.Output("Unexpected!" + Env.NewLine); // @FILLER
+		}
+		
+		file.Close();
+		
+		return;
+		
+	}
+
+	NotElf: 
+		FILLER.Output("Not ELF!"); // @FILLER
+		return;
+	
+}

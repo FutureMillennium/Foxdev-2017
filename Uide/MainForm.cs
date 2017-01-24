@@ -69,6 +69,8 @@ namespace Uide
 						file = File.ReadAllBytes(filename);
 						isFileLoaded = true;
 						fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
+
+						MainForm_Resize(null, null);
 					}
 					catch (Exception ex)
 					{
@@ -102,6 +104,21 @@ namespace Uide
 			//Size sizeFont = TextRenderer.MeasureText("M", font);
 
 			maxLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight());
+
+			if (isFileLoaded && fileLines > maxLines)
+			{
+				scrollBarV.Maximum = fileLines;
+				scrollBarV.LargeChange = maxLines;
+				scrollBarV.Enabled = true;
+			} else
+			{
+				scrollBarV.Enabled = false;
+			}
+		}
+
+		private void scrollBarV_ValueChanged(object sender, EventArgs e)
+		{
+			mainBox.Refresh();
 		}
 
 		private void mainBox_Paint(object sender, PaintEventArgs e)
@@ -109,15 +126,35 @@ namespace Uide
 			if (isFileLoaded)
 			{
 				float lineHeight = font.GetHeight();
-				int max = (maxLines > fileLines) ? fileLines : maxLines;
-				int i;
+
+				int i, start, max;
+
+				if (scrollBarV.Enabled)
+				{
+					start = scrollBarV.Value;
+					max = fileLines - start;
+					if (max > maxLines)
+						max = maxLines;
+				}
+				else
+				{
+					start = 0;
+					max = fileLines;
+				}
+				
+				
 				
 				for (i = 0; i < max; i++)
 				{
-					if (i == fileLines - 1)
-						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (i * 16)), font, Brushes.Black, 0, i * lineHeight);
+					int ii = start + i;
+					e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, i * lineHeight);
+
+					if (ii == fileLines - 1)
+						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16)), font, Brushes.Black, 100, // TODO non-fixed offset
+							i * lineHeight);
 					else
-						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (i * 16), (i * 16) + 16), font, Brushes.Black, 0, i * lineHeight);
+						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), (ii * 16) + 16), font, Brushes.Black, 100, // TODO non-fixed offset
+							i * lineHeight);
 				}
 
 				

@@ -21,15 +21,17 @@ namespace Uide
 			return result;
 		}
 
-		public static string ByteArrayToHexViaLookup32(byte[] bytes, int start = 0, int max = 0)
+		public static string ByteArrayToHexViaLookup32(byte[] bytes, int start = 0, int length = 0)
 		{
-			var lookup32 = _lookup32;
-			if (max == 0)
-				max = bytes.Length;
-			var result = new char[max * 2];
-			for (int i = start; i < max; i++)
+			uint[] lookup32 = _lookup32;
+
+			if (length == 0)
+				length = bytes.Length - start;
+
+			char[] result = new char[length * 2];
+			for (int i = 0; i < length; i++)
 			{
-				var val = lookup32[bytes[i]];
+				uint val = lookup32[bytes[i + start]];
 				result[2 * i] = (char)val;
 				result[2 * i + 1] = (char)(val >> 16);
 			}

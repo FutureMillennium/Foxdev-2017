@@ -146,8 +146,6 @@ namespace Uide
 				
 				for (i = 0; i < max; i++)
 				{
-					byte[] buffer = new byte[16];
-
 					int ii = start + i;
 					e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, i * lineHeight);
 
@@ -155,21 +153,49 @@ namespace Uide
 					{
 						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16)), font, Brushes.Black, 100, // TODO non-fixed offset
 							i * lineHeight);
+
+						e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16)), font, Brushes.Black, 500, // TODO non-fixed offset
+							i * lineHeight);
 					}
 					else
 					{
-						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), (ii * 16) + 16), font, Brushes.Black, 100, // TODO non-fixed offset
+						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), 16), font, Brushes.Black, 100, // TODO non-fixed offset
 							i * lineHeight);
 
-						Buffer.BlockCopy(file, (ii * 16), buffer, 0, 16);
-
-						e.Graphics.DrawString(System.Text.Encoding.ASCII.GetString(buffer), font, Brushes.Black, 500, // TODO non-fixed offset
+						e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), 16), font, Brushes.Black, 500, // TODO non-fixed offset
 							i * lineHeight);
 					}
 				}
 
 				
 			}
+		}
+
+		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)
+		{
+			StringBuilder builder;
+			int max;
+
+			if (length == 0)
+			{
+				max = array.Length;
+				builder = new StringBuilder(max - start);
+			}
+			else
+			{
+				builder = new StringBuilder(length);
+				max = start + length;
+			}
+
+			for (int i = start; i < max; i++)
+			{
+				if (array[i] >= 32 && array[i] < 127)
+					builder.Append(Convert.ToChar(array[i]));
+				else
+					builder.Append('.');
+			}
+
+			return builder.ToString();
 		}
 	}
 }

@@ -13,11 +13,11 @@ namespace Uide
 {
 	public partial class MainForm : Form
 	{
-		bool isFileLoaded = false;
+		bool isFileLoaded = false, isELFfile;
 		byte[] file;
 		int maxLines = 0, fileLines = 0;
 
-		Font font = new Font(FontFamily.GenericMonospace, 14);
+		Font font = new Font(FontFamily.GenericMonospace, 13);
 
 		void SetDoubleBuffered(System.Windows.Forms.Control c)
 		{
@@ -62,7 +62,7 @@ namespace Uide
 				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 				if (files.Length > 0)
 				{
-					string filename = files[0]; // TODO more than 1 file
+					string filename = files[0]; // @TODO more than 1 file
 
 					try
 					{
@@ -70,27 +70,31 @@ namespace Uide
 						isFileLoaded = true;
 						fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
 
-						MainForm_Resize(null, null);
-					}
-					catch (Exception ex)
-					{
-						// TODO show non-intrusively inside app
-						MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-						file = null;
-					}
-
-					if (file != null
-						&& file.Length > 3
+						if (file.Length > 3
 						&& file[0] == 0x7F
 						&& file[1] == 'E'
 						&& file[2] == 'L'
 						&& file[3] == 'F')
-					{
-						this.Text = "ELF";
+						{
+							isELFfile = true;
+							viewAssemblyRadio.Checked = true;
+						}
+						else
+						{
+							isELFfile = false;
+							viewHexRadio.Checked = true;
+						}
+
+						viewSwitchPanel.Visible = isELFfile;
+
+						MainForm_Resize(null, null);
+						scrollBarV.Value = 0;
 					}
-					else
+					catch (Exception ex)
 					{
-						this.Text = "Not ELF";
+						// @TODO show non-intrusively inside app
+						MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+						file = null;
 					}
 
 					mainBox.Refresh();
@@ -108,7 +112,7 @@ namespace Uide
 			if (isFileLoaded && fileLines > maxLines)
 			{
 				scrollBarV.Maximum = fileLines;
-				scrollBarV.LargeChange = maxLines;
+				scrollBarV.LargeChange = maxLines; // @TODO shouldn't scroll past semi-visible lines
 				scrollBarV.Enabled = true;
 			} else
 			{
@@ -125,49 +129,58 @@ namespace Uide
 		{
 			if (isFileLoaded)
 			{
-				float lineHeight = font.GetHeight();
+				if (viewHexRadio.Checked)
+					DrawHex(e);
+			}
+		}
 
-				int i, start, max;
+		private void viewHexRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			mainBox.Refresh();
+		}
 
-				if (scrollBarV.Enabled)
+		void DrawHex(PaintEventArgs e)
+		{
+			float lineHeight = font.GetHeight();
+
+			int i, start, max;
+
+			if (scrollBarV.Enabled)
+			{
+				start = scrollBarV.Value;
+				max = fileLines - start;
+				if (max > maxLines)
+					max = maxLines;
+			}
+			else
+			{
+				start = 0;
+				max = fileLines;
+			}
+
+
+
+			for (i = 0; i < max; i++)
+			{
+				int ii = start + i;
+				e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, i * lineHeight);
+
+				if (ii == fileLines - 1) // last line
 				{
-					start = scrollBarV.Value;
-					max = fileLines - start;
-					if (max > maxLines)
-						max = maxLines;
+					e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16)), font, Brushes.Black, 100, // @TODO non-fixed offset
+						i * lineHeight);
+
+					e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16)), font, Brushes.Black, 500, // @TODO non-fixed offset
+						i * lineHeight);
 				}
 				else
 				{
-					start = 0;
-					max = fileLines;
+					e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), 16), font, Brushes.Black, 100, // @TODO non-fixed offset
+						i * lineHeight);
+
+					e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), 16), font, Brushes.Black, 500, // @TODO non-fixed offset
+						i * lineHeight);
 				}
-				
-				
-				
-				for (i = 0; i < max; i++)
-				{
-					int ii = start + i;
-					e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, i * lineHeight);
-
-					if (ii == fileLines - 1) // last line
-					{
-						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16)), font, Brushes.Black, 100, // TODO non-fixed offset
-							i * lineHeight);
-
-						e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16)), font, Brushes.Black, 500, // TODO non-fixed offset
-							i * lineHeight);
-					}
-					else
-					{
-						e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), 16), font, Brushes.Black, 100, // TODO non-fixed offset
-							i * lineHeight);
-
-						e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), 16), font, Brushes.Black, 500, // TODO non-fixed offset
-							i * lineHeight);
-					}
-				}
-
-				
 			}
 		}
 

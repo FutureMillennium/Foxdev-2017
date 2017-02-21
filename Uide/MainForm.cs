@@ -115,8 +115,31 @@ namespace Uide
 									handle.Free();
 								}
 
+								dataTextBox.Text = "";
+								PrintFields(elfHeader.identification);
+								dataTextBox.Text += Environment.NewLine;
+								PrintFields(elfHeader);
+								dataTextBox.Text += Environment.NewLine;
+								for (int i = 0; i < programHeaders.Length; i++)
+								{
+									var o = programHeaders[i];
+									dataTextBox.Text += "Program " + i.ToString() + ":" + Environment.NewLine;
+									PrintFields(o);
+									dataTextBox.Text += Environment.NewLine;
+								}
+								dataTextBox.Text += Environment.NewLine;
+								for (int i = 0; i < sectionHeaders.Length; i++)
+								{
+									var o = sectionHeaders[i];
+									dataTextBox.Text += "Section " + i.ToString() + ":" + Environment.NewLine;
+									PrintFields(o);
+									dataTextBox.Text += Environment.NewLine;
+								}
+
+
 								isELFfile = true;
-								viewAssemblyRadio.Checked = true;
+								//viewAssemblyRadio.Checked = true;
+								viewDataRadio.Checked = true;
 							}
 							else
 							{
@@ -182,6 +205,11 @@ namespace Uide
 		private void viewHexRadio_CheckedChanged(object sender, EventArgs e)
 		{
 			mainBox.Refresh();
+		}
+
+		private void viewDataRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			dataTextBox.Visible = viewDataRadio.Checked;
 		}
 
 		void DrawHex(PaintEventArgs e)
@@ -254,6 +282,31 @@ namespace Uide
 			}
 
 			return builder.ToString();
+		}
+
+		void PrintFields(object o)
+		{
+			foreach (var field in o.GetType().GetFields())
+			{
+				string str;
+
+				str = field.GetValue(o).ToString();
+
+				if (field.FieldType == typeof(Byte))
+				{
+					str += "\t(0x" + ((Byte)field.GetValue(o)).ToString("x2") + ")";
+				}
+				else if (field.FieldType == typeof(UInt16))
+				{
+					str += "\t(0x" + ((UInt16)field.GetValue(o)).ToString("x4") + ")";
+				}
+				else if (field.FieldType == typeof(UInt32))
+				{
+					str += "\t(0x" + ((UInt32)field.GetValue(o)).ToString("x8") + ")";
+				}
+
+				dataTextBox.Text += field.Name + ":\t" + str + Environment.NewLine;
+			}
 		}
 	}
 }

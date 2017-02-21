@@ -8,9 +8,9 @@ namespace Uide
 {
 	class ByteToHex
 	{
-		private static readonly uint[] _lookup32 = CreateLookup32();
+		static readonly uint[] _lookup32 = CreateLookup32();
 
-		private static uint[] CreateLookup32()
+		static uint[] CreateLookup32()
 		{
 			var result = new uint[256];
 			for (int i = 0; i < 256; i++)

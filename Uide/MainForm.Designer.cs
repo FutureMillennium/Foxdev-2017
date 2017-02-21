@@ -63,6 +63,7 @@
 			// 
 			// viewSwitchPanel
 			// 
+			this.viewSwitchPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.viewSwitchPanel.Controls.Add(this.viewAssemblyRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewHexRadio);
 			this.viewSwitchPanel.Location = new System.Drawing.Point(0, 400);

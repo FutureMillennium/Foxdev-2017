@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
-using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Uide
@@ -15,6 +11,7 @@ namespace Uide
 	{
 		bool isFileLoaded = false, isELFfile;
 		byte[] file;
+		ELFheader32 elfHeader;
 		int maxLines = 0, fileLines = 0;
 
 		Font font = new Font(FontFamily.GenericMonospace, 13);
@@ -70,14 +67,31 @@ namespace Uide
 						isFileLoaded = true;
 						fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
 
-						if (file.Length > 3
+						if (file.Length > 4
 						&& file[0] == 0x7F
 						&& file[1] == 'E'
 						&& file[2] == 'L'
 						&& file[3] == 'F')
 						{
-							isELFfile = true;
-							viewAssemblyRadio.Checked = true;
+
+							if (file[4] == 1)
+							{
+								byte[] header = new byte[52]; // @TODO sizeof Elf32_Ehdr
+								Array.Copy(file, 0, 
+									header, 0, 52);
+
+								GCHandle handle = GCHandle.Alloc(header, GCHandleType.Pinned);
+								elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
+								handle.Free();
+
+								isELFfile = true;
+								viewAssemblyRadio.Checked = true;
+							}
+							else
+							{
+								// @TODO 64bit ELF
+								MessageBox.Show("64bit ELF not implemented yet.");
+							}
 						}
 						else
 						{

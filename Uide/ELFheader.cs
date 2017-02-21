@@ -16,10 +16,10 @@ namespace Uide
 
 		// 0–3 e_ident[EI_MAG0] – e_ident[EI_MAG3]
 		[System.Runtime.InteropServices.MarshalAsAttribute(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 4)]
-		public string e_ident;
+		public string magic;
 
 		// e_ident[EI_CLASS]
-		public ClassBitNumber bitNumber;
+		public ClassBitNumber bitness;
 
 		// e_ident[EI_DATA]
 		public Endianness endianness;
@@ -58,10 +58,10 @@ namespace Uide
 		public uint entryAddress;
 
 		/// Elf32_Off->unsigned int e_phoff
-		public uint programHeaderTableOffset;
+		public uint programTableOffset;
 
 		/// Elf32_Off->unsigned int e_shoff
-		public uint sectionHeaderTableOffset;
+		public uint sectionTableOffset;
 
 		/// Elf32_Word->unsigned int e_flags
 		public uint flags;
@@ -70,16 +70,16 @@ namespace Uide
 		public ushort size;
 
 		/// Elf32_Half->unsigned short e_phentsize
-		public ushort sizeProgramHeaderTableEntry;
+		public ushort sizeProgramTableEntry;
 
 		/// Elf32_Half->unsigned short e_phnum
-		public ushort numProgramHeaderTableEntry;
+		public ushort numProgramTableEntries;
 
 		/// Elf32_Half->unsigned short e_shentsize
-		public ushort sizeSectionHeaderTableEntry;
+		public ushort sizeSectionTableEntry;
 
 		/// Elf32_Half->unsigned short e_shnum
-		public ushort numSectionHeaderTableEntry;
+		public ushort numSectionTableEntries;
 
 		/// Elf32_Half->unsigned short e_shstrndx
 		public ushort stringTableIndex;

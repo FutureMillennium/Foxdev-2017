@@ -88,13 +88,13 @@ namespace Uide
 								// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
 
 								Elf32_Phdr[] programHeaders;
-								programHeaders = new Elf32_Phdr[elfHeader.numProgramHeaderTableEntry];
+								programHeaders = new Elf32_Phdr[elfHeader.numProgramTableEntries];
 
-								for (int i = 0; i < elfHeader.numProgramHeaderTableEntry; i++)
+								for (int i = 0; i < elfHeader.numProgramTableEntries; i++)
 								{
-									buffer = new byte[elfHeader.sizeProgramHeaderTableEntry]; // @TODO sizeof Elf32_Ehdr
-									Array.Copy(file, elfHeader.programHeaderTableOffset + (i * elfHeader.sizeProgramHeaderTableEntry),
-										buffer, 0, elfHeader.sizeProgramHeaderTableEntry);
+									buffer = new byte[elfHeader.sizeProgramTableEntry]; // @TODO sizeof Elf32_Ehdr
+									Array.Copy(file, elfHeader.programTableOffset + (i * elfHeader.sizeProgramTableEntry),
+										buffer, 0, elfHeader.sizeProgramTableEntry);
 
 									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
 									programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
@@ -102,13 +102,13 @@ namespace Uide
 								}
 
 								Elf32_Shdr[] sectionHeaders;
-								sectionHeaders = new Elf32_Shdr[elfHeader.numSectionHeaderTableEntry];
+								sectionHeaders = new Elf32_Shdr[elfHeader.numSectionTableEntries];
 
-								for (int i = 0; i < elfHeader.numSectionHeaderTableEntry; i++)
+								for (int i = 0; i < elfHeader.numSectionTableEntries; i++)
 								{
-									buffer = new byte[elfHeader.sizeSectionHeaderTableEntry]; // @TODO sizeof Elf32_Ehdr
-									Array.Copy(file, elfHeader.sectionHeaderTableOffset + (i * elfHeader.sizeSectionHeaderTableEntry),
-										buffer, 0, elfHeader.sizeSectionHeaderTableEntry);
+									buffer = new byte[elfHeader.sizeSectionTableEntry]; // @TODO sizeof Elf32_Ehdr
+									Array.Copy(file, elfHeader.sectionTableOffset + (i * elfHeader.sizeSectionTableEntry),
+										buffer, 0, elfHeader.sizeSectionTableEntry);
 
 									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
 									sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
@@ -116,14 +116,12 @@ namespace Uide
 								}
 
 								dataTextBox.Text = "";
-								PrintFields(elfHeader.identification);
-								dataTextBox.Text += Environment.NewLine;
 								PrintFields(elfHeader);
 								dataTextBox.Text += Environment.NewLine;
 								for (int i = 0; i < programHeaders.Length; i++)
 								{
 									var o = programHeaders[i];
-									dataTextBox.Text += "Program " + i.ToString() + ":" + Environment.NewLine;
+									dataTextBox.Text += "[Program " + i.ToString() + "]" + Environment.NewLine;
 									PrintFields(o);
 									dataTextBox.Text += Environment.NewLine;
 								}
@@ -131,7 +129,7 @@ namespace Uide
 								for (int i = 0; i < sectionHeaders.Length; i++)
 								{
 									var o = sectionHeaders[i];
-									dataTextBox.Text += "Section " + i.ToString() + ":" + Environment.NewLine;
+									dataTextBox.Text += "[Section " + i.ToString() + "]" + Environment.NewLine;
 									PrintFields(o);
 									dataTextBox.Text += Environment.NewLine;
 								}
@@ -292,21 +290,50 @@ namespace Uide
 
 				str = field.GetValue(o).ToString();
 
-				if (field.FieldType == typeof(Byte))
+				string hex = HexGetValAbstract(field.GetValue(o), field.FieldType);
+				if (hex.Length > 0)
+					str += "\t(0x" + HexGetValAbstract(field.GetValue(o), field.FieldType) + ")";
+
+				if (field.FieldType.IsEnum)
 				{
-					str += "\t(0x" + ((Byte)field.GetValue(o)).ToString("x2") + ")";
-				}
-				else if (field.FieldType == typeof(UInt16))
-				{
-					str += "\t(0x" + ((UInt16)field.GetValue(o)).ToString("x4") + ")";
-				}
-				else if (field.FieldType == typeof(UInt32))
-				{
-					str += "\t(0x" + ((UInt32)field.GetValue(o)).ToString("x8") + ")";
+					object a = Convert.ChangeType(field.GetValue(o), Enum.GetUnderlyingType(field.FieldType));
+					str += "\t" + a.ToString() + "\t(0x" + HexGetValAbstract(a, Enum.GetUnderlyingType(field.FieldType)) + ")";
+					//str += "\t(0x" + ((Byte)field.GetValue(o)).ToString("x2") + ")";
 				}
 
-				dataTextBox.Text += field.Name + ":\t" + str + Environment.NewLine;
+				dataTextBox.Text += field.Name + ":\t" + str;
+
+				if (field.FieldType.IsValueType && field.FieldType.IsEnum == false && field.FieldType.IsPrimitive == false)
+				{
+					dataTextBox.Text += ":" + Environment.NewLine;
+					PrintFields(field.GetValue(o));
+					dataTextBox.Text += Environment.NewLine;
+				}
+				else
+				{
+					dataTextBox.Text += Environment.NewLine;
+				}
 			}
+		}
+
+		string HexGetValAbstract(object o, Type type)
+		{
+			string str = "";
+
+			if (type == typeof(Byte))
+			{
+				str = ((Byte)o).ToString("x2");
+			}
+			else if (type == typeof(UInt16))
+			{
+				str = ((UInt16)o).ToString("x4");
+			}
+			else if (type == typeof(UInt32))
+			{
+				str = ((UInt32)o).ToString("x8");
+			}
+
+			return str;
 		}
 	}
 }

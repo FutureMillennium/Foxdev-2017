@@ -76,13 +76,44 @@ namespace Uide
 
 							if (file[4] == 1)
 							{
-								byte[] header = new byte[52]; // @TODO sizeof Elf32_Ehdr
+								byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
 								Array.Copy(file, 0, 
-									header, 0, 52);
+									buffer, 0, 52);
 
-								GCHandle handle = GCHandle.Alloc(header, GCHandleType.Pinned);
+								GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
 								elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
 								handle.Free();
+
+								// @TODO check if elfHeader.sizeProgramHeaderTableEntry == 32?
+								// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
+
+								Elf32_Phdr[] programHeaders;
+								programHeaders = new Elf32_Phdr[elfHeader.numProgramHeaderTableEntry];
+
+								for (int i = 0; i < elfHeader.numProgramHeaderTableEntry; i++)
+								{
+									buffer = new byte[elfHeader.sizeProgramHeaderTableEntry]; // @TODO sizeof Elf32_Ehdr
+									Array.Copy(file, elfHeader.programHeaderTableOffset + (i * elfHeader.sizeProgramHeaderTableEntry),
+										buffer, 0, elfHeader.sizeProgramHeaderTableEntry);
+
+									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+									programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
+									handle.Free();
+								}
+
+								Elf32_Shdr[] sectionHeaders;
+								sectionHeaders = new Elf32_Shdr[elfHeader.numSectionHeaderTableEntry];
+
+								for (int i = 0; i < elfHeader.numSectionHeaderTableEntry; i++)
+								{
+									buffer = new byte[elfHeader.sizeSectionHeaderTableEntry]; // @TODO sizeof Elf32_Ehdr
+									Array.Copy(file, elfHeader.sectionHeaderTableOffset + (i * elfHeader.sizeSectionHeaderTableEntry),
+										buffer, 0, elfHeader.sizeSectionHeaderTableEntry);
+
+									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+									sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
+									handle.Free();
+								}
 
 								isELFfile = true;
 								viewAssemblyRadio.Checked = true;

@@ -133,4 +133,67 @@ namespace Uide
 		public ushort e_shstrndx;
 	}
 
+	[System.Runtime.InteropServices.StructLayoutAttribute(System.Runtime.InteropServices.LayoutKind.Sequential)]
+	public struct Elf32_Phdr
+	{
+
+		/// Elf32_Word->unsigned int
+		public uint p_type;
+
+		/// Elf32_Off->unsigned int
+		public uint p_offset;
+
+		/// Elf32_Addr->unsigned int
+		public uint p_vaddr;
+
+		/// Elf32_Addr->unsigned int
+		public uint p_paddr;
+
+		/// Elf32_Word->unsigned int
+		public uint p_filesz;
+
+		/// Elf32_Word->unsigned int
+		public uint p_memsz;
+
+		/// Elf32_Word->unsigned int
+		public uint p_flags;
+
+		/// Elf32_Word->unsigned int
+		public uint p_align;
+	}
+
+	[System.Runtime.InteropServices.StructLayoutAttribute(System.Runtime.InteropServices.LayoutKind.Sequential)]
+	public struct Elf32_Shdr
+	{
+		/// Elf32_Word->unsigned int
+		public uint sh_name;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_type;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_flags;
+
+		/// Elf32_Addr->unsigned int
+		public uint sh_addr;
+
+		/// Elf32_Off->unsigned int
+		public uint sh_offset;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_size;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_link;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_info;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_addralign;
+
+		/// Elf32_Word->unsigned int
+		public uint sh_entsize;
+	}
+
 }

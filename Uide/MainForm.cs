@@ -236,11 +236,13 @@ namespace Uide
 												switch (operand) {
 													case "Ib":
 													case "I0":
+													case "Jb":
 														at++;
 														output += "\t0x" + file[at].ToString("x2");
 														break;
 													case "Iv":
 													case "Iw":
+													case "Jv":
 														{
 															at++;
 															uint word = BitConverter.ToUInt32(file, (int)at);
@@ -254,15 +256,13 @@ Eb
 Gb
 Ev
 Gv
-Jb
 Ew
 Sw
 M
 Ap
 Ob
 Ov
-Mp
-Jv */
+Mp */
 											}
 										}
 										if (parts.Length == 4)
@@ -285,11 +285,13 @@ Jv */
 												{
 													case "Ib":
 													case "I0":
+													case "Jb":
 														at++;
 														output += "\t0x" + file[at].ToString("x2");
 														break;
 													case "Iv":
 													case "Iw":
+													case "Jv":
 														{
 															at++;
 															uint word = BitConverter.ToUInt32(file, (int)at);

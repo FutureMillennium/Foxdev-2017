@@ -145,11 +145,11 @@ namespace Uide
 									flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
 									checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
 
-									bool isMultiboot = false;
+									//bool isMultiboot = false;
 
 									if (magic == 0x1BADB002 && checksum == -(magic + flags))
 									{
-										isMultiboot = true;
+										//isMultiboot = true;
 
 										dataTextBox.Text += "[Multiboot]" + Environment.NewLine
 											+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
@@ -175,6 +175,10 @@ namespace Uide
 							isELFfile = false;
 							viewHexRadio.Checked = true;
 						}
+
+						mainBox.Visible = true;
+						scrollBarV.Visible = true;
+						dragFileHereLabel.Visible = false;
 
 						viewSwitchPanel.Visible = isELFfile;
 

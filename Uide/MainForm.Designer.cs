@@ -31,10 +31,11 @@
 			this.mainBox = new System.Windows.Forms.PictureBox();
 			this.scrollBarV = new System.Windows.Forms.VScrollBar();
 			this.viewSwitchPanel = new System.Windows.Forms.Panel();
+			this.viewDataRadio = new System.Windows.Forms.RadioButton();
 			this.viewAssemblyRadio = new System.Windows.Forms.RadioButton();
 			this.viewHexRadio = new System.Windows.Forms.RadioButton();
-			this.viewDataRadio = new System.Windows.Forms.RadioButton();
 			this.dataTextBox = new System.Windows.Forms.TextBox();
+			this.dragFileHereLabel = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
 			this.SuspendLayout();
@@ -51,6 +52,7 @@
 			this.mainBox.Size = new System.Drawing.Size(1103, 635);
 			this.mainBox.TabIndex = 0;
 			this.mainBox.TabStop = false;
+			this.mainBox.Visible = false;
 			this.mainBox.Paint += new System.Windows.Forms.PaintEventHandler(this.mainBox_Paint);
 			// 
 			// scrollBarV
@@ -62,6 +64,7 @@
 			this.scrollBarV.Name = "scrollBarV";
 			this.scrollBarV.Size = new System.Drawing.Size(36, 635);
 			this.scrollBarV.TabIndex = 1;
+			this.scrollBarV.Visible = false;
 			this.scrollBarV.ValueChanged += new System.EventHandler(this.scrollBarV_ValueChanged);
 			// 
 			// viewSwitchPanel
@@ -76,6 +79,20 @@
 			this.viewSwitchPanel.Size = new System.Drawing.Size(208, 36);
 			this.viewSwitchPanel.TabIndex = 4;
 			this.viewSwitchPanel.Visible = false;
+			// 
+			// viewDataRadio
+			// 
+			this.viewDataRadio.Appearance = System.Windows.Forms.Appearance.Button;
+			this.viewDataRadio.AutoSize = true;
+			this.viewDataRadio.Location = new System.Drawing.Point(145, 0);
+			this.viewDataRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewDataRadio.Name = "viewDataRadio";
+			this.viewDataRadio.Size = new System.Drawing.Size(50, 31);
+			this.viewDataRadio.TabIndex = 6;
+			this.viewDataRadio.TabStop = true;
+			this.viewDataRadio.Text = "data";
+			this.viewDataRadio.UseVisualStyleBackColor = true;
+			this.viewDataRadio.CheckedChanged += new System.EventHandler(this.viewDataRadio_CheckedChanged);
 			// 
 			// viewAssemblyRadio
 			// 
@@ -105,20 +122,6 @@
 			this.viewHexRadio.UseVisualStyleBackColor = true;
 			this.viewHexRadio.CheckedChanged += new System.EventHandler(this.viewHexRadio_CheckedChanged);
 			// 
-			// viewDataRadio
-			// 
-			this.viewDataRadio.Appearance = System.Windows.Forms.Appearance.Button;
-			this.viewDataRadio.AutoSize = true;
-			this.viewDataRadio.Location = new System.Drawing.Point(145, 0);
-			this.viewDataRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.viewDataRadio.Name = "viewDataRadio";
-			this.viewDataRadio.Size = new System.Drawing.Size(50, 31);
-			this.viewDataRadio.TabIndex = 6;
-			this.viewDataRadio.TabStop = true;
-			this.viewDataRadio.Text = "data";
-			this.viewDataRadio.UseVisualStyleBackColor = true;
-			this.viewDataRadio.CheckedChanged += new System.EventHandler(this.viewDataRadio_CheckedChanged);
-			// 
 			// dataTextBox
 			// 
 			this.dataTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -135,12 +138,23 @@
 			this.dataTextBox.TabIndex = 5;
 			this.dataTextBox.Visible = false;
 			// 
+			// dragFileHereLabel
+			// 
+			this.dragFileHereLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
+			this.dragFileHereLabel.AutoSize = true;
+			this.dragFileHereLabel.Location = new System.Drawing.Point(512, 324);
+			this.dragFileHereLabel.Name = "dragFileHereLabel";
+			this.dragFileHereLabel.Size = new System.Drawing.Size(116, 21);
+			this.dragFileHereLabel.TabIndex = 6;
+			this.dragFileHereLabel.Text = "Drag a file here";
+			// 
 			// MainForm
 			// 
 			this.AllowDrop = true;
 			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1140, 670);
+			this.Controls.Add(this.dragFileHereLabel);
 			this.Controls.Add(this.dataTextBox);
 			this.Controls.Add(this.viewSwitchPanel);
 			this.Controls.Add(this.mainBox);
@@ -170,5 +184,6 @@
 		private System.Windows.Forms.RadioButton viewHexRadio;
 		private System.Windows.Forms.RadioButton viewDataRadio;
 		private System.Windows.Forms.TextBox dataTextBox;
+		private System.Windows.Forms.Label dragFileHereLabel;
 	}
 }

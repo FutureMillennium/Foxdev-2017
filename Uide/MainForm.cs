@@ -137,6 +137,26 @@ namespace Uide
 									dataTextBox.Text += Environment.NewLine;
 								}
 
+								if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
+								{
+									int magic, flags, checksum;
+
+									magic = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset);
+									flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
+									checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
+
+									bool isMultiboot = false;
+
+									if (magic == 0x1BADB002 && checksum == -(magic + flags))
+									{
+										isMultiboot = true;
+
+										dataTextBox.Text += "[Multiboot]" + Environment.NewLine
+											+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
+											+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
+											+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine;
+									}
+								}
 
 								isELFfile = true;
 								//viewAssemblyRadio.Checked = true;

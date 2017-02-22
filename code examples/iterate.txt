@@ -1,0 +1,22 @@
+// C#
+
+dataTextBox.Text += "[Multiboot]" + Environment.NewLine
+	+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
+	+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
+	+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine;
+
+
+// New language:
+
+text += "[Multiboot]" + Environment.NewLine;
+iterate (magic, flags, checksum) as it {
+	text += it.varName + ":\t" + it + "\t(0x" + it.ToString("x8") + ")" + Environment.NewLine;
+}
+// anything.varName == "anything"; Reflection of the "anything" variable name. Saved only if needed at compile time?
+
+// alternatively:
+
+text += "[Multiboot]" + Environment.NewLine;
+iterate (magic, flags, checksum) as it : itName {
+	text += itName + ":\t" + it + "\t(0x" + it.ToString("x8") + ")" + Environment.NewLine;
+}

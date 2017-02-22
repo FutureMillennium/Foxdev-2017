@@ -1,0 +1,28 @@
+struct String {
+	uint32 length; // on 32bit
+	//uint64 length; // on 64bit
+	char[] data;
+}
+
+// String32? String64?
+
+
+String test = "Abcd";
+// 4 A b c d
+// 04 00 00 00 45 66 67 68 // little endian
+
+/*
+test == "Abcd";
+test.data == "Abcd";
+test.length == 4;
+
+// reflection:
+test.varName == "test";
+*/
+
+CString test = "Efgh";
+// in memory:
+// E f g h \0
+// 45 66 67 68 00
+
+String test2 = test.ConvertTo(String);

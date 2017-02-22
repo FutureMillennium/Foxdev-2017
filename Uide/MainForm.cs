@@ -10,6 +10,7 @@ namespace Uide
 	public partial class MainForm : Form
 	{
 		bool isFileLoaded = false, isELFfile;
+		string filePath, fileName;
 		byte[] file;
 		ELFheader32 elfHeader;
 		int maxLines = 0, fileLines = 0;
@@ -59,19 +60,21 @@ namespace Uide
 				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 				if (files.Length > 0)
 				{
-					string filename = files[0]; // @TODO more than 1 file
+					filePath = files[0]; // @TODO more than 1 file
 
 					try
 					{
-						file = File.ReadAllBytes(filename);
+						file = File.ReadAllBytes(filePath);
+
 						isFileLoaded = true;
+						fileName = Path.GetFileName(filePath);
 						fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
 
-						if (file.Length > 4
-						&& file[0] == 0x7F
-						&& file[1] == 'E'
-						&& file[2] == 'L'
-						&& file[3] == 'F')
+						if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
+							&& file[0] == 0x7F
+							&& file[1] == 'E'
+							&& file[2] == 'L'
+							&& file[3] == 'F')
 						{
 
 							if (file[4] == 1)
@@ -138,6 +141,8 @@ namespace Uide
 								isELFfile = true;
 								//viewAssemblyRadio.Checked = true;
 								viewDataRadio.Checked = true;
+
+								this.Text = fileName + " – Uide"; // @TODO name constant
 							}
 							else
 							{

@@ -36,6 +36,7 @@
 			this.viewHexRadio = new System.Windows.Forms.RadioButton();
 			this.dataTextBox = new System.Windows.Forms.TextBox();
 			this.dragFileHereLabel = new System.Windows.Forms.Label();
+			this.assemblyTextBox = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
 			this.SuspendLayout();
@@ -106,6 +107,7 @@
 			this.viewAssemblyRadio.TabStop = true;
 			this.viewAssemblyRadio.Text = "assembly";
 			this.viewAssemblyRadio.UseVisualStyleBackColor = true;
+			this.viewAssemblyRadio.CheckedChanged += new System.EventHandler(this.viewAssemblyRadio_CheckedChanged);
 			// 
 			// viewHexRadio
 			// 
@@ -148,12 +150,29 @@
 			this.dragFileHereLabel.TabIndex = 6;
 			this.dragFileHereLabel.Text = "Drag a file here";
 			// 
+			// assemblyTextBox
+			// 
+			this.assemblyTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.assemblyTextBox.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+			this.assemblyTextBox.Location = new System.Drawing.Point(0, 0);
+			this.assemblyTextBox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.assemblyTextBox.Multiline = true;
+			this.assemblyTextBox.Name = "assemblyTextBox";
+			this.assemblyTextBox.ReadOnly = true;
+			this.assemblyTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+			this.assemblyTextBox.Size = new System.Drawing.Size(1139, 635);
+			this.assemblyTextBox.TabIndex = 7;
+			this.assemblyTextBox.Visible = false;
+			// 
 			// MainForm
 			// 
 			this.AllowDrop = true;
 			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1140, 670);
+			this.Controls.Add(this.assemblyTextBox);
 			this.Controls.Add(this.dragFileHereLabel);
 			this.Controls.Add(this.dataTextBox);
 			this.Controls.Add(this.viewSwitchPanel);
@@ -185,5 +204,6 @@
 		private System.Windows.Forms.RadioButton viewDataRadio;
 		private System.Windows.Forms.TextBox dataTextBox;
 		private System.Windows.Forms.Label dragFileHereLabel;
+		private System.Windows.Forms.TextBox assemblyTextBox;
 	}
 }

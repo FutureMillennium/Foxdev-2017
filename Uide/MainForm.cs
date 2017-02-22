@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -14,6 +15,7 @@ namespace Uide
 		byte[] file;
 		ELFheader32 elfHeader;
 		int maxLines = 0, fileLines = 0;
+		bool isMultiboot = false;
 
 		Font font = new Font(FontFamily.GenericMonospace, 13);
 
@@ -145,11 +147,9 @@ namespace Uide
 									flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
 									checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
 
-									//bool isMultiboot = false;
-
 									if (magic == 0x1BADB002 && checksum == -(magic + flags))
 									{
-										//isMultiboot = true;
+										isMultiboot = true;
 
 										dataTextBox.Text += "[Multiboot]" + Environment.NewLine
 											+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
@@ -157,6 +157,166 @@ namespace Uide
 											+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine;
 									}
 								}
+
+								#region disassembly
+
+								if (programHeaders.Length > 0)
+								{
+									uint at = programHeaders[0].p_offset;
+									// @TODO different entries than [0]
+									//uint max = at + programHeaders[0].p_filesz;
+									uint max = at + 8*8;
+
+									if (isMultiboot)
+										at += 12; // @TODO Multiboot header constant
+
+									string disassembly = "";
+
+									OPcodes.Init();
+									//List<string> list = new List<string>();
+
+									/*foreach (string line in OPcodes.opCodes)
+									{
+										string[] args = line.Split('\t');
+
+										if (args.Length > 2)
+										{
+											string arg = args[2];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);
+										}
+										if (args.Length == 4)
+										{
+											string arg = args[3];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);
+										}
+									}*/
+
+									while (at < max)
+									{
+										string output, op;
+										string[] parts;
+
+										op = OPcodes.opCodes[file[at]];
+										parts = op.Split('\t');
+
+										/*if (parts.Length > 2)
+										{
+											string arg = parts[parts.Length - 1];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);
+
+											arg = parts[parts.Length - 2];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);
+										}*/
+
+										output = parts[0] + '\t' + parts[1];
+
+										if (parts.Length > 2)
+										{
+											/*string arg = parts[2];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);*/
+
+											string operand = parts[2];
+
+											if (Array.IndexOf(OPcodes.literals, operand) != -1)
+											{
+												output += "\t" + operand;
+											}
+											else
+											{
+												switch (operand) {
+													case "Ib":
+													case "I0":
+														at++;
+														output += "\t0x" + file[at].ToString("x2");
+														break;
+													case "Iv":
+													case "Iw":
+														{
+															at++;
+															uint word = BitConverter.ToUInt32(file, (int)at);
+															output += "\t0x" + word.ToString("x8");
+															at += 3;
+														}
+														break;
+												}
+												/* @TODO
+Eb
+Gb
+Ev
+Gv
+Jb
+Ew
+Sw
+M
+Ap
+Ob
+Ov
+Mp
+Jv */
+											}
+										}
+										if (parts.Length == 4)
+										{
+											/*string arg = parts[2];
+
+											if (list.IndexOf(arg) == -1)
+												list.Add(arg);*/
+
+												string operand = parts[3];
+
+											if (Array.IndexOf(OPcodes.literals, operand) != -1)
+											{
+												output += "\t" + operand;
+											}
+											else
+											{
+												// @TODO fix duplicate code
+												switch (operand)
+												{
+													case "Ib":
+													case "I0":
+														at++;
+														output += "\t0x" + file[at].ToString("x2");
+														break;
+													case "Iv":
+													case "Iw":
+														{
+															at++;
+															uint word = BitConverter.ToUInt32(file, (int)at);
+															output += "\t0x" + word.ToString("x8");
+															at += 3;
+														}
+														break;
+												}
+											}
+										}
+
+										disassembly += output + Environment.NewLine;
+
+										at++;
+									}
+
+									assemblyTextBox.Text = disassembly;
+
+									assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
+									/*foreach (string str in list)
+									{
+										assemblyTextBox.Text += str + Environment.NewLine;
+									}*/
+
+								}
+
+								#endregion
 
 								isELFfile = true;
 								//viewAssemblyRadio.Checked = true;
@@ -282,6 +442,11 @@ namespace Uide
 						i * lineHeight);
 				}
 			}
+		}
+
+		private void viewAssemblyRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			assemblyTextBox.Visible = viewAssemblyRadio.Checked;
 		}
 
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)

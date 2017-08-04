@@ -346,7 +346,7 @@ Mp */
 
 						viewSwitchPanel.Visible = true;
 						viewAssemblyRadio.Visible = isELFfile;
-						viewDataRadio.Visible = isELFfile;
+						//viewDataRadio.Visible = isELFfile;
 
 						MainForm_Resize(null, null);
 						scrollBarV.Value = 0;
@@ -482,6 +482,18 @@ Mp */
 			FoxlangCompiler compiler = new FoxlangCompiler();
 
 			compiler.Compile(filePath);
+
+			StringBuilder sb = new StringBuilder();
+
+			foreach (string symbol in compiler.tokens)
+			{
+				sb.Append(symbol);
+				sb.Append(Environment.NewLine);
+			}
+
+			dataTextBox.Text = sb.ToString();
+
+			viewDataRadio.Checked = true;
 		}
 
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)

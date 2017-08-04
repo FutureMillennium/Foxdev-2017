@@ -68,6 +68,7 @@
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />
     <Compile Include="EntryPoint.cs" />
+    <Compile Include="FoxlangCompiler.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

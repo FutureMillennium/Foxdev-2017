@@ -31,13 +31,14 @@
 			this.mainBox = new System.Windows.Forms.PictureBox();
 			this.scrollBarV = new System.Windows.Forms.VScrollBar();
 			this.viewSwitchPanel = new System.Windows.Forms.Panel();
+			this.compileButton = new System.Windows.Forms.Button();
+			this.viewTextRadio = new System.Windows.Forms.RadioButton();
 			this.viewDataRadio = new System.Windows.Forms.RadioButton();
 			this.viewAssemblyRadio = new System.Windows.Forms.RadioButton();
 			this.viewHexRadio = new System.Windows.Forms.RadioButton();
 			this.dataTextBox = new System.Windows.Forms.TextBox();
 			this.dragFileHereLabel = new System.Windows.Forms.Label();
 			this.assemblyTextBox = new System.Windows.Forms.TextBox();
-			this.viewTextRadio = new System.Windows.Forms.RadioButton();
 			this.textBox = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
@@ -73,6 +74,7 @@
 			// viewSwitchPanel
 			// 
 			this.viewSwitchPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.viewSwitchPanel.Controls.Add(this.compileButton);
 			this.viewSwitchPanel.Controls.Add(this.viewTextRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewDataRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewAssemblyRadio);
@@ -80,9 +82,33 @@
 			this.viewSwitchPanel.Location = new System.Drawing.Point(0, 634);
 			this.viewSwitchPanel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.viewSwitchPanel.Name = "viewSwitchPanel";
-			this.viewSwitchPanel.Size = new System.Drawing.Size(328, 36);
+			this.viewSwitchPanel.Size = new System.Drawing.Size(404, 36);
 			this.viewSwitchPanel.TabIndex = 4;
 			this.viewSwitchPanel.Visible = false;
+			// 
+			// compileButton
+			// 
+			this.compileButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.compileButton.Location = new System.Drawing.Point(274, 0);
+			this.compileButton.Name = "compileButton";
+			this.compileButton.Size = new System.Drawing.Size(122, 31);
+			this.compileButton.TabIndex = 10;
+			this.compileButton.Text = "Compile";
+			this.compileButton.UseVisualStyleBackColor = true;
+			this.compileButton.Click += new System.EventHandler(this.compileButton_Click);
+			// 
+			// viewTextRadio
+			// 
+			this.viewTextRadio.Appearance = System.Windows.Forms.Appearance.Button;
+			this.viewTextRadio.AutoSize = true;
+			this.viewTextRadio.Location = new System.Drawing.Point(0, 0);
+			this.viewTextRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewTextRadio.Name = "viewTextRadio";
+			this.viewTextRadio.Size = new System.Drawing.Size(45, 31);
+			this.viewTextRadio.TabIndex = 7;
+			this.viewTextRadio.Text = "text";
+			this.viewTextRadio.UseVisualStyleBackColor = true;
+			this.viewTextRadio.CheckedChanged += new System.EventHandler(this.viewTextRadio_CheckedChanged);
 			// 
 			// viewDataRadio
 			// 
@@ -165,20 +191,6 @@
 			this.assemblyTextBox.TabIndex = 7;
 			this.assemblyTextBox.Visible = false;
 			// 
-			// viewTextRadio
-			// 
-			this.viewTextRadio.Appearance = System.Windows.Forms.Appearance.Button;
-			this.viewTextRadio.AutoSize = true;
-			this.viewTextRadio.Checked = true;
-			this.viewTextRadio.Location = new System.Drawing.Point(0, 0);
-			this.viewTextRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.viewTextRadio.Name = "viewTextRadio";
-			this.viewTextRadio.Size = new System.Drawing.Size(45, 31);
-			this.viewTextRadio.TabIndex = 7;
-			this.viewTextRadio.Text = "text";
-			this.viewTextRadio.UseVisualStyleBackColor = true;
-			this.viewTextRadio.CheckedChanged += new System.EventHandler(this.viewTextRadio_CheckedChanged);
-			// 
 			// textBox
 			// 
 			this.textBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -209,12 +221,14 @@
 			this.Controls.Add(this.mainBox);
 			this.Controls.Add(this.scrollBarV);
 			this.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+			this.KeyPreview = true;
 			this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.Name = "MainForm";
 			this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
 			this.Text = "Uide";
 			this.DragDrop += new System.Windows.Forms.DragEventHandler(this.MainForm_DragDrop);
 			this.DragEnter += new System.Windows.Forms.DragEventHandler(this.MainForm_DragEnter);
+			this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.MainForm_KeyDown);
 			this.Resize += new System.EventHandler(this.MainForm_Resize);
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).EndInit();
 			this.viewSwitchPanel.ResumeLayout(false);
@@ -237,5 +251,6 @@
 		private System.Windows.Forms.TextBox assemblyTextBox;
 		private System.Windows.Forms.RadioButton viewTextRadio;
 		private System.Windows.Forms.TextBox textBox;
+		private System.Windows.Forms.Button compileButton;
 	}
 }

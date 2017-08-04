@@ -10,6 +10,8 @@ namespace Uide
 {
 	public partial class MainForm : Form
 	{
+		const string PRODUCT_NAME = "Uide";
+
 		bool isFileLoaded = false, isELFfile;
 		string filePath, fileName;
 		byte[] file;
@@ -324,10 +326,7 @@ Mp */
 								#endregion
 
 								isELFfile = true;
-								//viewAssemblyRadio.Checked = true;
 								viewDataRadio.Checked = true;
-
-								this.Text = fileName + " – Uide"; // @TODO name constant
 							}
 							else
 							{
@@ -346,10 +345,18 @@ Mp */
 						dragFileHereLabel.Visible = false;
 
 						viewSwitchPanel.Visible = true;
-						//viewSwitchPanel.Visible = isELFfile;
+						viewAssemblyRadio.Visible = isELFfile;
+						viewDataRadio.Visible = isELFfile;
 
 						MainForm_Resize(null, null);
 						scrollBarV.Value = 0;
+
+						if (fileName.EndsWith(".foxlangproj"))
+							compileButton.Visible = true;
+						else
+							compileButton.Visible = false;
+
+						this.Text = fileName + " – " + PRODUCT_NAME;
 					}
 					catch (Exception ex)
 					{
@@ -459,6 +466,22 @@ Mp */
 		private void viewTextRadio_CheckedChanged(object sender, EventArgs e)
 		{
 			textBox.Visible = viewTextRadio.Checked;
+		}
+
+		private void MainForm_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.F5 && compileButton.Visible)
+			{
+				compileButton_Click(null, null);
+				e.Handled = true;
+			}
+		}
+
+		private void compileButton_Click(object sender, EventArgs e)
+		{
+			FoxlangCompiler compiler = new FoxlangCompiler();
+
+			compiler.Compile(filePath);
 		}
 
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)

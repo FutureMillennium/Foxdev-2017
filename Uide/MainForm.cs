@@ -120,23 +120,24 @@ namespace Uide
 									handle.Free();
 								}
 
-								dataTextBox.Text = "";
-								PrintFields(elfHeader);
-								dataTextBox.Text += Environment.NewLine;
+								StringBuilder s = new StringBuilder();
+
+								s.Append(PrintFields(elfHeader));
+								s.Append(Environment.NewLine);
 								for (int i = 0; i < programHeaders.Length; i++)
 								{
 									var o = programHeaders[i];
-									dataTextBox.Text += "[Program " + i.ToString() + "]" + Environment.NewLine;
-									PrintFields(o);
-									dataTextBox.Text += Environment.NewLine;
+									s.Append("[Program " + i.ToString() + "]" + Environment.NewLine);
+									s.Append(PrintFields(o));
+									s.Append(Environment.NewLine);
 								}
-								dataTextBox.Text += Environment.NewLine;
+								s.Append(Environment.NewLine);
 								for (int i = 0; i < sectionHeaders.Length; i++)
 								{
 									var o = sectionHeaders[i];
-									dataTextBox.Text += "[Section " + i.ToString() + "]" + Environment.NewLine;
-									PrintFields(o);
-									dataTextBox.Text += Environment.NewLine;
+									s.Append("[Section " + i.ToString() + "]" + Environment.NewLine);
+									s.Append(PrintFields(o));
+									s.Append(Environment.NewLine);
 								}
 
 								if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
@@ -151,12 +152,14 @@ namespace Uide
 									{
 										isMultiboot = true;
 
-										dataTextBox.Text += "[Multiboot]" + Environment.NewLine
+										s.Append("[Multiboot]" + Environment.NewLine
 											+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
 											+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
-											+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine;
+											+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine);
 									}
 								}
+
+								dataTextBox.Text = s.ToString();
 
 								#region disassembly
 
@@ -310,7 +313,7 @@ Mp */
 
 									assemblyTextBox.Text = disassembly;
 
-									assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
+									//assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
 									/*foreach (string str in list)
 									{
 										assemblyTextBox.Text += str + Environment.NewLine;
@@ -335,14 +338,15 @@ Mp */
 						else
 						{
 							isELFfile = false;
-							viewHexRadio.Checked = true;
+							viewTextRadio.Checked = true;
 						}
 
-						mainBox.Visible = true;
-						scrollBarV.Visible = true;
+						textBox.Text = System.Text.Encoding.Default.GetString(file);
+
 						dragFileHereLabel.Visible = false;
 
-						viewSwitchPanel.Visible = isELFfile;
+						viewSwitchPanel.Visible = true;
+						//viewSwitchPanel.Visible = isELFfile;
 
 						MainForm_Resize(null, null);
 						scrollBarV.Value = 0;
@@ -353,8 +357,6 @@ Mp */
 						MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 						file = null;
 					}
-
-					mainBox.Refresh();
 
 				}
 			}
@@ -393,7 +395,10 @@ Mp */
 
 		private void viewHexRadio_CheckedChanged(object sender, EventArgs e)
 		{
-			mainBox.Refresh();
+			mainBox.Visible = viewHexRadio.Checked;
+			scrollBarV.Visible = viewHexRadio.Checked;
+			if (viewHexRadio.Checked)
+				mainBox.Refresh();
 		}
 
 		private void viewDataRadio_CheckedChanged(object sender, EventArgs e)
@@ -451,6 +456,11 @@ Mp */
 			assemblyTextBox.Visible = viewAssemblyRadio.Checked;
 		}
 
+		private void viewTextRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			textBox.Visible = viewTextRadio.Checked;
+		}
+
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)
 		{
 			StringBuilder builder;
@@ -478,8 +488,10 @@ Mp */
 			return builder.ToString();
 		}
 
-		void PrintFields(object o)
+		string PrintFields(object o)
 		{
+			StringBuilder s = new StringBuilder();
+
 			foreach (var field in o.GetType().GetFields())
 			{
 				string str;
@@ -497,19 +509,21 @@ Mp */
 					//str += "\t(0x" + ((Byte)field.GetValue(o)).ToString("x2") + ")";
 				}
 
-				dataTextBox.Text += field.Name + ":\t" + str;
+				s.Append(field.Name + ":\t" + str);
 
 				if (field.FieldType.IsValueType && field.FieldType.IsEnum == false && field.FieldType.IsPrimitive == false)
 				{
-					dataTextBox.Text += ":" + Environment.NewLine;
-					PrintFields(field.GetValue(o));
-					dataTextBox.Text += Environment.NewLine;
+					s.Append(":" + Environment.NewLine);
+					s.Append(PrintFields(field.GetValue(o)));
+					s.Append(Environment.NewLine);
 				}
 				else
 				{
-					dataTextBox.Text += Environment.NewLine;
+					s.Append(Environment.NewLine);
 				}
 			}
+
+			return s.ToString();
 		}
 
 		string HexGetValAbstract(object o, Type type)

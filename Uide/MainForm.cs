@@ -501,7 +501,7 @@ Mp */
 
 			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
 			{
-				sb.Append(msg.type.ToString() + ":\t" + msg.token.token + "\t" + msg.message + "\t[line: " + msg.token.line + ", col: " + msg.token.col + "]\t" + msg.filename);
+				sb.Append("[" + msg.type.ToString() + "] \t" + msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]");
 				sb.Append(Environment.NewLine);
 			}
 

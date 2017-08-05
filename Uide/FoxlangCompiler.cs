@@ -163,11 +163,31 @@ namespace Uide
 			// @TODO check invalid state (e.g. remaining in ParsingString)
 			#endregion
 
+			
+
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
 
-			foreach (Token tok in tokens)
+			int max = tokens.Count;
+			int i = 0;
+			while (i < max)
 			{
+				Token tok = tokens[i];
 				string token = tok.token;
+
+
+
+				void AddError(string message, int errorCode)
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = tok,
+						errorNumber = errorCode,
+					});
+				}
+
+
 
 				if (parsingStateStack.Count > 0)
 				{
@@ -189,13 +209,7 @@ namespace Uide
 										curProject.name = projectName;
 									else
 									{
-										outputMessages.Add(new OutputMessage
-										{
-											type = OutputMessage.MessageType.Error,
-											message = "Not implemented.",
-											token = tok,
-											errorNumber = 10001,
-										});
+										AddError("Compiler directive not implemented in #Compile.", 10001);
 										return;
 									}
 								}
@@ -205,19 +219,28 @@ namespace Uide
 								}
 								else
 								{
-									outputMessages.Add(new OutputMessage
-									{
-										type = OutputMessage.MessageType.Error,
-										message = "Can't accept.",
-										token = tok,
-										errorNumber = 10000,
-									});
+									AddError("Can't accept this token as #Compile project name.", 10000);
 									return;
 								}
 							}
 							break;
 
 						case ParsingState.HashCompileBlock:
+							switch (token)
+							{
+								case "entryPoint":
+									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
+									{
+										curProject.entryPoint = tokens[i + 2].token;
+										i += 3;
+									}
+									else
+									{
+										AddError("Only direct symbol assignment to entryPoint is supported.", 10002);
+										return;
+									}
+									break;
+							}
 							// @TODO
 							break;
 					}
@@ -235,6 +258,8 @@ namespace Uide
 							break;
 					}
 				}
+
+				i++;
 			}
 		}
 	}

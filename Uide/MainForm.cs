@@ -491,6 +491,15 @@ Mp */
 
 			StringBuilder sb = new StringBuilder();
 
+			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
+			{
+				sb.Append(msg.type.ToString() + ": " + msg.message);
+				sb.Append(Environment.NewLine);
+			}
+
+			sb.Append(Environment.NewLine);
+			sb.Append(Environment.NewLine);
+
 			foreach (FoxlangCompiler.Token token in compiler.tokens)
 			{
 				sb.Append(token.token + "\t[line: " + token.line + ", col: " + token.col + "]");

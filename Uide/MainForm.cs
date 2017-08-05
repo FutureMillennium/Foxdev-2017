@@ -352,9 +352,15 @@ Mp */
 						scrollBarV.Value = 0;
 
 						if (fileName.EndsWith(".foxlangproj"))
+						{
 							compileButton.Visible = true;
+							// @TODO auto-compile for now
+							compileButton_Click(null, null);
+						}
 						else
+						{
 							compileButton.Visible = false;
+						}
 
 						this.Text = fileName + " – " + PRODUCT_NAME;
 					}

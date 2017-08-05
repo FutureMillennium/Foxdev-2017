@@ -485,11 +485,19 @@ Mp */
 
 		private void compileButton_Click(object sender, EventArgs e)
 		{
+			bool success;
 			FoxlangCompiler compiler = new FoxlangCompiler();
 
-			compiler.Compile(filePath);
+			success = compiler.Compile(filePath);
 
 			StringBuilder sb = new StringBuilder();
+
+			if (success)
+				sb.Append("Success!");
+			else
+				sb.Append("Error!");
+
+			sb.Append(Environment.NewLine);
 
 			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
 			{

@@ -12,13 +12,21 @@ namespace Uide
 		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString }
 		enum ParsingState { HashCompile, HashCompileBlock }
 
+		public class Token
+		{
+			public string token;
+			public int line,
+				col,
+				pos;
+		}
+
 		public class OutputMessage
 		{
 			public enum MessageType { Warning, Error }
 
 			public MessageType type;
-			public string message,
-				token;
+			public string message;
+			public Token token;
 			public int errorNumber;
 		}
 
@@ -34,7 +42,7 @@ namespace Uide
 				run;
 		}
 
-		public List<string> tokens = new List<string>();
+		public List<Token> tokens = new List<Token>();
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		public List<Project> projects = new List<Project>();
 		public string projectName;
@@ -49,16 +57,17 @@ namespace Uide
 				StreamReader streamReader = File.OpenText(filePath);
 
 				char c, prevC = (char)0;
-				string currentSymbol = "";
+				int pos = 0, line = 1, col = 1;
+				Token currentToken = null;
 				ReadingState readingState = ReadingState.Normal;
 
 
 				void AddSymbol()
 				{
-					if (currentSymbol.Length > 0)
+					if (currentToken != null && currentToken.token.Length > 0)
 					{
-						tokens.Add(currentSymbol);
-						currentSymbol = "";
+						tokens.Add(currentToken);
+						currentToken = null;
 					}
 				}
 
@@ -72,12 +81,19 @@ namespace Uide
 						case ReadingState.IgnoringUntilNewLine:
 							if (c == '\n')
 							{
-								currentSymbol = "";
+								line++;
+								col = 0;
 								readingState = ReadingState.Normal;
 							}
 							break;
 						case ReadingState.ReadingString:
-							currentSymbol += c;
+							currentToken.token += c;
+							if (c == '\n')
+							{
+								line++;
+								col = 0;
+							}
+
 							if (c == '\'' && prevC != '\\')
 							{
 								readingState = ReadingState.Normal;
@@ -88,8 +104,9 @@ namespace Uide
 							switch (c)
 							{
 								case '/':
-									if (currentSymbol == "/")
+									if (currentToken != null && currentToken.token == "/")
 									{
+										currentToken = null;
 										readingState = ReadingState.IgnoringUntilNewLine;
 									}
 									else goto BreakingSymbol;
@@ -105,17 +122,36 @@ namespace Uide
 									goto default;
 								case ' ':
 								case '\t':
+									AddSymbol();
+									break;
 								case '\r':
+									col--;
+									AddSymbol();
+									break;
 								case '\n':
+									line++;
+									col = 0;
 									AddSymbol();
 									break;
 								default:
-									currentSymbol += c;
+									if (currentToken == null)
+									{
+										currentToken = new Token
+										{
+											token = "",
+											line = line,
+											col = col,
+											pos = pos,
+										};
+									}
+									currentToken.token += c;
 									break;
 							}
 							break;
 					}
 
+					pos++;
+					col++;
 					prevC = c;
 				}
 			}
@@ -129,8 +165,10 @@ namespace Uide
 
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
 
-			foreach (string token in tokens)
+			foreach (Token tok in tokens)
 			{
+				string token = tok.token;
+
 				if (parsingStateStack.Count > 0)
 				{
 					ParsingState state = parsingStateStack.Peek();
@@ -154,8 +192,8 @@ namespace Uide
 										outputMessages.Add(new OutputMessage
 										{
 											type = OutputMessage.MessageType.Error,
-											message = "Not implemented.", // @TODO line number
-											token = token,
+											message = "Not implemented.",
+											token = tok,
 											errorNumber = 10001,
 										});
 										return;
@@ -170,8 +208,8 @@ namespace Uide
 									outputMessages.Add(new OutputMessage
 									{
 										type = OutputMessage.MessageType.Error,
-										message = "Can't accept.", // @TODO line number
-										token = token,
+										message = "Can't accept.",
+										token = tok,
 										errorNumber = 10000,
 									});
 									return;

@@ -10,7 +10,9 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString, NestedComments }
-		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const }
+		enum FoxlangType { Address4 }
+		enum Block { Namespace }
 
 		public class Token
 		{
@@ -18,6 +20,13 @@ namespace Uide
 			public int line,
 				col,
 				pos;
+		}
+
+		class Const
+		{
+			public string symbol;
+			public FoxlangType type;
+			public dynamic value;
 		}
 
 		public class OutputMessage
@@ -44,6 +53,7 @@ namespace Uide
 
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		public List<Project> projects = new List<Project>();
+		List<Const> consts = new List<Const>();
 		public string projectName;
 		Project curProject;
 
@@ -236,19 +246,20 @@ namespace Uide
 
 				streamReader.Close();
 			}
-			catch (Exception e)
+			catch
 			{
 				// @TODO
 			}
 
 			// @TODO check invalid state (e.g. remaining in ParsingString)
 			#endregion
-
-
+			
 			#region Parsing
 
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
 			Stack<string> stringDataStack = new Stack<string>();
+			Stack<Block> blockStack = new Stack<Block>();
+			Stack<string> namespaceStack = new Stack<string>();
 
 			string composedString = ""; // @TODO cleanup
 
@@ -292,6 +303,60 @@ namespace Uide
 
 					switch (state)
 					{
+						case ParsingState.Const:
+							switch (token)
+							{
+								case "}":
+									Block exitingBlock = blockStack.Pop();
+									switch (exitingBlock)
+									{
+										case Block.Namespace:
+											namespaceStack.Pop();
+											break;
+										default:
+											AddError("Exiting unknown block."); // @TODO
+											return false;
+									}
+									if (blockStack.Count == 0)
+									{
+										parsingStateStack.Pop();
+									}
+									break;
+								case "Address4":
+									// @TODO cleanup
+									if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
+									{
+										consts.Add(new Const
+										{
+											symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
+											type = FoxlangType.Address4,
+											value = tokens[i + 2].token, // @TODO parse literals etc.
+										});
+										i += 4;
+									}
+									else
+									{
+										AddError("Extra tokens after Address4."); // @TODO
+										return false;
+									}
+									break;
+								default:
+									if (tokens[i + 1].token == "{")
+									{
+										i++;
+										namespaceStack.Push(token);
+										blockStack.Push(Block.Namespace);
+									}
+									else
+									{
+										AddError("Can't parse this at this place."); // @TODO
+										return false;
+									}
+									break;
+							}
+
+							break;
+
 						case ParsingState.AddRunFileProject:
 							if (token == ";")
 							{
@@ -524,6 +589,9 @@ namespace Uide
 							projects.Add(curProject);
 
 							parsingStateStack.Push(ParsingState.HashCompile);
+							break;
+						case "const":
+							parsingStateStack.Push(ParsingState.Const);
 							break;
 						default:
 							AddError("Unknown token."); // @TODO

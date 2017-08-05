@@ -40,13 +40,16 @@ namespace Uide
 		
 
 
-		public MainForm()
+		public MainForm(string[] args)
 		{
 			InitializeComponent();
 
 			SetDoubleBuffered(this.mainBox);
 
 			MainForm_Resize(null, null);
+
+			if (args.Length > 0)
+				OpenFile(args[0]);
 		}
 
 		private void MainForm_DragEnter(object sender, DragEventArgs e)
@@ -57,206 +60,202 @@ namespace Uide
 			}
 		}
 
-		private void MainForm_DragDrop(object sender, DragEventArgs e)
+		void OpenFile(string path)
 		{
-			if (e.Data.GetDataPresent(DataFormats.FileDrop))
+			filePath = path; // @TODO more than 1 file
+
+			try
 			{
-				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-				if (files.Length > 0)
+				file = File.ReadAllBytes(filePath);
+
+				isFileLoaded = true;
+				fileName = Path.GetFileName(filePath);
+				fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
+
+				if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
+					&& file[0] == 0x7F
+					&& file[1] == 'E'
+					&& file[2] == 'L'
+					&& file[3] == 'F')
 				{
-					filePath = files[0]; // @TODO more than 1 file
 
-					try
+					if (file[4] == 1)
 					{
-						file = File.ReadAllBytes(filePath);
+						byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
+						Array.Copy(file, 0,
+							buffer, 0, 52);
 
-						isFileLoaded = true;
-						fileName = Path.GetFileName(filePath);
-						fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
+						GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+						elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
+						handle.Free();
 
-						if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
-							&& file[0] == 0x7F
-							&& file[1] == 'E'
-							&& file[2] == 'L'
-							&& file[3] == 'F')
+						// @TODO check if elfHeader.sizeProgramHeaderTableEntry == 32?
+						// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
+
+						Elf32_Phdr[] programHeaders;
+						programHeaders = new Elf32_Phdr[elfHeader.numProgramTableEntries];
+
+						for (int i = 0; i < elfHeader.numProgramTableEntries; i++)
 						{
+							buffer = new byte[elfHeader.sizeProgramTableEntry]; // @TODO sizeof Elf32_Ehdr
+							Array.Copy(file, elfHeader.programTableOffset + (i * elfHeader.sizeProgramTableEntry),
+								buffer, 0, elfHeader.sizeProgramTableEntry);
 
-							if (file[4] == 1)
+							handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+							programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
+							handle.Free();
+						}
+
+						Elf32_Shdr[] sectionHeaders;
+						sectionHeaders = new Elf32_Shdr[elfHeader.numSectionTableEntries];
+
+						for (int i = 0; i < elfHeader.numSectionTableEntries; i++)
+						{
+							buffer = new byte[elfHeader.sizeSectionTableEntry]; // @TODO sizeof Elf32_Ehdr
+							Array.Copy(file, elfHeader.sectionTableOffset + (i * elfHeader.sizeSectionTableEntry),
+								buffer, 0, elfHeader.sizeSectionTableEntry);
+
+							handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+							sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
+							handle.Free();
+						}
+
+						StringBuilder s = new StringBuilder();
+
+						s.Append(PrintFields(elfHeader));
+						s.Append(Environment.NewLine);
+						for (int i = 0; i < programHeaders.Length; i++)
+						{
+							var o = programHeaders[i];
+							s.Append("[Program " + i.ToString() + "]" + Environment.NewLine);
+							s.Append(PrintFields(o));
+							s.Append(Environment.NewLine);
+						}
+						s.Append(Environment.NewLine);
+						for (int i = 0; i < sectionHeaders.Length; i++)
+						{
+							var o = sectionHeaders[i];
+							s.Append("[Section " + i.ToString() + "]" + Environment.NewLine);
+							s.Append(PrintFields(o));
+							s.Append(Environment.NewLine);
+						}
+
+						if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
+						{
+							int magic, flags, checksum;
+
+							magic = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset);
+							flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
+							checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
+
+							if (magic == 0x1BADB002 && checksum == -(magic + flags))
 							{
-								byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
-								Array.Copy(file, 0, 
-									buffer, 0, 52);
+								isMultiboot = true;
 
-								GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-								elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
-								handle.Free();
+								s.Append("[Multiboot]" + Environment.NewLine
+									+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
+									+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
+									+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine);
+							}
+						}
 
-								// @TODO check if elfHeader.sizeProgramHeaderTableEntry == 32?
-								// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
+						dataTextBox.Text = s.ToString();
 
-								Elf32_Phdr[] programHeaders;
-								programHeaders = new Elf32_Phdr[elfHeader.numProgramTableEntries];
+						#region disassembly
 
-								for (int i = 0; i < elfHeader.numProgramTableEntries; i++)
+						if (programHeaders.Length > 0)
+						{
+							uint at = programHeaders[0].p_offset;
+							// @TODO different entries than [0]
+							//uint max = at + programHeaders[0].p_filesz;
+							uint max = at + 8 * 8;
+
+							if (isMultiboot)
+								at += 12; // @TODO Multiboot header constant
+
+							string disassembly = "";
+
+							OPcodes.Init();
+							//List<string> list = new List<string>();
+
+							/*foreach (string line in OPcodes.opCodes)
+							{
+								string[] args = line.Split('\t');
+
+								if (args.Length > 2)
 								{
-									buffer = new byte[elfHeader.sizeProgramTableEntry]; // @TODO sizeof Elf32_Ehdr
-									Array.Copy(file, elfHeader.programTableOffset + (i * elfHeader.sizeProgramTableEntry),
-										buffer, 0, elfHeader.sizeProgramTableEntry);
+									string arg = args[2];
 
-									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-									programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
-									handle.Free();
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);
 								}
-
-								Elf32_Shdr[] sectionHeaders;
-								sectionHeaders = new Elf32_Shdr[elfHeader.numSectionTableEntries];
-
-								for (int i = 0; i < elfHeader.numSectionTableEntries; i++)
+								if (args.Length == 4)
 								{
-									buffer = new byte[elfHeader.sizeSectionTableEntry]; // @TODO sizeof Elf32_Ehdr
-									Array.Copy(file, elfHeader.sectionTableOffset + (i * elfHeader.sizeSectionTableEntry),
-										buffer, 0, elfHeader.sizeSectionTableEntry);
+									string arg = args[3];
 
-									handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-									sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
-									handle.Free();
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);
 								}
+							}*/
 
-								StringBuilder s = new StringBuilder();
+							while (at < max)
+							{
+								string output, op;
+								string[] parts;
 
-								s.Append(PrintFields(elfHeader));
-								s.Append(Environment.NewLine);
-								for (int i = 0; i < programHeaders.Length; i++)
+								op = OPcodes.opCodes[file[at]];
+								parts = op.Split('\t');
+
+								/*if (parts.Length > 2)
 								{
-									var o = programHeaders[i];
-									s.Append("[Program " + i.ToString() + "]" + Environment.NewLine);
-									s.Append(PrintFields(o));
-									s.Append(Environment.NewLine);
-								}
-								s.Append(Environment.NewLine);
-								for (int i = 0; i < sectionHeaders.Length; i++)
+									string arg = parts[parts.Length - 1];
+
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);
+
+									arg = parts[parts.Length - 2];
+
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);
+								}*/
+
+								output = parts[0] + '\t' + parts[1];
+
+								if (parts.Length > 2)
 								{
-									var o = sectionHeaders[i];
-									s.Append("[Section " + i.ToString() + "]" + Environment.NewLine);
-									s.Append(PrintFields(o));
-									s.Append(Environment.NewLine);
-								}
+									/*string arg = parts[2];
 
-								if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
-								{
-									int magic, flags, checksum;
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);*/
 
-									magic = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset);
-									flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
-									checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
+									string operand = parts[2];
 
-									if (magic == 0x1BADB002 && checksum == -(magic + flags))
+									if (Array.IndexOf(OPcodes.literals, operand) != -1)
 									{
-										isMultiboot = true;
-
-										s.Append("[Multiboot]" + Environment.NewLine
-											+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
-											+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
-											+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine);
+										output += "\t" + operand;
 									}
-								}
-
-								dataTextBox.Text = s.ToString();
-
-								#region disassembly
-
-								if (programHeaders.Length > 0)
-								{
-									uint at = programHeaders[0].p_offset;
-									// @TODO different entries than [0]
-									//uint max = at + programHeaders[0].p_filesz;
-									uint max = at + 8*8;
-
-									if (isMultiboot)
-										at += 12; // @TODO Multiboot header constant
-
-									string disassembly = "";
-
-									OPcodes.Init();
-									//List<string> list = new List<string>();
-
-									/*foreach (string line in OPcodes.opCodes)
+									else
 									{
-										string[] args = line.Split('\t');
-
-										if (args.Length > 2)
+										switch (operand)
 										{
-											string arg = args[2];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);
-										}
-										if (args.Length == 4)
-										{
-											string arg = args[3];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);
-										}
-									}*/
-
-									while (at < max)
-									{
-										string output, op;
-										string[] parts;
-
-										op = OPcodes.opCodes[file[at]];
-										parts = op.Split('\t');
-
-										/*if (parts.Length > 2)
-										{
-											string arg = parts[parts.Length - 1];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);
-
-											arg = parts[parts.Length - 2];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);
-										}*/
-
-										output = parts[0] + '\t' + parts[1];
-
-										if (parts.Length > 2)
-										{
-											/*string arg = parts[2];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);*/
-
-											string operand = parts[2];
-
-											if (Array.IndexOf(OPcodes.literals, operand) != -1)
-											{
-												output += "\t" + operand;
-											}
-											else
-											{
-												switch (operand) {
-													case "Ib":
-													case "I0":
-													case "Jb":
-														at++;
-														output += "\t0x" + file[at].ToString("x2");
-														break;
-													case "Iv":
-													case "Iw":
-													case "Jv":
-														{
-															at++;
-															uint word = BitConverter.ToUInt32(file, (int)at);
-															output += "\t0x" + word.ToString("x8");
-															at += 3;
-														}
-														break;
+											case "Ib":
+											case "I0":
+											case "Jb":
+												at++;
+												output += "\t0x" + file[at].ToString("x2");
+												break;
+											case "Iv":
+											case "Iw":
+											case "Jv":
+												{
+													at++;
+													uint word = BitConverter.ToUInt32(file, (int)at);
+													output += "\t0x" + word.ToString("x8");
+													at += 3;
 												}
-												/* @TODO
+												break;
+										}
+										/* @TODO
 Eb
 Gb
 Ev
@@ -268,109 +267,118 @@ Ap
 Ob
 Ov
 Mp */
-											}
-										}
-										if (parts.Length == 4)
-										{
-											/*string arg = parts[2];
-
-											if (list.IndexOf(arg) == -1)
-												list.Add(arg);*/
-
-												string operand = parts[3];
-
-											if (Array.IndexOf(OPcodes.literals, operand) != -1)
-											{
-												output += "\t" + operand;
-											}
-											else
-											{
-												// @TODO fix duplicate code
-												switch (operand)
-												{
-													case "Ib":
-													case "I0":
-													case "Jb":
-														at++;
-														output += "\t0x" + file[at].ToString("x2");
-														break;
-													case "Iv":
-													case "Iw":
-													case "Jv":
-														{
-															at++;
-															uint word = BitConverter.ToUInt32(file, (int)at);
-															output += "\t0x" + word.ToString("x8");
-															at += 3;
-														}
-														break;
-												}
-											}
-										}
-
-										disassembly += output + Environment.NewLine;
-
-										at++;
 									}
+								}
+								if (parts.Length == 4)
+								{
+									/*string arg = parts[2];
 
-									assemblyTextBox.Text = disassembly;
+									if (list.IndexOf(arg) == -1)
+										list.Add(arg);*/
 
-									//assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
-									/*foreach (string str in list)
+									string operand = parts[3];
+
+									if (Array.IndexOf(OPcodes.literals, operand) != -1)
 									{
-										assemblyTextBox.Text += str + Environment.NewLine;
-									}*/
-
+										output += "\t" + operand;
+									}
+									else
+									{
+										// @TODO fix duplicate code
+										switch (operand)
+										{
+											case "Ib":
+											case "I0":
+											case "Jb":
+												at++;
+												output += "\t0x" + file[at].ToString("x2");
+												break;
+											case "Iv":
+											case "Iw":
+											case "Jv":
+												{
+													at++;
+													uint word = BitConverter.ToUInt32(file, (int)at);
+													output += "\t0x" + word.ToString("x8");
+													at += 3;
+												}
+												break;
+										}
+									}
 								}
 
-								#endregion
+								disassembly += output + Environment.NewLine;
 
-								isELFfile = true;
-								viewDataRadio.Checked = true;
+								at++;
 							}
-							else
+
+							assemblyTextBox.Text = disassembly;
+
+							//assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
+							/*foreach (string str in list)
 							{
-								// @TODO 64bit ELF
-								MessageBox.Show("64bit ELF not implemented yet.");
-							}
-						}
-						else
-						{
-							isELFfile = false;
-							viewTextRadio.Checked = true;
+								assemblyTextBox.Text += str + Environment.NewLine;
+							}*/
+
 						}
 
-						textBox.Text = System.Text.Encoding.Default.GetString(file);
+						#endregion
 
-						dragFileHereLabel.Visible = false;
-
-						viewSwitchPanel.Visible = true;
-						viewAssemblyRadio.Visible = isELFfile;
-						//viewDataRadio.Visible = isELFfile;
-
-						MainForm_Resize(null, null);
-						scrollBarV.Value = 0;
-
-						if (fileName.EndsWith(".foxlangproj"))
-						{
-							compileButton.Visible = true;
-							// @TODO auto-compile for now
-							compileButton_Click(null, null);
-						}
-						else
-						{
-							compileButton.Visible = false;
-						}
-
-						this.Text = fileName + " – " + PRODUCT_NAME;
+						isELFfile = true;
+						viewDataRadio.Checked = true;
 					}
-					catch (Exception ex)
+					else
 					{
-						// @TODO show non-intrusively inside app
-						MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-						file = null;
+						// @TODO 64bit ELF
+						MessageBox.Show("64bit ELF not implemented yet.");
 					}
+				}
+				else
+				{
+					isELFfile = false;
+					viewTextRadio.Checked = true;
+				}
 
+				textBox.Text = System.Text.Encoding.Default.GetString(file);
+
+				dragFileHereLabel.Visible = false;
+
+				viewSwitchPanel.Visible = true;
+				viewAssemblyRadio.Visible = isELFfile;
+				//viewDataRadio.Visible = isELFfile;
+
+				MainForm_Resize(null, null);
+				scrollBarV.Value = 0;
+
+				if (fileName.EndsWith(".foxlangproj"))
+				{
+					compileButton.Visible = true;
+					// @TODO auto-compile for now
+					compileButton_Click(null, null);
+				}
+				else
+				{
+					compileButton.Visible = false;
+				}
+
+				this.Text = fileName + " – " + PRODUCT_NAME;
+			}
+			catch (Exception ex)
+			{
+				// @TODO show non-intrusively inside app
+				MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				file = null;
+			}
+		}
+
+		private void MainForm_DragDrop(object sender, DragEventArgs e)
+		{
+			if (e.Data.GetDataPresent(DataFormats.FileDrop))
+			{
+				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+				if (files.Length > 0)
+				{
+					OpenFile(files[0]);
 				}
 			}
 		}

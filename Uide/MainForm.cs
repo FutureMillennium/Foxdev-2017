@@ -488,7 +488,7 @@ Mp */
 			bool success;
 			FoxlangCompiler compiler = new FoxlangCompiler();
 
-			success = compiler.Compile(filePath);
+			success = compiler.CompileProject(filePath);
 
 			StringBuilder sb = new StringBuilder();
 
@@ -501,18 +501,18 @@ Mp */
 
 			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
 			{
-				sb.Append(msg.type.ToString() + ": " + msg.message + "\t" + msg.token.token + "\t[line: " + msg.token.line + ", col: " + msg.token.col + "]");
+				sb.Append(msg.type.ToString() + ": " + msg.message + "\t" + msg.token.token + "\t[line: " + msg.token.line + ", col: " + msg.token.col + "]\t" + msg.filename);
 				sb.Append(Environment.NewLine);
 			}
 
-			sb.Append(Environment.NewLine);
+			/*sb.Append(Environment.NewLine);
 			sb.Append(Environment.NewLine);
 
 			foreach (FoxlangCompiler.Token token in compiler.tokens)
 			{
 				sb.Append(token.token + "\t[line: " + token.line + ", col: " + token.col + "]");
 				sb.Append(Environment.NewLine);
-			}
+			}*/
 
 			dataTextBox.Text = sb.ToString();
 

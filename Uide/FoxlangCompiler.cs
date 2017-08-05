@@ -9,7 +9,7 @@ namespace Uide
 {
 	class FoxlangCompiler
 	{
-		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString }
+		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject }
 
 		public class Token
@@ -25,7 +25,8 @@ namespace Uide
 			public enum MessageType { Notice, Warning, Error }
 
 			public MessageType type;
-			public string message;
+			public string message,
+				filename;
 			public Token token;
 		}
 
@@ -41,24 +42,73 @@ namespace Uide
 				run;
 		}
 
-		public List<Token> tokens = new List<Token>();
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		public List<Project> projects = new List<Project>();
 		public string projectName;
 		Project curProject;
 
+		public bool CompileProject(string filePath)
+		{
+			projectName = Path.GetFileNameWithoutExtension(filePath);
+			
+			if (Compile(filePath) == false)
+			{
+				return false;
+			}
+
+			if (projects.Count == 0)
+			{
+				GlobalErrorMessage("No projects inside project file. This is probably bad.");
+				return false;
+			}
+
+			string projectPath = Path.GetDirectoryName(filePath);
+
+			for (int i = 0; i < projects.Count; i++)
+			{
+				foreach (string wildFile in projects[i].files)
+				{
+					//string f = file.Replace('/', '\\');
+					string f = wildFile;
+					if (f[0] == '/')
+						f = f.Substring(1);
+
+					if (f.Contains('*'))
+					{
+						string path = Path.Combine(projectPath, Path.GetDirectoryName(f));
+						string[] files = Directory.GetFiles(path, Path.GetFileName(wildFile));
+
+						foreach (string file in files)
+						{
+							if (Compile(file) == false)
+								return false;
+						}
+					}
+					else
+					{
+						GlobalErrorMessage("Non-wildcard file names not implemented yet.");
+					}
+				}
+			}
+
+
+			return true;
+		}
+
 		public bool Compile(string filePath)
 		{
+			List<Token> tokens = new List<Token>();
+
 			#region Lexical parsing
 			try
 			{
-				projectName = Path.GetFileNameWithoutExtension(filePath);
 				StreamReader streamReader = File.OpenText(filePath);
 
 				char c, prevC = (char)0;
 				int pos = 0, line = 1, col = 1;
 				Token currentToken = null;
 				ReadingState readingState = ReadingState.Normal;
+				int nestedCommentLevel = 0;
 
 
 				void AddSymbol()
@@ -77,8 +127,32 @@ namespace Uide
 
 					switch (readingState)
 					{
+						case ReadingState.NestedComments:
+							if (c == '\n') // @TODO cleanup
+							{
+								line++;
+								col = 0;
+							}
+
+							if (c == '*' && prevC == '/')
+							{
+								nestedCommentLevel++;
+							}
+							else if (c == '/' && prevC == '*')
+							{
+								if (nestedCommentLevel == 0)
+								{
+									readingState = ReadingState.Normal;
+								}
+								else
+								{
+									nestedCommentLevel--;
+								}
+							}
+
+							break;
 						case ReadingState.IgnoringUntilNewLine:
-							if (c == '\n')
+							if (c == '\n') // @TODO cleanup
 							{
 								line++;
 								col = 0;
@@ -87,7 +161,7 @@ namespace Uide
 							break;
 						case ReadingState.ReadingString:
 							currentToken.token += c;
-							if (c == '\n')
+							if (c == '\n') // @TODO cleanup
 							{
 								line++;
 								col = 0;
@@ -110,6 +184,15 @@ namespace Uide
 									}
 									else goto BreakingSymbol;
 									break;
+								case '*':
+									if (currentToken != null && currentToken.token == "/")
+									{
+										currentToken = null;
+										nestedCommentLevel = 0;
+										readingState = ReadingState.NestedComments;
+									}
+									else goto BreakingSymbol;
+									break;
 								case '\'':
 									readingState = ReadingState.ReadingString;
 									goto BreakingSymbol;
@@ -121,13 +204,10 @@ namespace Uide
 									goto default;
 								case ' ':
 								case '\t':
+								case '\r': // @TODO assuming \r\n, not \r on its own
 									AddSymbol();
 									break;
-								case '\r':
-									col--;
-									AddSymbol();
-									break;
-								case '\n':
+								case '\n': // @TODO cleanup
 									line++;
 									col = 0;
 									AddSymbol();
@@ -164,7 +244,8 @@ namespace Uide
 			// @TODO check invalid state (e.g. remaining in ParsingString)
 			#endregion
 
-			
+
+			#region Parsing
 
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
 			Stack<string> stringDataStack = new Stack<string>();
@@ -188,6 +269,7 @@ namespace Uide
 						type = OutputMessage.MessageType.Error,
 						message = message,
 						token = tok,
+						filename = filePath,
 					});
 				}
 
@@ -198,6 +280,7 @@ namespace Uide
 						type = OutputMessage.MessageType.Notice,
 						message = message,
 						token = tok,
+						filename = filePath,
 					});
 				}
 
@@ -450,8 +533,14 @@ namespace Uide
 
 				i++;
 			}
+			#endregion
 
 			return true;
+		}
+
+		void GlobalErrorMessage(string message)
+		{
+			System.Windows.MessageBox.Show(message);
 		}
 	}
 }

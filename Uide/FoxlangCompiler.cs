@@ -10,7 +10,7 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString }
-		enum ParsingState { HashCompile, HashCompileBlock }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign }
 
 		public class Token
 		{
@@ -27,7 +27,6 @@ namespace Uide
 			public MessageType type;
 			public string message;
 			public Token token;
-			public int errorNumber;
 		}
 
 		public class Project
@@ -154,6 +153,8 @@ namespace Uide
 					col++;
 					prevC = c;
 				}
+
+				streamReader.Close();
 			}
 			catch (Exception e)
 			{
@@ -166,9 +167,13 @@ namespace Uide
 			
 
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
+			Stack<string> stringDataStack = new Stack<string>();
+
+			string composedString = ""; // @TODO cleanup
 
 			int max = tokens.Count;
 			int i = 0;
+
 			while (i < max)
 			{
 				Token tok = tokens[i];
@@ -176,14 +181,13 @@ namespace Uide
 
 
 
-				void AddError(string message, int errorCode)
+				void AddError(string message)
 				{
 					outputMessages.Add(new OutputMessage
 					{
 						type = OutputMessage.MessageType.Error,
 						message = message,
 						token = tok,
-						errorNumber = errorCode,
 					});
 				}
 
@@ -195,6 +199,44 @@ namespace Uide
 
 					switch (state)
 					{
+						case ParsingState.OutputProjectAssign:
+							curProject.output = stringDataStack.Pop();
+							parsingStateStack.Pop();
+							continue;
+						case ParsingState.ComposeString:
+							if (token[0] == '#')
+							{
+								// @TODO cleanup
+								if (token == "#projectName")
+								{
+									composedString += projectName;
+								}
+								else
+								{
+									AddError("Can't use this compiler directive when precomposing strings.");
+									return;
+								}
+							}
+							else if (token == ".")
+							{
+								// @TODO cleanup
+							}
+							else if (token[0] == '\'')
+							{
+								composedString += token.Substring(1, token.Length - 2);
+							}
+							else if (token == ";")
+							{
+								stringDataStack.Push(composedString);
+								parsingStateStack.Pop();
+							}
+							else
+							{
+								AddError("Can't use this when precomposing strings.");
+								return;
+							}
+							break;
+
 						case ParsingState.HashCompile:
 							if (token == "{")
 							{
@@ -209,7 +251,7 @@ namespace Uide
 										curProject.name = projectName;
 									else
 									{
-										AddError("Compiler directive not implemented in #Compile.", 10001);
+										AddError("Compiler directive not implemented in #Compile.");
 										return;
 									}
 								}
@@ -219,7 +261,7 @@ namespace Uide
 								}
 								else
 								{
-									AddError("Can't accept this token as #Compile project name.", 10000);
+									AddError("Can't accept this token as #Compile project name.");
 									return;
 								}
 							}
@@ -229,6 +271,7 @@ namespace Uide
 							switch (token)
 							{
 								case "entryPoint":
+									// @TODO cleanup
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
 										curProject.entryPoint = tokens[i + 2].token;
@@ -236,10 +279,49 @@ namespace Uide
 									}
 									else
 									{
-										AddError("Only direct symbol assignment to entryPoint is supported.", 10002);
+										AddError("Only direct symbol assignment to entryPoint is supported.");
 										return;
 									}
 									break;
+								case "output":
+									// @TODO cleanup
+									if (tokens[i + 1].token == "=")
+									{
+										i++;
+										composedString = "";
+										parsingStateStack.Push(ParsingState.OutputProjectAssign);
+										parsingStateStack.Push(ParsingState.ComposeString);
+									}
+									else
+									{
+										AddError("Output can only be assigned.");
+										return;
+									}
+									break;
+								case "format":
+									// @TODO cleanup
+									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
+									{
+										if (tokens[i + 2].token == "Flat")
+										{
+											curProject.format = Project.Format.Flat;
+											i += 3;
+										}
+										else
+										{
+											AddError("Unsupported project output format. Only Flat is supported.");
+											return;
+										}
+									}
+									else
+									{
+										AddError("Only direct symbol assignment to entryPoint is supported.");
+										return;
+									}
+									break;
+								default:
+									AddError("Unsupported token in #Compile block.");
+									return;
 							}
 							// @TODO
 							break;

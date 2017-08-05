@@ -493,7 +493,7 @@ Mp */
 
 			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
 			{
-				sb.Append(msg.type.ToString() + ": " + msg.message);
+				sb.Append(msg.type.ToString() + ": " + msg.message + "\t" + msg.token.token + "\t[line: " + msg.token.line + ", col: " + msg.token.col + "]");
 				sb.Append(Environment.NewLine);
 			}
 

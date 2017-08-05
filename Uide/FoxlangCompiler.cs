@@ -11,7 +11,7 @@ namespace Uide
 	{
 		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const }
-		enum FoxlangType { Address4 }
+		enum FoxlangType { Address4, String, Uint }
 		enum Block { Namespace }
 
 		public class Token
@@ -304,55 +304,59 @@ namespace Uide
 					switch (state)
 					{
 						case ParsingState.Const:
-							switch (token)
+
+							FoxlangType type;
+							if (Enum.TryParse(token, out type))
 							{
-								case "}":
-									Block exitingBlock = blockStack.Pop();
-									switch (exitingBlock)
-									{
-										case Block.Namespace:
-											namespaceStack.Pop();
-											break;
-										default:
-											AddError("Exiting unknown block."); // @TODO
-											return false;
-									}
-									if (blockStack.Count == 0)
-									{
-										parsingStateStack.Pop();
-									}
-									break;
-								case "Address4":
-									// @TODO cleanup
-									if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
-									{
-										consts.Add(new Const
-										{
-											symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
-											type = FoxlangType.Address4,
-											value = tokens[i + 2].token, // @TODO parse literals etc.
-										});
-										i += 4;
-									}
-									else
-									{
-										AddError("Extra tokens after Address4."); // @TODO
+								// @TODO cleanup
+								if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
+								{
+									consts.Add(new Const {
+										symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
+										type = type,
+										value = tokens[i + 2].token, // @TODO parse literals etc.
+									});
+									i += 4;
+								}
+								else
+								{
+									AddError("Extra tokens after " + type.ToString() + "."); // @TODO
+									return false;
+								}
+								break;
+							}
+							else if (token == "}")
+							{
+								Block exitingBlock = blockStack.Pop();
+
+								switch (exitingBlock)
+								{
+									case Block.Namespace:
+										namespaceStack.Pop();
+										break;
+									default:
+										AddError("Exiting unknown block."); // @TODO
 										return false;
-									}
-									break;
-								default:
-									if (tokens[i + 1].token == "{")
-									{
-										i++;
-										namespaceStack.Push(token);
-										blockStack.Push(Block.Namespace);
-									}
-									else
-									{
-										AddError("Can't parse this at this place."); // @TODO
-										return false;
-									}
-									break;
+								}
+
+								if (blockStack.Count == 0)
+								{
+									parsingStateStack.Pop();
+								}
+							}
+							else
+							{
+								if (tokens[i + 1].token == "{")
+								{
+									i++;
+									namespaceStack.Push(token);
+									blockStack.Push(Block.Namespace);
+								}
+								else
+								{
+									AddError("Can't parse this at this place."); // @TODO
+									return false;
+								}
 							}
 
 							break;

@@ -12,11 +12,14 @@ namespace Uide
 	{
 		const string PRODUCT_NAME = "Uide";
 
-		bool isFileLoaded = false, isELFfile;
-		string filePath, fileName;
+		bool isFileLoaded = false,
+			isELFfile;
+		string filePath,
+			fileName;
 		byte[] file;
 		ELFheader32 elfHeader;
-		int maxLines = 0, fileLines = 0;
+		int maxLines = 0, 
+			fileLines = 0;
 		bool isMultiboot = false;
 
 		Font font = new Font(FontFamily.GenericMonospace, 13);
@@ -54,13 +57,14 @@ namespace Uide
 				fileName = Path.GetFileName(filePath);
 				fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
 
+				
 				if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
 					&& file[0] == 0x7F
 					&& file[1] == 'E'
 					&& file[2] == 'L'
 					&& file[3] == 'F')
 				{
-
+					#region ELF file parsing
 					if (file[4] == 1)
 					{
 						byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
@@ -314,6 +318,8 @@ Mp */
 						// @TODO 64bit ELF
 						MessageBox.Show("64bit ELF not implemented yet.");
 					}
+
+					#endregion
 				}
 				else
 				{
@@ -495,6 +501,7 @@ Mp */
 				sb.Append(Environment.NewLine);
 			}
 
+			// write out all tokens
 			/*sb.Append(Environment.NewLine);
 			sb.Append(Environment.NewLine);
 

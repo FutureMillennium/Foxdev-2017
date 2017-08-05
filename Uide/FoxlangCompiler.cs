@@ -9,7 +9,7 @@ namespace Uide
 {
 	class FoxlangCompiler
 	{
-		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString }
+		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString }
 		enum ParsingState { HashCompile, HashCompileBlock }
 
 		public class OutputMessage
@@ -38,7 +38,6 @@ namespace Uide
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		public List<Project> projects = new List<Project>();
 		public string projectName;
-
 		Project curProject;
 
 		public void Compile(string filePath)
@@ -51,7 +50,7 @@ namespace Uide
 
 				char c, prevC = (char)0;
 				string currentSymbol = "";
-				LexingState lexingState = LexingState.Normal;
+				ReadingState readingState = ReadingState.Normal;
 
 
 				void AddSymbol()
@@ -68,35 +67,35 @@ namespace Uide
 				{
 					c = (char)streamReader.Read();
 
-					switch (lexingState)
+					switch (readingState)
 					{
-						case LexingState.IgnoringUntilNewLine:
+						case ReadingState.IgnoringUntilNewLine:
 							if (c == '\n')
 							{
 								currentSymbol = "";
-								lexingState = LexingState.Normal;
+								readingState = ReadingState.Normal;
 							}
 							break;
-						case LexingState.ReadingString:
+						case ReadingState.ReadingString:
 							currentSymbol += c;
 							if (c == '\'' && prevC != '\\')
 							{
-								lexingState = LexingState.Normal;
+								readingState = ReadingState.Normal;
 								AddSymbol();
 							}
 							break;
-						case LexingState.Normal:
+						case ReadingState.Normal:
 							switch (c)
 							{
 								case '/':
 									if (currentSymbol == "/")
 									{
-										lexingState = LexingState.IgnoringUntilNewLine;
+										readingState = ReadingState.IgnoringUntilNewLine;
 									}
 									else goto BreakingSymbol;
 									break;
 								case '\'':
-									lexingState = LexingState.ReadingString;
+									readingState = ReadingState.ReadingString;
 									goto BreakingSymbol;
 								case ';':
 								case '(':

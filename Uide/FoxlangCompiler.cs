@@ -10,7 +10,7 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString, NestedComments }
-		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
 		enum FoxlangType { Byte4, Address4, String, Uint }
 		enum Block { Namespace }
 
@@ -33,6 +33,11 @@ namespace Uide
 		{
 			public string symbol;
 			public FoxlangType type;
+		}
+
+		class Function
+		{
+			public string symbol;
 		}
 
 		public class OutputMessage
@@ -61,6 +66,7 @@ namespace Uide
 		public List<Project> projects = new List<Project>();
 		List<Const> consts = new List<Const>();
 		List<Var> vars = new List<Var>();
+		List<Function> functions = new List<Function>();
 		public string projectName;
 		Project curProject;
 
@@ -603,7 +609,7 @@ namespace Uide
 							// @TODO
 							break;
 						default:
-							AddError("Unknown state."); // @TODO
+							AddError("Unknown parser state."); // @TODO
 							return false;
 					}
 
@@ -624,6 +630,24 @@ namespace Uide
 							break;
 						case "const":
 							parsingStateStack.Push(ParsingState.Const);
+							break;
+						case "function":
+							// @TODO cleanup
+							if (tokens[i + 2].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == "{")
+							{
+								functions.Add(new Function
+								{
+									symbol = tokens[i + 1].token,
+								});
+								i += 4;
+								// @TODO entrypoint
+								parsingStateStack.Push(ParsingState.FunctionBlock);
+							}
+							else
+							{
+								AddError("function foo() { }."); // @TODO
+								return false;
+							}
 							break;
 						default:
 							if (AcceptNamespace())

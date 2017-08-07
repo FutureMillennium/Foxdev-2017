@@ -12,7 +12,7 @@ namespace Uide
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
 		enum FoxlangType { Byte4, Address4, String, Uint }
-		enum Block { Namespace }
+		enum Block { Namespace, Function }
 		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp }
 
 		public class Token
@@ -158,6 +158,8 @@ namespace Uide
 
 				while (streamReader.EndOfStream == false)
 				{
+					bool addImmediately = false;
+
 					c = (char)streamReader.Read();
 
 					switch (readingState)
@@ -240,7 +242,7 @@ namespace Uide
 										nestedCommentLevel = 0;
 										readingState = LexingState.NestedComments;
 									}
-									else goto BreakingSymbol;
+									else goto AddImmediately;
 									break;
 								case '"':
 									readingState = LexingState.ReadingDoubleString;
@@ -251,6 +253,8 @@ namespace Uide
 								case ';':
 								case '(':
 								case ')':
+								AddImmediately:
+									addImmediately = true;
 								BreakingSymbol:
 									AddSymbol();
 									goto default;
@@ -276,6 +280,11 @@ namespace Uide
 										};
 									}
 									currentToken.token += c;
+									if (addImmediately)
+									{
+										addImmediately = false;
+										AddSymbol();
+									}
 									break;
 							}
 							break;
@@ -306,10 +315,10 @@ namespace Uide
 			Function curFunction = null; // @TODO cleanup?
 			string composedString = ""; // @TODO cleanup
 
-			int max = tokens.Count;
+			int iMax = tokens.Count;
 			int i = 0;
 
-			while (i < max)
+			while (i < iMax)
 			{
 				Token tok = tokens[i];
 				string token = tok.token;
@@ -363,6 +372,8 @@ namespace Uide
 						{
 							case Block.Namespace:
 								namespaceStack.Pop();
+								break;
+							case Block.Function:
 								break;
 							default:
 								AddError("Exiting unknown block."); // @TODO
@@ -479,7 +490,11 @@ namespace Uide
 									}
 									break;
 								default:
-									if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
+									if (ExitingBlock())
+									{
+										parsingStateStack.Pop();
+									}
+									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
 									{
 										string arg1 = tokens[i + 2].token;
 										if (arg1[0] == '"' && arg1.Last() == '"')
@@ -837,6 +852,7 @@ namespace Uide
 								};
 								functions.Add(curFunction);
 								i += 4;
+								blockStack.Push(Block.Function);
 								parsingStateStack.Push(ParsingState.FunctionBlock);
 							}
 							else

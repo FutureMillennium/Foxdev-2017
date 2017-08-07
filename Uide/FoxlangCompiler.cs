@@ -13,7 +13,7 @@ namespace Uide
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
 		enum FoxlangType { Byte4, Address4, String, Uint }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp }
+		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp, Call }
 
 		public class Token
 		{
@@ -42,11 +42,19 @@ namespace Uide
 			public string symbol;
 		}
 
+		class UnresolvedReference
+		{
+			public int pos;
+			public string symbol;
+			public string filename;
+			public Token token;
+		}
+
 		class Function
 		{
 			public string symbol;
 			public List<ByteCode> byteCode = new List<ByteCode>();
-			public List<SymbolReference> unresolvedReferences = new List<SymbolReference>();
+			public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
 			public List<SymbolReference> literalReferences = new List<SymbolReference>();
 			public List<SymbolReference> labels = new List<SymbolReference>();
 		}
@@ -507,6 +515,17 @@ namespace Uide
 												pos = curFunction.byteCode.Count - 1,
 												symbol = literal,
 											});
+
+											curFunction.byteCode.Add(ByteCode.Call);
+											curFunction.byteCode.Add((ByteCode)0xFEED113F);
+
+											curFunction.unresolvedReferences.Add(new UnresolvedReference
+											{
+												symbol = token,
+												pos = curFunction.byteCode.Count - 1,
+												token = tok,
+												filename = filePath,
+											});
 											i += 4;
 										}
 										else
@@ -905,7 +924,33 @@ namespace Uide
 				i++;
 			}
 			#endregion
-
+			
+			foreach (Function f in functions)
+			{
+				foreach (UnresolvedReference r in f.unresolvedReferences)
+				{
+					bool resolved = false;
+					foreach (Function ff in functions)
+					{
+						if (ff.symbol == r.symbol)
+						{
+							resolved = true;
+							break;
+						}
+					}
+					if (resolved == false)
+					{
+						outputMessages.Add(new OutputMessage
+						{
+							type = OutputMessage.MessageType.Error,
+							message = "Unresolved symbol: " + r.symbol,
+							token = r.token,
+							filename = r.filename,
+						});
+						return false;
+					}
+				}
+			}
 			return true;
 		}
 

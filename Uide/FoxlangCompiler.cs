@@ -10,8 +10,8 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
-		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
-		enum FoxlangType { Byte, Byte4, Address4, Index, Uint, Pointer, String }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments }
+		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
 		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp, Call }
 
@@ -47,6 +47,7 @@ namespace Uide
 		class Function
 		{
 			public string symbol;
+			public List<Var> arguments = new List<Var>();
 			public List<ByteCode> byteCode = new List<ByteCode>();
 			public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
 			public List<SymbolReference> literalReferences = new List<SymbolReference>();
@@ -407,7 +408,7 @@ namespace Uide
 						type = type,
 					};
 
-					if (tokens[i + 2].token == ";")
+					if (tokens[i + 2].token == ";" || tokens[i + 2].token == ")")
 					{
 						i += 2;
 						return true;
@@ -482,6 +483,53 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 					switch (state)
 					{
+						case ParsingState.FunctionArguments:
+							if (token == "{")
+							{
+								// @TODO cleanup
+								parsingStateStack.Pop();
+								blockStack.Push(Block.Function);
+								parsingStateStack.Push(ParsingState.FunctionBlock);
+							}
+							else if (token == ")")
+							{
+								if (tokens[i + 1].token == "{")
+								{
+									// @TODO cleanup
+									parsingStateStack.Pop();
+									blockStack.Push(Block.Function);
+									parsingStateStack.Push(ParsingState.FunctionBlock);
+									i += 1;
+								}
+								else
+								{
+									AddError("Missing function block start ('{').");
+									return false;
+								}
+							}
+							else
+							{
+								FoxlangType type;
+								if (Enum.TryParse(token, out type))
+								{
+									Var newVar;
+									if (ParseVar(type, out newVar))
+									{
+										curFunction.arguments.Add(newVar);
+									}
+									else
+									{
+										return false;
+									}
+								}
+								else
+								{
+									AddError("Unknown argument type."); // @TODO
+									return false;
+								}
+							}
+							break;
+
 						case ParsingState.FunctionBlock:
 							switch (token)
 							{
@@ -632,37 +680,39 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 						case ParsingState.Const:
 
-							FoxlangType type;
-							if (Enum.TryParse(token, out type))
 							{
-								Var newVar;
-								if (ParseVar(type, out newVar))
+								FoxlangType type;
+								if (Enum.TryParse(token, out type))
 								{
-									if (blockStack.Count == 0 || blockStack.Peek() != Block.Namespace)
+									Var newVar;
+									if (ParseVar(type, out newVar))
+									{
+										if (blockStack.Count == 0 || blockStack.Peek() != Block.Namespace)
+										{
+											parsingStateStack.Pop();
+										}
+
+										consts.Add(newVar);
+									}
+									else
+									{
+										return false;
+									}
+								}
+								else if (ExitingBlock())
+								{
+									if (blockStack.Count == 0)
 									{
 										parsingStateStack.Pop();
 									}
-
-									consts.Add(newVar);
 								}
 								else
 								{
-									return false;
-								}
-							}
-							else if (ExitingBlock())
-							{
-								if (blockStack.Count == 0)
-								{
-									parsingStateStack.Pop();
-								}
-							}
-							else
-							{
-								if (AcceptNamespace() == false)
-								{
-									AddError("Can't parse this inside const block."); // @TODO
-									return false;
+									if (AcceptNamespace() == false)
+									{
+										AddError("Can't parse this inside const block."); // @TODO
+										return false;
+									}
 								}
 							}
 
@@ -906,16 +956,16 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							break;
 						case "function":
 							// @TODO cleanup
-							if (tokens[i + 2].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == "{")
+							if (tokens[i + 2].token == "(")
 							{
 								curFunction = new Function
 								{
 									symbol = tokens[i + 1].token,
 								};
 								functions.Add(curFunction);
-								i += 4;
-								blockStack.Push(Block.Function);
-								parsingStateStack.Push(ParsingState.FunctionBlock);
+								i += 2;
+
+								parsingStateStack.Push(ParsingState.FunctionArguments);
 							}
 							else
 							{

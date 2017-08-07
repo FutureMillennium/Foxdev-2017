@@ -11,7 +11,7 @@ namespace Uide
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
-		enum FoxlangType { Byte4, Address4, String, Uint }
+		enum FoxlangType { Byte, Byte4, Address4, Index, Uint, String }
 		enum Block { Namespace, Function }
 		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp, Call }
 
@@ -261,6 +261,7 @@ namespace Uide
 								case ';':
 								case '(':
 								case ')':
+								case ':':
 								AddImmediately:
 									addImmediately = true;
 								BreakingSymbol:
@@ -534,13 +535,14 @@ namespace Uide
 											return false;
 										}
 									}
-									else if (token[0] == '.' && token.Last() == ':')
+									else if (token[0] == '.' && tokens[i + 1].token == ":")
 									{
 										curFunction.labels.Add(new SymbolReference
 										{
 											pos = curFunction.byteCode.Count,
-											symbol = token.Substring(0, token.Length - 1),
+											symbol = token,
 										});
+										i += 1;
 									}
 									else
 									{
@@ -564,7 +566,9 @@ namespace Uide
 
 									switch (type)
 									{
+										case FoxlangType.Byte4	:
 										case FoxlangType.Address4:
+										case FoxlangType.Index:
 										case FoxlangType.Uint:
 											UInt32 multiplier = 1;
 											if (strVal.Last() == 'M')
@@ -618,7 +622,7 @@ namespace Uide
 							{
 								if (AcceptNamespace() == false)
 								{
-									AddError("Can't parse this at this place."); // @TODO
+									AddError("Can't parse this inside const block."); // @TODO
 									return false;
 								}
 							}
@@ -877,6 +881,18 @@ namespace Uide
 							else
 							{
 								AddError("function foo() { }."); // @TODO
+								return false;
+							}
+							break;
+						case "namespace":
+							if (tokens[i + 2].token == ":")
+							{
+								namespaceStack.Push(tokens[i + 1].token);
+								i += 2;
+							}
+							else
+							{
+								AddError("namespace foo:"); // @TODO
 								return false;
 							}
 							break;

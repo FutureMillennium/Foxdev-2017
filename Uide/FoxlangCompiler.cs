@@ -13,7 +13,7 @@ namespace Uide
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
 		enum FoxlangType { Byte4, Address4, String, Uint }
 		enum Block { Namespace }
-		enum ByteCode : UInt32 { Cli, MovEspIm, PushL }
+		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp }
 
 		public class Token
 		{
@@ -48,6 +48,7 @@ namespace Uide
 			public List<ByteCode> byteCode = new List<ByteCode>();
 			public List<SymbolReference> unresolvedReferences = new List<SymbolReference>();
 			public List<SymbolReference> literalReferences = new List<SymbolReference>();
+			public List<SymbolReference> labels = new List<SymbolReference>();
 		}
 
 		public class OutputMessage
@@ -399,6 +400,46 @@ namespace Uide
 										return false;
 									}
 									break;
+								case "Hlt":
+									if (tokens[i + 1].token == "(" && tokens[i + 2].token == ")" && tokens[i + 3].token == ";")
+									{
+										curFunction.byteCode.Add(ByteCode.Hlt);
+										i += 3;
+									}
+									else
+									{
+										AddError("Hlt();"); // @TODO
+										return false;
+									}
+									break;
+								case "Jmp":
+									if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
+									{
+										curFunction.byteCode.Add(ByteCode.Jmp);
+										int jmax = curFunction.labels.Count;
+										int found = -1;
+										for (int j = 0; j < jmax; j++)
+										{
+											if (curFunction.labels[j].symbol == tokens[i + 2].token)
+											{
+												found = j;
+												break;
+											}
+										}
+										if (found == -1)
+										{
+											AddError("Label " + tokens[i + 2].token + " not found"); // @TODO
+											return false;
+										}
+										curFunction.byteCode.Add((ByteCode)(curFunction.labels[found].pos - curFunction.byteCode.Count));
+										i += 4;
+									}
+									else
+									{
+										AddError("Jmp(.FooLabel);"); // @TODO
+										return false;
+									}
+									break;
 								case "%esp":
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
@@ -458,6 +499,14 @@ namespace Uide
 											AddError("Can't parse this argument."); // @TODO
 											return false;
 										}
+									}
+									else if (token[0] == '.' && token.Last() == ':')
+									{
+										curFunction.labels.Add(new SymbolReference
+										{
+											pos = curFunction.byteCode.Count,
+											symbol = token.Substring(0, token.Length - 1),
+										});
 									}
 									else
 									{

@@ -23,17 +23,11 @@ namespace Uide
 				pos;
 		}
 
-		class Const
-		{
-			public string symbol;
-			public FoxlangType type;
-			public dynamic value;
-		}
-
 		class Var
 		{
 			public string symbol;
 			public FoxlangType type;
+			public dynamic value;
 		}
 
 		class SymbolReference
@@ -83,7 +77,7 @@ namespace Uide
 
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		public List<Project> projects = new List<Project>();
-		List<Const> consts = new List<Const>();
+		List<Var> consts = new List<Var>();
 		List<Var> vars = new List<Var>();
 		List<Function> functions = new List<Function>();
 		List<string> stringLiterals = new List<string>();
@@ -397,6 +391,89 @@ namespace Uide
 					}
 				}
 
+				bool ParseVar(FoxlangType type, out Var outVar)
+				{
+					// @TODO cleanup
+					if (tokens[i + 1].token == "Pointer")
+					{
+						type = FoxlangType.Pointer;
+						i += 1;
+						// @TODO type of Pointer
+					}
+
+					outVar = new Var
+					{
+						symbol = string.Join(".", namespaceStack.Reverse()) + "." + tokens[i + 1].token,
+						type = type,
+					};
+
+					if (tokens[i + 2].token == ";")
+					{
+						i += 2;
+						return true;
+					}
+					else if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
+					{
+						string strVal = tokens[i + 3].token;
+						dynamic value = null;
+
+						switch (type)
+						{
+							case FoxlangType.Byte:
+							case FoxlangType.Byte4:
+							case FoxlangType.Address4:
+							case FoxlangType.Index:
+							case FoxlangType.Uint:
+							case FoxlangType.Pointer:
+								UInt32 multiplier = 1;
+								System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
+
+								if (strVal.Length > 2 && strVal.StartsWith("0x"))
+								{
+									strVal = strVal.Substring(2);
+									baseNum = System.Globalization.NumberStyles.HexNumber;
+								}
+
+								if (strVal.Last() == 'M')
+								{
+									strVal = strVal.Substring(0, strVal.Length - 1);
+									multiplier = 1024 * 1024;
+								}
+
+								UInt32 ii;
+								if (UInt32.TryParse(strVal, baseNum,
+System.Globalization.CultureInfo.CurrentCulture, out ii))
+								{
+									value = ii * multiplier;
+								}
+								else
+								{
+									AddError("Can't parse this literal of type '" + type.ToString() + "'."); // @TODO
+									return false;
+								}
+
+								break;
+							case FoxlangType.String:
+								value = strVal.Substring(1, strVal.Length - 2);
+								break;
+							default:
+								AddError("Can't parse literal of type '" + type.ToString() + "'."); // @TODO
+								return false;
+						}
+
+						outVar.value = value;
+						i += 4;
+
+						return true;
+					}
+					else
+					{
+						AddError("Extra tokens after " + type.ToString() + "."); // @TODO
+						return false;
+					}
+					//break;
+				}
+
 
 
 				if (parsingStateStack.Count > 0)
@@ -481,7 +558,7 @@ namespace Uide
 										i = j;*/
 										curFunction.byteCode.Add(ByteCode.MovEspIm);
 										bool found = false;
-										foreach (Const c in consts)
+										foreach (Var c in consts)
 										{
 											if (c.symbol == tokens[i + 2].token)
 											{
@@ -558,75 +635,20 @@ namespace Uide
 							FoxlangType type;
 							if (Enum.TryParse(token, out type))
 							{
-								// @TODO cleanup
-								if (tokens[i + 1].token == "Pointer")
+								Var newVar;
+								if (ParseVar(type, out newVar))
 								{
-									type = FoxlangType.Pointer;
-									i += 1;
-									// @TODO type of Pointer
-								}
-
-								if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
-								{
-									string strVal = tokens[i + 3].token;
-									dynamic value = null;
-
-									switch (type)
+									if (blockStack.Count == 0 || blockStack.Peek() != Block.Namespace)
 									{
-										case FoxlangType.Byte4	:
-										case FoxlangType.Address4:
-										case FoxlangType.Index:
-										case FoxlangType.Uint:
-										case FoxlangType.Pointer:
-											UInt32 multiplier = 1;
-											System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
-
-											if (strVal.Length > 2 && strVal.StartsWith("0x"))
-											{
-												strVal = strVal.Substring(2);
-												baseNum = System.Globalization.NumberStyles.HexNumber;
-											}
-
-											if (strVal.Last() == 'M')
-											{
-												strVal = strVal.Substring(0, strVal.Length - 1);
-												multiplier = 1024 * 1024;
-											}
-
-											UInt32 ii;
-											if (UInt32.TryParse(strVal, baseNum,
-		System.Globalization.CultureInfo.CurrentCulture, out ii))
-											{
-												value = ii * multiplier;
-											}
-											else
-											{
-												AddError("Can't parse this literal of type '" + type.ToString() + "'."); // @TODO
-												return false;
-											}
-
-											break;
-										case FoxlangType.String:
-											value = strVal.Substring(1, strVal.Length - 2);
-											break;
-										default:
-											AddError("Can't parse literal of type '" + type.ToString() + "'."); // @TODO
-											return false;
+										parsingStateStack.Pop();
 									}
 
-									consts.Add(new Const {
-										symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
-										type = type,
-										value = value, // @TODO parse literals etc.
-									});
-									i += 4;
+									consts.Add(newVar);
 								}
 								else
 								{
-									AddError("Extra tokens after " + type.ToString() + "."); // @TODO
 									return false;
 								}
-								break;
 							}
 							else if (ExitingBlock())
 							{
@@ -927,22 +949,15 @@ namespace Uide
 								FoxlangType type;
 								if (Enum.TryParse(token, out type))
 								{
-									// @TODO cleanup
-									if (tokens[i + 2].token == ";")
+									Var newVar;
+									if (ParseVar(type, out newVar))
 									{
-										vars.Add(new Var
-										{
-											symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
-											type = type,
-										});
-										i += 2;
+										vars.Add(newVar);
 									}
 									else
 									{
-										AddError("Extra tokens after " + type.ToString() + "."); // @TODO
 										return false;
 									}
-									break;
 								}
 								else
 								{

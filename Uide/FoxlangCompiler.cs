@@ -256,6 +256,8 @@ namespace Uide
 								case ';':
 								case '(':
 								case ')':
+								case '[':
+								case ']':
 								case ':':
 								AddImmediately:
 									addImmediately = true;
@@ -392,7 +394,7 @@ namespace Uide
 					}
 				}
 
-				bool ParseVar(FoxlangType type, out Var outVar)
+				bool ParseVar(FoxlangType type, out Var outVar, bool isAddNamespace = true)
 				{
 					// @TODO cleanup
 					if (tokens[i + 1].token == "Pointer")
@@ -404,9 +406,12 @@ namespace Uide
 
 					outVar = new Var
 					{
-						symbol = string.Join(".", namespaceStack.Reverse()) + "." + tokens[i + 1].token,
 						type = type,
 					};
+					if (isAddNamespace)
+						outVar.symbol = string.Join(".", namespaceStack.Reverse()) + "." + tokens[i + 1].token;
+					else
+						outVar.symbol = tokens[i + 1].token;
 
 					if (tokens[i + 2].token == ";" || tokens[i + 2].token == ")")
 					{
@@ -513,7 +518,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								if (Enum.TryParse(token, out type))
 								{
 									Var newVar;
-									if (ParseVar(type, out newVar))
+									if (ParseVar(type, out newVar, false))
 									{
 										curFunction.arguments.Add(newVar);
 									}

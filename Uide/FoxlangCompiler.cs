@@ -11,7 +11,7 @@ namespace Uide
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
-		enum FoxlangType { Byte, Byte4, Address4, Index, Uint, String }
+		enum FoxlangType { Byte, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
 		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp, Call }
 
@@ -559,6 +559,13 @@ namespace Uide
 							if (Enum.TryParse(token, out type))
 							{
 								// @TODO cleanup
+								if (tokens[i + 1].token == "Pointer")
+								{
+									type = FoxlangType.Pointer;
+									i += 1;
+									// @TODO type of Pointer
+								}
+
 								if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
 								{
 									string strVal = tokens[i + 3].token;
@@ -570,7 +577,16 @@ namespace Uide
 										case FoxlangType.Address4:
 										case FoxlangType.Index:
 										case FoxlangType.Uint:
+										case FoxlangType.Pointer:
 											UInt32 multiplier = 1;
+											System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
+
+											if (strVal.Length > 2 && strVal.StartsWith("0x"))
+											{
+												strVal = strVal.Substring(2);
+												baseNum = System.Globalization.NumberStyles.HexNumber;
+											}
+
 											if (strVal.Last() == 'M')
 											{
 												strVal = strVal.Substring(0, strVal.Length - 1);
@@ -578,7 +594,8 @@ namespace Uide
 											}
 
 											UInt32 ii;
-											if (UInt32.TryParse(strVal, out ii))
+											if (UInt32.TryParse(strVal, baseNum,
+		System.Globalization.CultureInfo.CurrentCulture, out ii))
 											{
 												value = ii * multiplier;
 											}

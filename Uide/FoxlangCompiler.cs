@@ -9,10 +9,11 @@ namespace Uide
 {
 	class FoxlangCompiler
 	{
-		enum ReadingState { Normal, IgnoringUntilNewLine, ReadingString, NestedComments }
+		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock }
 		enum FoxlangType { Byte4, Address4, String, Uint }
 		enum Block { Namespace }
+		enum ByteCode : UInt32 { Cli, MovEspIm, PushL }
 
 		public class Token
 		{
@@ -35,9 +36,18 @@ namespace Uide
 			public FoxlangType type;
 		}
 
+		class SymbolReference
+		{
+			public int pos;
+			public string symbol;
+		}
+
 		class Function
 		{
 			public string symbol;
+			public List<ByteCode> byteCode = new List<ByteCode>();
+			public List<SymbolReference> unresolvedReferences = new List<SymbolReference>();
+			public List<SymbolReference> literalReferences = new List<SymbolReference>();
 		}
 
 		public class OutputMessage
@@ -67,6 +77,7 @@ namespace Uide
 		List<Const> consts = new List<Const>();
 		List<Var> vars = new List<Var>();
 		List<Function> functions = new List<Function>();
+		List<string> stringLiterals = new List<string>();
 		public string projectName;
 		Project curProject;
 
@@ -130,7 +141,7 @@ namespace Uide
 				char c, prevC = (char)0;
 				int pos = 0, line = 1, col = 1;
 				Token currentToken = null;
-				ReadingState readingState = ReadingState.Normal;
+				LexingState readingState = LexingState.Normal;
 				int nestedCommentLevel = 0;
 
 
@@ -150,7 +161,7 @@ namespace Uide
 
 					switch (readingState)
 					{
-						case ReadingState.NestedComments:
+						case LexingState.NestedComments:
 							if (c == '\n') // @TODO cleanup
 							{
 								line++;
@@ -165,7 +176,7 @@ namespace Uide
 							{
 								if (nestedCommentLevel == 0)
 								{
-									readingState = ReadingState.Normal;
+									readingState = LexingState.Normal;
 								}
 								else
 								{
@@ -174,15 +185,29 @@ namespace Uide
 							}
 
 							break;
-						case ReadingState.IgnoringUntilNewLine:
+						case LexingState.IgnoringUntilNewLine:
 							if (c == '\n') // @TODO cleanup
 							{
 								line++;
 								col = 0;
-								readingState = ReadingState.Normal;
+								readingState = LexingState.Normal;
 							}
 							break;
-						case ReadingState.ReadingString:
+						case LexingState.ReadingDoubleString:
+							currentToken.token += c;
+							if (c == '\n') // @TODO cleanup
+							{
+								line++;
+								col = 0;
+							}
+
+							if (c == '"' && prevC != '\\')
+							{
+								readingState = LexingState.Normal;
+								AddSymbol();
+							}
+							break;
+						case LexingState.ReadingString:
 							currentToken.token += c;
 							if (c == '\n') // @TODO cleanup
 							{
@@ -192,18 +217,18 @@ namespace Uide
 
 							if (c == '\'' && prevC != '\\')
 							{
-								readingState = ReadingState.Normal;
+								readingState = LexingState.Normal;
 								AddSymbol();
 							}
 							break;
-						case ReadingState.Normal:
+						case LexingState.Normal:
 							switch (c)
 							{
 								case '/':
 									if (currentToken != null && currentToken.token == "/")
 									{
 										currentToken = null;
-										readingState = ReadingState.IgnoringUntilNewLine;
+										readingState = LexingState.IgnoringUntilNewLine;
 									}
 									else goto BreakingSymbol;
 									break;
@@ -212,12 +237,15 @@ namespace Uide
 									{
 										currentToken = null;
 										nestedCommentLevel = 0;
-										readingState = ReadingState.NestedComments;
+										readingState = LexingState.NestedComments;
 									}
 									else goto BreakingSymbol;
 									break;
+								case '"':
+									readingState = LexingState.ReadingDoubleString;
+									goto BreakingSymbol;
 								case '\'':
-									readingState = ReadingState.ReadingString;
+									readingState = LexingState.ReadingString;
 									goto BreakingSymbol;
 								case ';':
 								case '(':
@@ -274,6 +302,7 @@ namespace Uide
 			Stack<Block> blockStack = new Stack<Block>();
 			Stack<string> namespaceStack = new Stack<string>();
 
+			Function curFunction = null; // @TODO cleanup?
 			string composedString = ""; // @TODO cleanup
 
 			int max = tokens.Count;
@@ -355,6 +384,90 @@ namespace Uide
 
 					switch (state)
 					{
+						case ParsingState.FunctionBlock:
+							switch (token)
+							{
+								case "Cli":
+									if (tokens[i + 1].token == "(" && tokens[i + 2].token == ")" && tokens[i + 3].token == ";")
+									{
+										curFunction.byteCode.Add(ByteCode.Cli);
+										i += 3;
+									}
+									else
+									{
+										AddError("Cli();"); // @TODO
+										return false;
+									}
+									break;
+								case "%esp":
+									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
+									{
+										/*int j = i + 3;
+										string symbol = tokens[i + 2].token;
+										while (tokens[j].token != ";")
+										{
+											if (tokens[j].token == ".")
+											{
+												symbol += tokens[j + 1].token;
+												j += 2;
+											}
+											else
+											{
+												AddError("Not allowed."); // @TODO
+												return false;
+											}
+										}
+										i = j;*/
+										curFunction.byteCode.Add(ByteCode.MovEspIm);
+										bool found = false;
+										foreach (Const c in consts)
+										{
+											if (c.symbol == tokens[i + 2].token)
+											{
+												curFunction.byteCode.Add((ByteCode)c.value);
+												found = true;
+												break;
+											}
+										}
+										if (found == false)
+										{
+											AddError("Undefined const symbol."); // @TODO
+											return false;
+										}
+										i += 3;
+									}
+									break;
+								default:
+									if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
+									{
+										string arg1 = tokens[i + 2].token;
+										if (arg1[0] == '"' && arg1.Last() == '"')
+										{
+											string literal = arg1.Substring(1, arg1.Length - 2);
+											curFunction.byteCode.Add(ByteCode.PushL);
+											curFunction.byteCode.Add((ByteCode)0xFEED1133);
+											curFunction.literalReferences.Add(new SymbolReference
+											{
+												pos = curFunction.byteCode.Count - 1,
+												symbol = literal,
+											});
+											i += 4;
+										}
+										else
+										{
+											AddError("Can't parse this argument."); // @TODO
+											return false;
+										}
+									}
+									else
+									{
+										AddError("Can't parse this."); // @TODO
+										return false;
+									}
+									break;
+							}
+							break;
+
 						case ParsingState.Const:
 
 							FoxlangType type;
@@ -363,10 +476,44 @@ namespace Uide
 								// @TODO cleanup
 								if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
 								{
+									string strVal = tokens[i + 3].token;
+									dynamic value = null;
+
+									switch (type)
+									{
+										case FoxlangType.Address4:
+										case FoxlangType.Uint:
+											UInt32 multiplier = 1;
+											if (strVal.Last() == 'M')
+											{
+												strVal = strVal.Substring(0, strVal.Length - 1);
+												multiplier = 1024 * 1024;
+											}
+
+											UInt32 ii;
+											if (UInt32.TryParse(strVal, out ii))
+											{
+												value = ii * multiplier;
+											}
+											else
+											{
+												AddError("Can't parse this literal of type '" + type.ToString() + "'."); // @TODO
+												return false;
+											}
+
+											break;
+										case FoxlangType.String:
+											value = strVal.Substring(1, strVal.Length - 2);
+											break;
+										default:
+											AddError("Can't parse literal of type '" + type.ToString() + "'."); // @TODO
+											return false;
+									}
+
 									consts.Add(new Const {
 										symbol = string.Join(".", namespaceStack) + "." + tokens[i + 1].token,
 										type = type,
-										value = tokens[i + 2].token, // @TODO parse literals etc.
+										value = value, // @TODO parse literals etc.
 									});
 									i += 4;
 								}
@@ -635,12 +782,12 @@ namespace Uide
 							// @TODO cleanup
 							if (tokens[i + 2].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == "{")
 							{
-								functions.Add(new Function
+								curFunction = new Function
 								{
 									symbol = tokens[i + 1].token,
-								});
+								};
+								functions.Add(curFunction);
 								i += 4;
-								// @TODO entrypoint
 								parsingStateStack.Push(ParsingState.FunctionBlock);
 							}
 							else

@@ -49,8 +49,8 @@ namespace Uide
 		{
 			filePath = path; // @TODO more than 1 file
 
-			try
-			{
+			/*try
+			{*/
 				file = File.ReadAllBytes(filePath);
 
 				isFileLoaded = true;
@@ -350,13 +350,13 @@ Mp */
 				}
 
 				this.Text = fileName + " – " + PRODUCT_NAME;
-			}
+			/*}
 			catch (Exception ex)
 			{
 				// @TODO show non-intrusively inside app
 				MessageBox.Show(this, "Something went wrong!" + Environment.NewLine + Environment.NewLine + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				file = null;
-			}
+			}*/
 		}
 
 		private void MainForm_DragDrop(object sender, DragEventArgs e)

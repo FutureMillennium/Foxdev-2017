@@ -1,0 +1,23 @@
+fooArr[bar + 2 * 5 * baz] = qux + waldo * xyzzy;
+
+fooArr[
+		+ArrayAccess
+		+ArrayBrackets
+bar
++
+2
+		+(
+*
+5 
+* 
+baz
+] 
+		-)
+		-ArrayBrackets
+= 
+qux 
++ 
+waldo 
+* 
+xyzzy
+;

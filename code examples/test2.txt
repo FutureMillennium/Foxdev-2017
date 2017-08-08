@@ -1,0 +1,87 @@
+2 * b / 2 * 5
+2 * 5 * (b / 2)
+
+mov eax = [b]
+div eax /= 2
+mul eax *= 2
+mul eax *= 5
+
+
+2 - b / 2 * 2
+2 - 3 - ((b / 2) * 2)
+
+	(b / 2)
+mov eax = [b]
+div eax /= 2
+	 * 2)
+mul eax *= 2
+	2 - 3
+mov ebx = 2
+sub ebx -= 3
+	-
+sub ebx -= eax
+
+2 + 1 + 3
+mov eax = 2
+add eax += 1
+add eax += 3
+
+
+
+a / 2 - b / 3
+
+mov eax = [a]
+div eax /= 2
+
+mov ebx = [b]
+div ebx /= 3
+
+mov eax -= ebx
+
+
+a / b - c / d
+mov eax = [a]
+div eax /= [b] //?
+
+mov ebx = [c]
+div ebx /= [d]
+
+sub eax -= ebx
+
+
+
+a / b - c / d - e / f
+mov eax = [a]
+div eax /= [b] //?
+
+mov ebx = [c]
+div ebx /= [d]
+
+sub eax -= ebx
+
+mov ebx = [e]
+div ebx /= [f]
+
+sub eax -= ebx
+
+(2 / 2) - (2 / 2) - (2 / (3 / 3))
+
+
+
+
+
+2 - 3 - 4 = 5
+-3 - 4 + 2 = 
+
+2 / 3 / 4 = 0,166…
+
+
+(a * b) * c = a * (b * c)
+
+a * (b / c / d)
+
+2*3/4/5 = 0,3
+
+
+(a * b) / c = a * (b / c)
+(a / b) * c != a / (b * c)

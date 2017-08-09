@@ -136,6 +136,32 @@ namespace Uide
 				}
 			}
 
+			foreach (Function f in functions)
+			{
+				foreach (UnresolvedReference r in f.unresolvedReferences)
+				{
+					bool resolved = false;
+					foreach (Function ff in functions)
+					{
+						if (ff.symbol == r.symbol)
+						{
+							resolved = true;
+							break;
+						}
+					}
+					if (resolved == false)
+					{
+						outputMessages.Add(new OutputMessage
+						{
+							type = OutputMessage.MessageType.Error,
+							message = "Unresolved symbol: " + r.symbol,
+							token = r.token,
+							filename = r.filename,
+						});
+						return false;
+					}
+				}
+			}
 
 			return true;
 		}
@@ -517,7 +543,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 				string MakeNamespace(string name)
 				{
-					return string.Join(".", namespaceStack.Reverse()) + "." + name;
+					if (namespaceStack.Count > 0)
+						return string.Join(".", namespaceStack.Reverse()) + "." + name;
+					else
+						return name;
 				}
 
 
@@ -1122,7 +1151,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							{
 								curFunction = new Function
 								{
-									symbol = tokens[i + 1].token,
+									symbol = MakeNamespace(tokens[i + 1].token),
 								};
 								functions.Add(curFunction);
 								i += 2;
@@ -1185,32 +1214,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 			#endregion
 			
-			foreach (Function f in functions)
-			{
-				foreach (UnresolvedReference r in f.unresolvedReferences)
-				{
-					bool resolved = false;
-					foreach (Function ff in functions)
-					{
-						if (ff.symbol == r.symbol)
-						{
-							resolved = true;
-							break;
-						}
-					}
-					if (resolved == false)
-					{
-						outputMessages.Add(new OutputMessage
-						{
-							type = OutputMessage.MessageType.Error,
-							message = "Unresolved symbol: " + r.symbol,
-							token = r.token,
-							filename = r.filename,
-						});
-						return false;
-					}
-				}
-			}
 			return true;
 		}
 

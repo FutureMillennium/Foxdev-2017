@@ -13,7 +13,7 @@ namespace Uide
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess }
 		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, MovEaxIm, AddEaxIm, MovBMemEax, PushL, Jmp, Call }
+		enum ByteCode : UInt32 { Cli, Hlt, MovEspImm, MovEaxIm, AddEaxMem, IncEax, PopBx, MovBMemEaxBl, MovBMemEaxImm, AddLMemImm, PushL, Jmp, Call, Ret }
 
 		public class Token
 		{
@@ -401,6 +401,35 @@ namespace Uide
 					}
 				}
 
+				bool ParseLiteral(string strVal, out UInt32 ii)
+				{
+					UInt32 multiplier = 1;
+					System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
+
+					if (strVal.Length > 2 && strVal.StartsWith("0x"))
+					{
+						strVal = strVal.Substring(2);
+						baseNum = System.Globalization.NumberStyles.HexNumber;
+					}
+
+					if (strVal.Last() == 'M')
+					{
+						strVal = strVal.Substring(0, strVal.Length - 1);
+						multiplier = 1024 * 1024;
+					}
+					
+					if (UInt32.TryParse(strVal, baseNum,
+System.Globalization.CultureInfo.CurrentCulture, out ii))
+					{
+						ii *= multiplier;
+						return true;
+					}
+					else
+					{
+						return false;
+					}
+				}
+
 				bool ParseVar(FoxlangType type, out Var outVar, bool isAddNamespace = true)
 				{
 					// @TODO cleanup
@@ -438,26 +467,10 @@ namespace Uide
 							case FoxlangType.Index:
 							case FoxlangType.Uint:
 							case FoxlangType.Pointer:
-								UInt32 multiplier = 1;
-								System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
-
-								if (strVal.Length > 2 && strVal.StartsWith("0x"))
-								{
-									strVal = strVal.Substring(2);
-									baseNum = System.Globalization.NumberStyles.HexNumber;
-								}
-
-								if (strVal.Last() == 'M')
-								{
-									strVal = strVal.Substring(0, strVal.Length - 1);
-									multiplier = 1024 * 1024;
-								}
-
 								UInt32 ii;
-								if (UInt32.TryParse(strVal, baseNum,
-System.Globalization.CultureInfo.CurrentCulture, out ii))
+								if (ParseLiteral(strVal, out ii))
 								{
-									value = ii * multiplier;
+									value = ii;
 								}
 								else
 								{
@@ -531,39 +544,58 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							break;
 
 						case ParsingState.ValueParsing:
-							if (token == "]")
+							switch (token)
 							{
-								parsingStateStack.Pop();
-							}
-							else if (token == ";")
-							{
-								parsingStateStack.Pop();
-								i -= 1;
-							}
-							else
-							{
-								Var foundVar;
-								string nToken = MakeNamespace(token);
-								if (FindVar(nToken, out foundVar, vars))
-								{
-									curFunction.byteCode.Add(ByteCode.AddEaxIm);
-									curFunction.byteCode.Add((ByteCode)0xFEED1135);
-									curFunction.varReferences.Add(new VarReference
+								case "]":
+									parsingStateStack.Pop();
+									break;
+								case ";":
+									parsingStateStack.Pop();
+									i -= 1;
+									break;
+								case "+":
+									if (tokens[i + 1].token == "1")
 									{
-										pos = curFunction.byteCode.Count - 1,
-										var = foundVar,
-									});
-								}
-								else if (FindVar(nToken, out foundVar, consts))
-								{
-									curFunction.byteCode.Add(ByteCode.MovBMemEax);
-									curFunction.byteCode.Add((ByteCode)foundVar.value);
-								}
-								else
-								{
-									AddError("Undeclared symbol, I guess?"); // @TODO
-									return false;
-								}
+										curFunction.byteCode.Add(ByteCode.IncEax);
+										i += 1;
+									}
+									else
+									{
+										AddError("Trying to add unsupported type or literal.");
+										return false;
+									}
+									break;
+								default:
+									{
+										Var foundVar;
+										string nToken = MakeNamespace(token);
+										if (FindVar(token, out foundVar, curFunction.arguments))
+										{
+											curFunction.byteCode.Add(ByteCode.PopBx); // @TODO don't pop if argument used more than once
+											curFunction.byteCode.Add(ByteCode.MovBMemEaxBl);
+										}
+										else if (FindVar(nToken, out foundVar, vars))
+										{
+											curFunction.byteCode.Add(ByteCode.AddEaxMem);
+											curFunction.byteCode.Add((ByteCode)0xFEED1135);
+											curFunction.varReferences.Add(new VarReference
+											{
+												pos = curFunction.byteCode.Count - 1,
+												var = foundVar,
+											});
+										}
+										else if (FindVar(nToken, out foundVar, consts))
+										{
+											curFunction.byteCode.Add(ByteCode.MovBMemEaxImm);
+											curFunction.byteCode.Add((ByteCode)foundVar.value);
+										}
+										else
+										{
+											AddError("Undeclared symbol, I guess?"); // @TODO
+											return false;
+										}
+										break;
+									}
 							}
 							break;
 
@@ -672,7 +704,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								case "%esp":
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
-										curFunction.byteCode.Add(ByteCode.MovEspIm);
+										curFunction.byteCode.Add(ByteCode.MovEspImm);
 										bool found = false;
 										foreach (Var c in consts)
 										{
@@ -694,6 +726,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								default:
 									if (ExitingBlock())
 									{
+										curFunction.byteCode.Add(ByteCode.Ret);
 										parsingStateStack.Pop();
 									}
 									else if (tokens[i + 1].token == "[")
@@ -714,6 +747,48 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										parsingStateStack.Push(ParsingState.ArrayAccess);
 										parsingStateStack.Push(ParsingState.ValueParsing);
 										i += 1;
+									}
+									else if (tokens[i + 1].token == "+=" && tokens[i + 3].token == ";")
+									{
+										Var foundVar;
+										string nToken = MakeNamespace(token);
+										if (FindVar(nToken, out foundVar, vars))
+										{
+
+										}
+										else
+										{
+											AddError("Undeclared variable.");
+											return false;
+										}
+
+										if (tokens[i + 2].token[0] >= '2' && tokens[i + 2].token[0] <= '9')
+										{
+											curFunction.byteCode.Add(ByteCode.AddLMemImm);
+											curFunction.byteCode.Add((ByteCode)0xFEED1135);
+											curFunction.varReferences.Add(new VarReference
+											{
+												pos = curFunction.byteCode.Count - 1,
+												var = foundVar,
+											});
+
+											UInt32 ii;
+											if (ParseLiteral(tokens[i + 2].token, out ii))
+											{
+												curFunction.byteCode.Add((ByteCode)ii);
+												i += 3;
+											}
+											else
+											{
+												AddError("Can't parse this literal.");
+												return false;
+											}
+										}
+										else
+										{
+											AddError("Trying to add unsupported symbol or literal to variable.");
+											return false;
+										}
 									}
 									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
 									{

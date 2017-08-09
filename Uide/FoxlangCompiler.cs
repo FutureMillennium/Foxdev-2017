@@ -10,10 +10,10 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
-		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess }
 		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, PushL, Jmp, Call }
+		enum ByteCode : UInt32 { Cli, Hlt, MovEspIm, MovEaxIm, AddEaxIm, MovBMemEax, PushL, Jmp, Call }
 
 		public class Token
 		{
@@ -36,6 +36,12 @@ namespace Uide
 			public string symbol;
 		}
 
+		class VarReference
+		{
+			public int pos;
+			public Var var;
+		}
+
 		class UnresolvedReference
 		{
 			public int pos;
@@ -50,6 +56,7 @@ namespace Uide
 			public List<Var> arguments = new List<Var>();
 			public List<ByteCode> byteCode = new List<ByteCode>();
 			public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
+			public List<VarReference> varReferences = new List<VarReference>();
 			public List<SymbolReference> literalReferences = new List<SymbolReference>();
 			public List<SymbolReference> labels = new List<SymbolReference>();
 		}
@@ -409,7 +416,7 @@ namespace Uide
 						type = type,
 					};
 					if (isAddNamespace)
-						outVar.symbol = string.Join(".", namespaceStack.Reverse()) + "." + tokens[i + 1].token;
+						outVar.symbol = MakeNamespace(tokens[i + 1].token);
 					else
 						outVar.symbol = tokens[i + 1].token;
 
@@ -480,6 +487,25 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					//break;
 				}
 
+				bool FindVar(string symbol, out Var foundVar, List<Var> lookInList)
+				{
+					foundVar = null;
+					foreach (Var v in lookInList)
+					{
+						if (v.symbol == symbol)
+						{
+							foundVar = v;
+							return true;
+						}
+					}
+
+					return false;
+				}
+
+				string MakeNamespace(string name)
+				{
+					return string.Join(".", namespaceStack.Reverse()) + "." + name;
+				}
 
 
 				if (parsingStateStack.Count > 0)
@@ -488,6 +514,59 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 					switch (state)
 					{
+						case ParsingState.ArrayAccess:
+							if (token == "=")
+							{
+								parsingStateStack.Push(ParsingState.ValueParsing);
+							}
+							else if (token == ";")
+							{
+								parsingStateStack.Pop();
+							}
+							else
+							{
+								AddError("Unexpected token in array access.");
+								return false;
+							}
+							break;
+
+						case ParsingState.ValueParsing:
+							if (token == "]")
+							{
+								parsingStateStack.Pop();
+							}
+							else if (token == ";")
+							{
+								parsingStateStack.Pop();
+								i -= 1;
+							}
+							else
+							{
+								Var foundVar;
+								string nToken = MakeNamespace(token);
+								if (FindVar(nToken, out foundVar, vars))
+								{
+									curFunction.byteCode.Add(ByteCode.AddEaxIm);
+									curFunction.byteCode.Add((ByteCode)0xFEED1135);
+									curFunction.varReferences.Add(new VarReference
+									{
+										pos = curFunction.byteCode.Count - 1,
+										var = foundVar,
+									});
+								}
+								else if (FindVar(nToken, out foundVar, consts))
+								{
+									curFunction.byteCode.Add(ByteCode.MovBMemEax);
+									curFunction.byteCode.Add((ByteCode)foundVar.value);
+								}
+								else
+								{
+									AddError("Undeclared symbol, I guess?"); // @TODO
+									return false;
+								}
+							}
+							break;
+
 						case ParsingState.FunctionArguments:
 							if (token == "{")
 							{
@@ -593,22 +672,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								case "%esp":
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
-										/*int j = i + 3;
-										string symbol = tokens[i + 2].token;
-										while (tokens[j].token != ";")
-										{
-											if (tokens[j].token == ".")
-											{
-												symbol += tokens[j + 1].token;
-												j += 2;
-											}
-											else
-											{
-												AddError("Not allowed."); // @TODO
-												return false;
-											}
-										}
-										i = j;*/
 										curFunction.byteCode.Add(ByteCode.MovEspIm);
 										bool found = false;
 										foreach (Var c in consts)
@@ -632,6 +695,25 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (ExitingBlock())
 									{
 										parsingStateStack.Pop();
+									}
+									else if (tokens[i + 1].token == "[")
+									{
+										Var foundConst;
+										if (FindVar(MakeNamespace(token), out foundConst, consts))
+										{
+											curFunction.byteCode.Add(ByteCode.MovEaxIm);
+											curFunction.byteCode.Add((ByteCode)foundConst.value);
+										}
+										else
+										{
+											// @TODO non-const
+											AddError("Undeclared constant.");
+											return false;
+										}
+
+										parsingStateStack.Push(ParsingState.ArrayAccess);
+										parsingStateStack.Push(ParsingState.ValueParsing);
+										i += 1;
 									}
 									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
 									{

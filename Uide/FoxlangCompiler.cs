@@ -13,7 +13,7 @@ namespace Uide
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess }
 		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Cli, Hlt, MovEspImm, MovEaxIm, AddEaxMem, IncEax, PopBx, MovBMemEaxBl, MovBMemEaxImm, AddLMemImm, PushL, Jmp, Call, Ret }
+		enum ByteCode : UInt32 { Cli, Hlt, MovEspImm, MovEaxIm, AddEaxMem, IncEax, PopBx, PopEcx, MovBMemEaxBl, MovBMemEaxImm, AddLMemImm, PushL, Jmp, Call, Ret }
 
 		public class Token
 		{
@@ -753,6 +753,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									}
 									break;
 								default:
+									FoxlangType type;
 									if (ExitingBlock())
 									{
 										curFunction.byteCode.Add(ByteCode.Ret);
@@ -859,6 +860,22 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 											symbol = token,
 										});
 										i += 1;
+									}
+									else if (Enum.TryParse(token, out type))
+									{
+										// @TODO hack af
+										if (tokens[i + 1].token == "Pointer"
+											&& tokens[i + 3].token == "="
+											&& tokens[i + 5].token == ";")
+										{
+											curFunction.byteCode.Add(ByteCode.PopEcx);
+											i += 5;
+										}
+										else
+										{
+											AddError("Unsupported local variable declaration."); // @TODO
+											return false;
+										}
 									}
 									else
 									{

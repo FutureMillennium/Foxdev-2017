@@ -94,6 +94,19 @@ namespace Uide
 
 		public bool CompileProject(string filePath)
 		{
+
+
+			void GlobalErrorMessage(string message)
+			{
+				outputMessages.Add(new OutputMessage
+				{
+					type = OutputMessage.MessageType.Error,
+					message = message,
+					filename = filePath,
+				});
+			}
+
+
 			projectName = Path.GetFileNameWithoutExtension(filePath);
 			
 			if (Compile(filePath) == false)
@@ -1232,11 +1245,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			#endregion
 			
 			return true;
-		}
-
-		void GlobalErrorMessage(string message)
-		{
-			System.Windows.MessageBox.Show(message);
 		}
 	}
 }

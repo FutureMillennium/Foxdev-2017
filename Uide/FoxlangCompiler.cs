@@ -10,10 +10,10 @@ namespace Uide
 	class FoxlangCompiler
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
-		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess }
+		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess, While, Condition }
 		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Cli, Hlt, MovEspImm, MovEaxIm, AddEaxMem, IncEax, PopBx, PopEcx, MovBMemEaxBl, MovBMemEaxImm, AddLMemImm, PushL, Jmp, Call, Ret }
+		enum ByteCode : UInt32 { Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi, Cli, Hlt, MovRImmL, MovRImL, AddRMem, IncR, PopRW, PopEcx, MovRMemRB, MovRMemImmB, AddLMemImm, PushL, Jmp, Call, Ret }
 
 		public class Token
 		{
@@ -598,7 +598,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								case "+":
 									if (tokens[i + 1].token == "1")
 									{
-										curFunction.byteCode.Add(ByteCode.IncEax);
+										curFunction.byteCode.Add(ByteCode.IncR);
+										curFunction.byteCode.Add(ByteCode.Eax);
 										i += 1;
 									}
 									else
@@ -607,18 +608,25 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										return false;
 									}
 									break;
+								/*case "valueof":
+
+									break;*/
 								default:
 									{
 										Var foundVar;
 										string nToken = MakeNamespace(token);
 										if (FindVar(token, out foundVar, curFunction.arguments))
 										{
-											curFunction.byteCode.Add(ByteCode.PopBx); // @TODO don't pop if argument used more than once
-											curFunction.byteCode.Add(ByteCode.MovBMemEaxBl);
+											curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
+											curFunction.byteCode.Add(ByteCode.Ebx);
+											curFunction.byteCode.Add(ByteCode.MovRMemRB);
+											curFunction.byteCode.Add(ByteCode.Eax);
+											curFunction.byteCode.Add(ByteCode.Ebx);
 										}
 										else if (FindVar(nToken, out foundVar, vars))
 										{
-											curFunction.byteCode.Add(ByteCode.AddEaxMem);
+											curFunction.byteCode.Add(ByteCode.AddRMem);
+											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)0xFEED1135);
 											curFunction.varReferences.Add(new VarReference
 											{
@@ -628,7 +636,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										}
 										else if (FindVar(nToken, out foundVar, consts))
 										{
-											curFunction.byteCode.Add(ByteCode.MovBMemEaxImm);
+											curFunction.byteCode.Add(ByteCode.MovRMemImmB);
+											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)foundVar.value);
 										}
 										else
@@ -746,7 +755,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								case "%esp":
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
-										curFunction.byteCode.Add(ByteCode.MovEspImm);
+										curFunction.byteCode.Add(ByteCode.MovRImmL);
+										curFunction.byteCode.Add(ByteCode.Esp);
 										bool found = false;
 										foreach (Var c in consts)
 										{
@@ -765,6 +775,11 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										i += 3;
 									}
 									break;
+								case "while":
+									parsingStateStack.Push(ParsingState.While);
+									parsingStateStack.Push(ParsingState.Condition);
+									parsingStateStack.Push(ParsingState.ValueParsing);
+									break;
 								default:
 									FoxlangType type;
 									if (ExitingBlock())
@@ -777,7 +792,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										Var foundConst;
 										if (FindVar(MakeNamespace(token), out foundConst, consts))
 										{
-											curFunction.byteCode.Add(ByteCode.MovEaxIm);
+											curFunction.byteCode.Add(ByteCode.MovRImL);
+											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)foundConst.value);
 										}
 										else
@@ -833,7 +849,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 											return false;
 										}
 									}
-									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
+									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";") // foo(bar);
 									{
 										string arg1 = tokens[i + 2].token;
 										if (arg1[0] == '"' && arg1.Last() == '"')

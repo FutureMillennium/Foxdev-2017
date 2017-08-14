@@ -1,0 +1,44 @@
+enum abc { a, b, c }
+
+%eax = abc.c;
+// movRImm %eax = 3
+
+Echo(nameof abc.c)
+// push &"c"
+// call &Echo
+
+Echo(abc.c.name)
+
+
+/*// abc string table:
+"a"
+"b"
+"c" //*/
+
+
+struct Byte4 BytecodeCmd {
+	int argumentNumber = 0;
+}
+
+enum Byte4 Bytecode : BytecodeCmd {
+	Hlt = 0 {
+		argumentNumber = 0;
+	},
+	0: Hlt,
+	1: Jmp {
+		argumentNumber = 1;
+	},
+	2: Cli {
+		argumentNumber = 0;
+	},
+	Foo, // Foo = 3
+	Bar, // Bar = 4
+	Baz {
+		argumentNumber = 2;
+	}, // Baz = 5
+}
+
+Bytecode bytecode = Hlt;
+Echo(bytecode); // 0
+Echo(bytecode.name); // "Hlt"
+Echo(bytecode.argumentNumber); // 0

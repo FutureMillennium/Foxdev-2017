@@ -1232,7 +1232,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							parsingStateStack.Push(ParsingState.Const);
 							break;
 						case "function":
-							if (tokens[i + 2].token == "(")
+							if (tokens[i + 2].token == "(") // @TODO
 							{
 								curFunction = new Function
 								{
@@ -1264,11 +1264,11 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						default:
 							if (AcceptNamespace())
 							{
-
+								// do nothing more
 							}
 							else if (ExitingBlock())
 							{
-
+								// do nothing more
 							}
 							else
 							{

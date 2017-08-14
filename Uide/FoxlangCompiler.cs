@@ -106,6 +106,16 @@ namespace Uide
 				});
 			}
 
+			void GlobalWarningMessage(string message)
+			{
+				outputMessages.Add(new OutputMessage
+				{
+					type = OutputMessage.MessageType.Warning,
+					message = message,
+					filename = filePath,
+				});
+			}
+
 
 			projectName = Path.GetFileNameWithoutExtension(filePath);
 			
@@ -114,11 +124,11 @@ namespace Uide
 				return false;
 			}
 
-			if (projects.Count == 0)
+			/*if (projects.Count == 0)
 			{
 				GlobalErrorMessage("No projects inside project file. This is probably bad.");
 				return false;
-			}
+			}*/
 
 			string projectPath = Path.GetDirectoryName(filePath);
 
@@ -175,6 +185,34 @@ namespace Uide
 					}
 				}
 			}
+
+			if (functions.Count == 0)
+			{
+				GlobalErrorMessage("No functions found. Nothing to compile.");
+				return false;
+			}
+
+			if (projects.Count == 0)
+			{
+				Function entryPoint = null;
+				foreach (Function func in functions)
+				{
+					if (func.symbol == "EntryPoint")
+					{
+						entryPoint = func;
+						break;
+					}
+				}
+				if (entryPoint == null)
+				{
+					GlobalErrorMessage("No projects found and no function EntryPoint().");
+					return false;
+				}
+				// @TODO
+			}
+
+			// @TODO compile
+			GlobalWarningMessage("Binary compilation not implemented yet. Not outputting anything.");
 
 			return true;
 		}
@@ -445,11 +483,17 @@ namespace Uide
 					UInt32 multiplier = 1;
 					System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
 
-					if (strVal.Length > 2 && strVal.StartsWith("0x"))
-					{
-						strVal = strVal.Substring(2);
-						baseNum = System.Globalization.NumberStyles.HexNumber;
-					}
+					if (strVal.Length > 2)
+						if (strVal.StartsWith("0x"))
+						{
+							strVal = strVal.Substring(2);
+							baseNum = System.Globalization.NumberStyles.HexNumber;
+						}
+						/*else if (strVal.StartsWith("0b"))
+						{
+							strVal = strVal.Substring(2);
+							baseNum = System.Globalization.NumberStyles.HexNumber;
+						}*/ // @TODO binary and octal literals UGH C# WHY
 
 					if (strVal.Last() == 'M')
 					{
@@ -501,12 +545,14 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						switch (type)
 						{
 							case FoxlangType.Byte:
+							case FoxlangType.Char:
 							case FoxlangType.Byte4:
 							case FoxlangType.Address4:
 							case FoxlangType.Index:
 							case FoxlangType.Uint:
 							case FoxlangType.Pointer:
 								UInt32 ii;
+								//if (strVal == "_" && )
 								if (ParseLiteral(strVal, out ii))
 								{
 									value = ii;
@@ -651,14 +697,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							break;
 
 						case ParsingState.FunctionArguments:
-							if (token == "{")
-							{
-								// @TODO cleanup
-								parsingStateStack.Pop();
-								blockStack.Push(Block.Function);
-								parsingStateStack.Push(ParsingState.FunctionBlock);
-							}
-							else if (token == ")")
+							if (token == ")")
 							{
 								if (tokens[i + 1].token == "{")
 								{
@@ -670,7 +709,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								}
 								else
 								{
-									AddError("Missing function block start ('{').");
+									AddError("Missing function block start ('{')."); // @TODO
 									return false;
 								}
 							}
@@ -683,6 +722,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (ParseVar(type, out newVar, false))
 									{
 										curFunction.arguments.Add(newVar);
+										i--;
 									}
 									else
 									{
@@ -1192,7 +1232,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							parsingStateStack.Push(ParsingState.Const);
 							break;
 						case "function":
-							// @TODO cleanup
 							if (tokens[i + 2].token == "(")
 							{
 								curFunction = new Function

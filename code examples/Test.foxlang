@@ -1,0 +1,49 @@
+/*Bit bi;
+Bit bi0 = 0;
+Bit bi1 = 1;*/
+
+/*Bit4 bi4;
+Bit4 bi4_2 = 0;
+Bit4 bi4_3 = 0b1111;
+Bit4 bi4_4 = 0b0101;
+// @TODO too big*/
+
+Byte b;
+Byte b2 = 2;
+Byte b3 = 0xFE;
+//Byte b4 = 0x123; // @TODO too big
+//Byte b5 = 0b101; // @TODO binary and octal literals UGH C# WHY
+//Byte b6 = 0o7;
+//Byte b7 = 111 + 12; // = 123 // @TODO
+
+Char c;
+Char c2 = 0;
+//Char c3 = _'A'; // @TODO
+
+Byte4 bb;
+Byte4 bb2 = 0;
+Byte4 bb3 = 1234;
+Byte4 bb4 = 0xDEADC0DE;
+
+Address4 a;
+Address4 a2 = 0xDEADBEEF;
+
+Uint ui;
+Uint ui2 = 0xC0DEBEEF;
+
+Index i;
+Index i2 = 0xCAFEC0DE;
+
+String s;
+String sBlank = '';
+String sFoo = "Foo";
+String sfoo = 'foo';
+
+function Foo() {
+	
+}
+
+function EntryPoint() {
+	
+}
+

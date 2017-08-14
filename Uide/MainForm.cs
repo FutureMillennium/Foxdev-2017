@@ -338,7 +338,7 @@ Mp */
 				MainForm_Resize(null, null);
 				scrollBarV.Value = 0;
 
-				if (fileName.EndsWith(".foxlangproj"))
+				if (fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj"))
 				{
 					compileButton.Visible = true;
 					// @TODO auto-compile for now
@@ -497,7 +497,10 @@ Mp */
 
 			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
 			{
-				sb.Append("[" + msg.type.ToString() + "] \t" + msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]");
+				if (msg.token != null)
+					sb.Append("[" + msg.type.ToString() + "] \t" + msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]");
+				else
+					sb.Append("[" + msg.type.ToString() + "] \t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")");
 				sb.Append(Environment.NewLine);
 			}
 

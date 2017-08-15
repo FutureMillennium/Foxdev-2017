@@ -1,0 +1,5 @@
+#address 0x100
+Mov %ah = 0x9
+Mov %dx = "Hello DOS!$"
+Int 0x21
+Ret

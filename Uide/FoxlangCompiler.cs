@@ -15,9 +15,17 @@ namespace Uide
 		enum Block { Namespace, Function }
 
 		enum ByteCode : UInt32 {
+			Al, Bl, Cl, Dl,
+			Ah, Bh, Ch, Dh,
+			Ax, Bx, Cx, Dx,
 			Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi,
 
-			Cli, Hlt, MovRImmL, AddRMem, IncR, PopRW, PopRL, MovRMemRB, MovRMemImmB, MovRMemImmL, AddLMemImm, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, 
+			Cli, Hlt,
+			MovRImmL, MovRImmW, MovRImmB,
+			AddRMem, IncR, PopRW, PopRL,
+			MovRMemRB,
+			MovRMemImmL, MovRMemImmW, MovRMemImmB,
+			AddLMemImm, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, Int,
 
 			Mov, MovB,
 			Push,
@@ -1359,21 +1367,47 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			return false;
 		}
 
-		bool RegisterTryParse(string token, out ByteCode register)
+		bool RegisterTryParse(string token, out ByteCode register, out int width)
 		{
-			switch (token)
+			if (token.Length >= 3)
 			{
-				case "%eax":
-					register = ByteCode.Eax;
+				token = (char)(token[1] - ('a' - 'A')) + token.Substring(2);
+			}
+
+			width = 0;
+
+			if (Enum.TryParse(token, out register) == false)
+				return false;
+
+			switch (register)
+			{
+				case ByteCode.Al:
+				case ByteCode.Cl:
+				case ByteCode.Dl:
+				case ByteCode.Bl:
+				case ByteCode.Ah:
+				case ByteCode.Ch:
+				case ByteCode.Dh:
+				case ByteCode.Bh:
+					width = 1;
 					break;
-				case "%ecx":
-					register = ByteCode.Ecx;
+				case ByteCode.Ax:
+				case ByteCode.Cx:
+				case ByteCode.Dx:
+				case ByteCode.Bx:
+					width = 2;
 					break;
-				case "%esp":
-					register = ByteCode.Esp;
+				case ByteCode.Eax:
+				case ByteCode.Ecx:
+				case ByteCode.Edx:
+				case ByteCode.Ebx:
+				case ByteCode.Esp:
+				case ByteCode.Ebp:
+				case ByteCode.Esi:
+				case ByteCode.Edi:
+					width = 4;
 					break;
 				default:
-					register = 0;
 					return false;
 			}
 
@@ -1387,6 +1421,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			LexerParse(filePath, tokens);
 
 			Function curFunction = new Function();
+			uint relativeAddress = 0;
 
 			int iMax = tokens.Count;
 			int i = 0;
@@ -1425,6 +1460,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					});
 					i += 1;
 				}
+				else if (token == "#address")
+				{
+					if (ParseLiteral(tokens[i + 1].token, out relativeAddress))
+					{
+						i += 1;
+					}
+					else
+					{
+						AddError("Can't parse this literal.");
+						return false;
+					}
+				}
 				else if (Enum.TryParse(token, out inByte)) {
 
 					switch (inByte)
@@ -1434,11 +1481,28 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case ByteCode.Cli:
 							curFunction.byteCode.Add(inByte);
 							break;
+						case ByteCode.Int:
+							{
+								uint ii;
+								if (ParseLiteral(tokens[i + 1].token, out ii))
+								{
+									curFunction.byteCode.Add(inByte);
+									curFunction.byteCode.Add((ByteCode) ii);
+									i += 1;
+								}
+								else
+								{
+									AddError("Can't parse this literal."); // @TODO
+									return false;
+								}
+								break;
+							}
 						case ByteCode.MovB:
 						case ByteCode.Mov:
 							{
 								ByteCode left;
 								bool isLeftMem = false;
+								int width;
 
 								string t = tokens[i + 1].token;
 								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]") // @TODO
@@ -1449,7 +1513,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									i += 2;
 								}
 
-								if (RegisterTryParse(t, out left) == false)
+								if (RegisterTryParse(t, out left, out width) == false)
 								{
 									AddError("Unknown register.");
 									return false;
@@ -1465,9 +1529,23 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								UInt32 ii;
 
 								if (isLeftMem)
-									curFunction.byteCode.Add(ByteCode.MovRMemImmL);
+								{
+									if (width == 4)
+										curFunction.byteCode.Add(ByteCode.MovRMemImmL);
+									else if (width == 2)
+										curFunction.byteCode.Add(ByteCode.MovRMemImmW);
+									else if (width == 1)
+										curFunction.byteCode.Add(ByteCode.MovRMemImmB);
+								}
 								else
-									curFunction.byteCode.Add(ByteCode.MovRImmL);
+								{
+									if (width == 4)
+										curFunction.byteCode.Add(ByteCode.MovRImmL);
+									else if (width == 2)
+										curFunction.byteCode.Add(ByteCode.MovRImmW);
+									else if (width == 1)
+										curFunction.byteCode.Add(ByteCode.MovRImmB);
+								}
 								curFunction.byteCode.Add(left);
 
 								if (ParseLiteral(tokens[i + 3].token, out ii)) {
@@ -1543,7 +1621,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									width = 2;
 
 								string t = tokens[i + 1].token;
-								if (RegisterTryParse(t, out left) == false)
+								if (RegisterTryParse(t, out left, out width) == false) // @TODO check width matches
 								{
 									AddError("Unknown register."); // @TODO
 									return false;
@@ -1563,6 +1641,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							{
 								bool isLeftMem = false;
 								ByteCode left;
+								int width;
 
 								string t;
 								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]")
@@ -1576,7 +1655,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									i += 1;
 								}
 
-								if (RegisterTryParse(t, out left) == false)
+								if (RegisterTryParse(t, out left, out width) == false)
 								{
 									AddError("Unknown register."); // @TODO
 									return false;
@@ -1632,9 +1711,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case ByteCode.Inc:
 							{
 								ByteCode left;
+								int width;
 								string t = tokens[i + 1].token;
 
-								if (RegisterTryParse(t, out left) == false)
+								if (RegisterTryParse(t, out left, out width) == false)
 								{
 									AddError("Unknown register."); // @TODO
 									return false;
@@ -1659,6 +1739,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				i++;
 			}
 
+			#region .data segment
 			while (i < iMax)
 			{
 				Token tok = tokens[i];
@@ -1700,6 +1781,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 				i += 3;
 			}
+			#endregion
 
 			entryPoint = curFunction;
 
@@ -1709,6 +1791,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 		public string EchoBytecode()
 		{
 			Function f = entryPoint;
+
+			if (f == null)
+				return "";
 
 			StringBuilder sb = new StringBuilder();
 
@@ -1731,11 +1816,15 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case ByteCode.Jne:
 					case ByteCode.PopRL:
 					case ByteCode.IncR:
+					case ByteCode.Int:
 						untilLine = 1;
 						goto default;
 					case ByteCode.MovRImmL:
-					case ByteCode.MovRMemImmB:
+					case ByteCode.MovRImmW:
+					case ByteCode.MovRImmB:
 					case ByteCode.MovRMemImmL:
+					case ByteCode.MovRMemImmW:
+					case ByteCode.MovRMemImmB:
 					case ByteCode.CmpRMemImmB:
 						untilLine = 2;
 						goto default;
@@ -1762,6 +1851,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					sb.AppendLine();
 				else
 				{
+					//sb.Append('(' + b.ToString("x") + ")");
 					sb.Append(' ');
 					untilLine--;
 				}

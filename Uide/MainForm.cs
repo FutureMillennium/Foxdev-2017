@@ -338,7 +338,7 @@ Mp */
 				MainForm_Resize(null, null);
 				scrollBarV.Value = 0;
 
-				if (fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj"))
+				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj"))
 				{
 					compileButton.Visible = true;
 					// @TODO auto-compile for now
@@ -484,7 +484,10 @@ Mp */
 			bool success;
 			FoxlangCompiler compiler = new FoxlangCompiler();
 
-			success = compiler.CompileProject(filePath);
+			if (filePath.EndsWith(".foxasm"))
+				success = compiler.FoxasmCompile(filePath);
+			else
+				success = compiler.CompileProject(filePath);
 
 			StringBuilder sb = new StringBuilder();
 

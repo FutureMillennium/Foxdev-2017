@@ -11,9 +11,20 @@ namespace Uide
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess, While, Condition }
-		enum FoxlangType { Byte, Char, Byte4, Address4, Index, Uint, Pointer, String }
+		enum FoxlangType { Byte, Uint8, Char, Int8, Byte2, Uint16, Int16, Byte4, Address4, Index, Uint, Uint32, Pointer, Int, Int32, String }
 		enum Block { Namespace, Function }
-		enum ByteCode : UInt32 { Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi, Cli, Hlt, MovRImmL, MovRImL, AddRMem, IncR, PopRW, PopEcx, MovRMemRB, MovRMemImmB, AddLMemImm, PushL, Jmp, Call, Ret }
+
+		enum ByteCode : UInt32 {
+			Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi,
+
+			Cli, Hlt, MovRImmL, AddRMem, IncR, PopRW, PopRL, MovRMemRB, MovRMemImmB, MovRMemImmL, AddLMemImm, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, 
+
+			Mov, MovB,
+			Push,
+			Pop, PopW,
+			CmpB,
+			Inc,
+		}
 
 		public class Token
 		{
@@ -217,10 +228,8 @@ namespace Uide
 			return true;
 		}
 
-		public bool Compile(string filePath)
+		public void LexerParse(string filePath, List<Token> tokens)
 		{
-			List<Token> tokens = new List<Token>();
-
 			#region Lexical parsing
 			try
 			{
@@ -343,9 +352,9 @@ namespace Uide
 								case '[':
 								case ']':
 								case ':':
-								AddImmediately:
+									AddImmediately:
 									addImmediately = true;
-								BreakingSymbol:
+									BreakingSymbol:
 									AddSymbol();
 									goto default;
 								case ' ':
@@ -394,7 +403,49 @@ namespace Uide
 
 			// @TODO check invalid state (e.g. remaining in ParsingString)
 			#endregion
-			
+		}
+
+		bool ParseLiteral(string strVal, out UInt32 ii)
+		{
+			UInt32 multiplier = 1;
+			System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
+
+			if (strVal.Length > 2)
+				if (strVal.StartsWith("0x"))
+				{
+					strVal = strVal.Substring(2);
+					baseNum = System.Globalization.NumberStyles.HexNumber;
+				}
+			/*else if (strVal.StartsWith("0b"))
+			{
+				strVal = strVal.Substring(2);
+				baseNum = System.Globalization.NumberStyles.HexNumber;
+			}*/ // @TODO binary and octal literals UGH C# WHY
+
+			if (strVal.Last() == 'M')
+			{
+				strVal = strVal.Substring(0, strVal.Length - 1);
+				multiplier = 1024 * 1024;
+			}
+
+			if (UInt32.TryParse(strVal, baseNum,
+System.Globalization.CultureInfo.CurrentCulture, out ii))
+			{
+				ii *= multiplier;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		public bool Compile(string filePath)
+		{
+			List<Token> tokens = new List<Token>();
+
+			LexerParse(filePath, tokens);
+
 			#region Parsing
 
 			Stack<ParsingState> parsingStateStack = new Stack<ParsingState>();
@@ -470,41 +521,6 @@ namespace Uide
 								return false;
 						}
 
-						return true;
-					}
-					else
-					{
-						return false;
-					}
-				}
-
-				bool ParseLiteral(string strVal, out UInt32 ii)
-				{
-					UInt32 multiplier = 1;
-					System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
-
-					if (strVal.Length > 2)
-						if (strVal.StartsWith("0x"))
-						{
-							strVal = strVal.Substring(2);
-							baseNum = System.Globalization.NumberStyles.HexNumber;
-						}
-						/*else if (strVal.StartsWith("0b"))
-						{
-							strVal = strVal.Substring(2);
-							baseNum = System.Globalization.NumberStyles.HexNumber;
-						}*/ // @TODO binary and octal literals UGH C# WHY
-
-					if (strVal.Last() == 'M')
-					{
-						strVal = strVal.Substring(0, strVal.Length - 1);
-						multiplier = 1024 * 1024;
-					}
-					
-					if (UInt32.TryParse(strVal, baseNum,
-System.Globalization.CultureInfo.CurrentCulture, out ii))
-					{
-						ii *= multiplier;
 						return true;
 					}
 					else
@@ -832,7 +848,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										Var foundConst;
 										if (FindVar(MakeNamespace(token), out foundConst, consts))
 										{
-											curFunction.byteCode.Add(ByteCode.MovRImL);
+											curFunction.byteCode.Add(ByteCode.MovRImmL);
 											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)foundConst.value);
 										}
@@ -847,6 +863,32 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										parsingStateStack.Push(ParsingState.ValueParsing);
 										i += 1;
 									}
+									/*else if (tokens[i + 1].token == "=")
+									{
+										Var foundVar;
+										string nToken = MakeNamespace(token);
+										// @TODO local variables
+										if (FindVar(nToken, out foundVar, vars))
+										{
+											// @TODO if a variable is declared later?
+										}
+										else
+										{
+											AddError("Undeclared variable.");
+											return false;
+										}
+
+										// @TODO
+
+										curFunction.byteCode.Add((ByteCode)0xFEED1135);
+										curFunction.varReferences.Add(new VarReference
+										{
+											pos = curFunction.byteCode.Count - 1,
+											var = foundVar,
+										});
+
+										// @TODO
+									}*/
 									else if (tokens[i + 1].token == "+=" && tokens[i + 3].token == ";")
 									{
 										Var foundVar;
@@ -921,7 +963,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 											return false;
 										}
 									}
-									else if (token[0] == '.' && tokens[i + 1].token == ":")
+									else if (token[0] == '.' && tokens[i + 1].token == ":") // .FooLabel:
 									{
 										curFunction.labels.Add(new SymbolReference
 										{
@@ -937,7 +979,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 											&& tokens[i + 3].token == "="
 											&& tokens[i + 5].token == ";")
 										{
-											curFunction.byteCode.Add(ByteCode.PopEcx);
+											curFunction.byteCode.Add(ByteCode.PopRL);
+											curFunction.byteCode.Add(ByteCode.Ecx);
 											i += 5;
 										}
 										else
@@ -1299,6 +1342,364 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 			#endregion
 			
+			return true;
+		}
+
+		bool StringLiteralTryParse(string literal, out string outS)
+		{
+			outS = null;
+
+			if ((literal[0] == '"' && literal.Last() == '"') || (literal[0] == '\'' && literal.Last() == '\''))
+			{
+				outS = literal.Substring(1, literal.Length - 2);
+				return true;
+			}
+
+			return false;
+		}
+
+		bool RegisterTryParse(string token, out ByteCode register)
+		{
+			switch (token)
+			{
+				case "%eax":
+					register = ByteCode.Eax;
+					break;
+				case "%ecx":
+					register = ByteCode.Ecx;
+					break;
+				case "%esp":
+					register = ByteCode.Esp;
+					break;
+				default:
+					register = 0;
+					return false;
+			}
+
+			return true;
+		}
+
+		public bool FoxasmCompile(string filePath)
+		{
+			List<Token> tokens = new List<Token>();
+
+			LexerParse(filePath, tokens);
+
+			Function curFunction = new Function();
+
+			int iMax = tokens.Count;
+			int i = 0;
+
+			while (i < iMax)
+			{
+				Token tok = tokens[i];
+				string token = tok.token;
+
+
+				void AddError(string message)
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = tok,
+						filename = filePath,
+					});
+				}
+
+
+				ByteCode inByte;
+				if (token[0] == '.' && tokens[i + 1].token == ":") // .FooLabel:
+				{
+					if (token == ".data")
+					{
+						i += 2;
+						break;
+					}
+
+					curFunction.labels.Add(new SymbolReference
+					{
+						pos = curFunction.byteCode.Count,
+						symbol = token,
+					});
+					i += 1;
+				}
+				else if (Enum.TryParse(token, out inByte)) {
+
+					switch (inByte)
+					{
+						case ByteCode.Ret:
+						case ByteCode.Hlt:
+						case ByteCode.Cli:
+							curFunction.byteCode.Add(inByte);
+							break;
+						case ByteCode.MovB:
+						case ByteCode.Mov:
+							{
+								ByteCode left;
+								bool isLeftMem = false;
+
+								string t = tokens[i + 1].token;
+								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]") // @TODO
+								{
+									t = tokens[i + 2].token;
+									isLeftMem = true;
+
+									i += 2;
+								}
+
+								if (RegisterTryParse(t, out left) == false)
+								{
+									AddError("Unknown register.");
+									return false;
+								}
+								
+								if (tokens[i + 2].token != "=")
+								{
+									AddError("Mov foo = bar."); // @TODO
+									return false;
+								}
+
+								
+								UInt32 ii;
+
+								if (isLeftMem)
+									curFunction.byteCode.Add(ByteCode.MovRMemImmL);
+								else
+									curFunction.byteCode.Add(ByteCode.MovRImmL);
+								curFunction.byteCode.Add(left);
+
+								if (ParseLiteral(tokens[i + 3].token, out ii)) {
+									
+									curFunction.byteCode.Add((ByteCode)ii);
+
+									i += 3;
+								}
+								else {
+
+									tok = tokens[i + 3];
+									token = tok.token;
+
+									curFunction.byteCode.Add((ByteCode)0xFEED11E5);
+
+									curFunction.unresolvedReferences.Add(new UnresolvedReference
+									{
+										symbol = token,
+										pos = curFunction.byteCode.Count - 1,
+										token = tok,
+										filename = filePath,
+									});
+
+									i += 3;
+								}
+
+
+								break;
+							}
+						case ByteCode.Push:
+							{
+								string t = tokens[i + 1].token;
+								string literal;
+								if (StringLiteralTryParse(t, out literal))
+								{
+									curFunction.byteCode.Add(ByteCode.PushL);
+									curFunction.byteCode.Add((ByteCode)0xFEED1133);
+									curFunction.literalReferences.Add(new SymbolReference
+									{
+										pos = curFunction.byteCode.Count - 1,
+										symbol = literal,
+									});
+									i += 1;
+								}
+								else
+								{
+									AddError("Can't parse string literal.");
+									return false;
+								}
+								break;
+							}
+						case ByteCode.Call:
+							curFunction.byteCode.Add(ByteCode.Call);
+							curFunction.byteCode.Add((ByteCode)0xFEED113F);
+
+							curFunction.unresolvedReferences.Add(new UnresolvedReference
+							{
+								symbol = tokens[i + 1].token,
+								pos = curFunction.byteCode.Count - 1,
+								token = tokens[i + 1],
+								filename = filePath,
+							});
+
+							i += 1;
+							break;
+						case ByteCode.PopW:
+						case ByteCode.Pop:
+							{
+								ByteCode left;
+								int width = 4;
+
+								if (inByte == ByteCode.PopW)
+									width = 2;
+
+								string t = tokens[i + 1].token;
+								if (RegisterTryParse(t, out left) == false)
+								{
+									AddError("Unknown register."); // @TODO
+									return false;
+								}
+
+								if (width == 2)
+									curFunction.byteCode.Add(ByteCode.PopRW);
+								else
+									curFunction.byteCode.Add(ByteCode.PopRL);
+								curFunction.byteCode.Add(left);
+
+								i += 1;
+
+								break;
+							}
+						case ByteCode.CmpB:
+							{
+								bool isLeftMem = false;
+								ByteCode left;
+
+								string t;
+								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]")
+								{
+									t = tokens[i + 2].token;
+									isLeftMem = true;
+									i += 3;
+								} else
+								{
+									t = tokens[i + 1].token;
+									i += 1;
+								}
+
+								if (RegisterTryParse(t, out left) == false)
+								{
+									AddError("Unknown register."); // @TODO
+									return false;
+								}
+
+								if (tokens[i + 1].token != ",")
+								{
+									AddError("CmpB foo, bar."); // @TODO
+									return false;
+								}
+
+								uint ii;
+								if (ParseLiteral(tokens[i + 2].token, out ii))
+								{
+									if (isLeftMem)
+										curFunction.byteCode.Add(ByteCode.CmpRMemImmB);
+									else
+										curFunction.byteCode.Add(ByteCode.CmpRImmB); // @TODO check register size
+
+									curFunction.byteCode.Add(left);
+									curFunction.byteCode.Add((ByteCode)ii);
+								}
+								else
+								{
+									AddError("Can't parse this literal."); // @TODO
+									return false;
+								}
+
+								i += 2;
+
+								break;
+							}
+						case ByteCode.Jmp:
+						case ByteCode.Je:
+						case ByteCode.Jne:
+							{
+								curFunction.byteCode.Add(inByte);
+								curFunction.byteCode.Add((ByteCode)0xFEED11E1);
+
+								token = tokens[i + 1].token;
+
+								curFunction.unresolvedReferences.Add(new UnresolvedReference()
+								{
+									symbol = token,
+									pos = curFunction.byteCode.Count - 1,
+									token = tok,
+									filename = filePath,
+								});
+
+								i += 1;
+								break;
+							}
+						case ByteCode.Inc:
+							{
+								ByteCode left;
+								string t = tokens[i + 1].token;
+
+								if (RegisterTryParse(t, out left) == false)
+								{
+									AddError("Unknown register."); // @TODO
+									return false;
+								}
+
+								curFunction.byteCode.Add(ByteCode.IncR);
+								curFunction.byteCode.Add(left);
+
+								i += 1;
+								break;
+							}
+						default:
+							AddError("Instruction not implemented.");
+							return false;
+					}
+				} else
+				{
+					AddError("Unknown instruction.");
+					return false;
+				}
+
+				i++;
+			}
+
+			while (i < iMax)
+			{
+				Token tok = tokens[i];
+				string token = tok.token;
+
+
+				void AddError(string message) // @TODO @cleanup
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = tok,
+						filename = filePath,
+					});
+				}
+
+
+				if (tokens[i + 1].token == "=")
+				{
+					uint ii;
+					if (ParseLiteral(tokens[i + 2].token, out ii) == false)
+					{
+						AddError("Can't parse this literal."); // @TODO
+						return false;
+					}
+
+					vars.Add(new Var
+					{
+						symbol = token,
+						value = ii
+					});
+				}
+				else
+				{
+					AddError("Foo = bar"); // @TODO
+					return false;
+				}
+
+				i += 3;
+			}
+
 			return true;
 		}
 	}

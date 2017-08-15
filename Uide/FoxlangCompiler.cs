@@ -1527,6 +1527,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 								
 								UInt32 ii;
+								string literal;
 
 								if (isLeftMem)
 								{
@@ -1548,7 +1549,17 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								}
 								curFunction.byteCode.Add(left);
 
-								if (ParseLiteral(tokens[i + 3].token, out ii)) {
+								if (StringLiteralTryParse(tokens[i + 3].token, out literal))
+								{
+									curFunction.byteCode.Add((ByteCode)0xFEED1133);
+									curFunction.literalReferences.Add(new SymbolReference
+									{
+										pos = curFunction.byteCode.Count - 1,
+										symbol = literal,
+									});
+									i += 3;
+								}
+								else if (ParseLiteral(tokens[i + 3].token, out ii)) {
 									
 									curFunction.byteCode.Add((ByteCode)ii);
 
@@ -1785,7 +1796,122 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			entryPoint = curFunction;
 
+			string outputFile = Path.ChangeExtension(filePath, ".com");
+
+			List<string> sList = new List<string>();
+			long[] sPosList;
+			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>();
+			int iLit = 0;
+
+			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default))
+			{
+				iMax = curFunction.byteCode.Count;
+				i = 0;
+				while (i < iMax)
+				{
+					ByteCode b = curFunction.byteCode[i];
+
+					switch (b)
+					{
+						case ByteCode.MovRImmB:
+							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));
+							writer.Write((byte)curFunction.byteCode[i + 2]);
+							i += 2;
+							break;
+						case ByteCode.Int:
+							writer.Write((byte)0xcd);
+							writer.Write((byte)curFunction.byteCode[i + 1]);
+							i += 1;
+							break;
+						case ByteCode.MovRImmW:
+							// @TODO 16bit vs 32bit
+							writer.Write((byte)(0xb8 + RegisterNumber(curFunction.byteCode[i + 1])));
+							if (curFunction.byteCode[i + 2] == (ByteCode)0xFEED1133)
+							{
+								sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
+								sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
+							}
+							writer.Write((ushort)curFunction.byteCode[i + 2]);
+							i += 2;
+							break;
+						case ByteCode.Ret:
+							writer.Write((byte)0xc3);
+							break;
+					}
+
+					i++;
+				}
+
+				iMax = sList.Count;
+				sPosList = new long[iMax];
+
+				for (i = 0; i < iMax; i++)
+				{
+					var s = sList[i];
+
+					sPosList[i] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
+					writer.Write(s);
+				}
+
+				iMax = sRefList.Count;
+
+				for (i = 0; i < iMax; i++)
+				{
+					var r = sRefList[i];
+
+					writer.Seek((int)r.Item1, SeekOrigin.Begin);
+					if (r.Item3 == 2)
+						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
+					// else // @TODO
+				}
+
+				writer.Close();
+			}
+
+
+
 			return true;
+		}
+
+		byte RegisterNumber(ByteCode register)
+		{
+			switch(register)
+			{
+				case ByteCode.Al:
+				
+				case ByteCode.Ax:
+				case ByteCode.Eax:
+					return 0;
+				case ByteCode.Cl:
+				case ByteCode.Cx:
+				case ByteCode.Ecx:
+					return 1;
+				case ByteCode.Dl:
+				case ByteCode.Dx:
+				case ByteCode.Edx:
+					return 2;
+				case ByteCode.Bl:
+				case ByteCode.Bx:
+				case ByteCode.Ebx:
+					return 3;
+				//case ByteCode.Sp:
+				case ByteCode.Esp:
+				case ByteCode.Ah:
+					return 4;
+				//case ByteCode.Bp:
+				case ByteCode.Ebp:
+				case ByteCode.Ch:
+					return 5;
+				//case ByteCode.Si:
+				case ByteCode.Esi:
+				case ByteCode.Dh:
+					return 6;
+				//case ByteCode.Di:
+				case ByteCode.Edi:
+				case ByteCode.Bh:
+					return 6;
+			}
+			return 0xFF;
 		}
 
 		public string EchoBytecode()

@@ -102,6 +102,7 @@ namespace Uide
 		List<string> stringLiterals = new List<string>();
 		public string projectName;
 		Project curProject;
+		Function entryPoint;
 
 		public bool CompileProject(string filePath)
 		{
@@ -205,7 +206,7 @@ namespace Uide
 
 			if (projects.Count == 0)
 			{
-				Function entryPoint = null;
+				entryPoint = null;
 				foreach (Function func in functions)
 				{
 					if (func.symbol == "EntryPoint")
@@ -1520,7 +1521,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							}
 						case ByteCode.Call:
 							curFunction.byteCode.Add(ByteCode.Call);
-							curFunction.byteCode.Add((ByteCode)0xFEED113F);
+							curFunction.byteCode.Add((ByteCode)0xFEED11E1);
 
 							curFunction.unresolvedReferences.Add(new UnresolvedReference
 							{
@@ -1700,7 +1701,75 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				i += 3;
 			}
 
+			entryPoint = curFunction;
+
 			return true;
+		}
+
+		public string EchoBytecode()
+		{
+			Function f = entryPoint;
+
+			StringBuilder sb = new StringBuilder();
+
+			int iMax = f.byteCode.Count;
+			int i = 0;
+			int iLit = 0,
+				iUnres = 0;
+			int untilLine = 0;
+
+			while (i < iMax)
+			{
+				ByteCode b = f.byteCode[i];
+
+				switch (b)
+				{
+					case ByteCode.PushL:
+					case ByteCode.Call:
+					case ByteCode.Jmp:
+					case ByteCode.Je:
+					case ByteCode.Jne:
+					case ByteCode.PopRL:
+					case ByteCode.IncR:
+						untilLine = 1;
+						goto default;
+					case ByteCode.MovRImmL:
+					case ByteCode.MovRMemImmB:
+					case ByteCode.MovRMemImmL:
+					case ByteCode.CmpRMemImmB:
+						untilLine = 2;
+						goto default;
+					case (ByteCode)0xFEED11E1: // label
+						//sb.AppendLine(b.ToString("x"));
+						sb.Append(f.unresolvedReferences[iUnres].symbol);
+						iUnres++;
+						break;
+					case (ByteCode)0xFEED1133: // literal
+						sb.Append("\"" + f.literalReferences[iLit].symbol + "\"");
+						iLit++;
+						break;
+					case (ByteCode)0xFEED11E5: // .data var
+						sb.Append(f.unresolvedReferences[iUnres].symbol);
+						iUnres++;
+						//sb.AppendLine(b.ToString("x"));
+						break;
+					default:
+						sb.Append(b.ToString());
+						break;
+				}
+
+				if (untilLine == 0)
+					sb.AppendLine();
+				else
+				{
+					sb.Append(' ');
+					untilLine--;
+				}
+
+				i++;
+			}
+
+			return sb.ToString();
 		}
 	}
 }

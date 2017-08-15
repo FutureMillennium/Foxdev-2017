@@ -507,6 +507,10 @@ Mp */
 				sb.Append(Environment.NewLine);
 			}
 
+			sb.Append(Environment.NewLine);
+
+			sb.Append(compiler.EchoBytecode());
+
 			// write out all tokens
 			/*sb.Append(Environment.NewLine);
 			sb.Append(Environment.NewLine);

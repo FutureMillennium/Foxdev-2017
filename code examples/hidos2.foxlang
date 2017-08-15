@@ -1,0 +1,8 @@
+#address 0x100
+
+function EntryPoint() {
+	%ah = 0x9;
+	%dx = "Hello DOS!$";
+	Int(0x21);
+	return;
+}

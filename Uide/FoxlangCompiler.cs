@@ -111,6 +111,7 @@ namespace Uide
 		public string projectName;
 		Project curProject;
 		Function entryPoint;
+		uint relativeAddress = 0;
 
 		public bool CompileProject(string filePath)
 		{
@@ -126,7 +127,7 @@ namespace Uide
 				});
 			}
 
-			void GlobalWarningMessage(string message)
+			/*void GlobalWarningMessage(string message)
 			{
 				outputMessages.Add(new OutputMessage
 				{
@@ -134,7 +135,7 @@ namespace Uide
 					message = message,
 					filename = filePath,
 				});
-			}
+			}*/
 
 
 			projectName = Path.GetFileNameWithoutExtension(filePath);
@@ -232,7 +233,12 @@ namespace Uide
 			}
 
 			// @TODO compile
-			GlobalWarningMessage("Binary compilation not implemented yet. Not outputting anything.");
+			//GlobalWarningMessage("Binary compilation not implemented yet. Not outputting anything.");
+
+			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
+
+			if (BytecodeCompileToBinary(outputFile) == false)
+				return false; // @TODO error
 
 			return true;
 		}
@@ -475,7 +481,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 
 
-				void AddError(string message)
+				bool AddError(string message)
 				{
 					outputMessages.Add(new OutputMessage
 					{
@@ -484,6 +490,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						token = tok,
 						filename = filePath,
 					});
+					return false;
 				}
 
 				void AddNotice(string message)
@@ -817,7 +824,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										return false;
 									}
 									break;
-								case "%esp":
+								/*case "%esp":
 									if (tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
 										curFunction.byteCode.Add(ByteCode.MovRImmL);
@@ -839,18 +846,70 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										}
 										i += 3;
 									}
-									break;
+									break;*/
 								case "while":
 									parsingStateStack.Push(ParsingState.While);
 									parsingStateStack.Push(ParsingState.Condition);
 									parsingStateStack.Push(ParsingState.ValueParsing);
 									break;
+								case "return":
+									if (tokens[i + 1].token != ";") // @TODO
+										return AddError("Returning values isn't implemented.");
+
+									curFunction.byteCode.Add(ByteCode.Ret);
+
+									i += 1;
+
+									break;
 								default:
 									FoxlangType type;
 									if (ExitingBlock())
 									{
-										curFunction.byteCode.Add(ByteCode.Ret);
+										if (curFunction.byteCode.Last() != ByteCode.Ret) // @TODO possible conflicts with literal value of .Ret?
+											curFunction.byteCode.Add(ByteCode.Ret);
 										parsingStateStack.Pop();
+									}
+									else if (token[0] == '%' && tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
+									{
+										ByteCode register;
+										int width;
+										if (RegisterTryParse(token, out register, out width) == false)
+											return AddError("Can't parse this register."); // @TODO
+
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRImmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRImmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRImmB);
+										else
+											return AddError("Unknown register width!"); // @TODO
+
+										curFunction.byteCode.Add(register);
+
+										string t = tokens[i + 2].token;
+										uint ii;
+										string literal;
+
+										if (StringLiteralTryParse(t, out literal))
+										{
+											curFunction.byteCode.Add((ByteCode)0xFEED1133);
+											curFunction.literalReferences.Add(new SymbolReference
+											{
+												pos = curFunction.byteCode.Count - 1,
+												symbol = literal,
+											});
+										}
+										else if (ParseLiteral(tokens[i + 2].token, out ii))
+										{
+											curFunction.byteCode.Add((ByteCode)ii);
+										}
+										else
+										{
+											return AddError("Register assignment only accepts literals."); // @TODO
+										}
+
+										i += 3;
 									}
 									else if (tokens[i + 1].token == "[")
 									{
@@ -942,8 +1001,31 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									}
 									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";") // foo(bar);
 									{
+										ByteCode instruction;
 										string arg1 = tokens[i + 2].token;
-										if (arg1[0] == '"' && arg1.Last() == '"')
+
+										if (Enum.TryParse(token, out instruction))
+										{
+											switch (instruction)
+											{
+												case ByteCode.Int:
+													{
+														uint ii;
+														if (ParseLiteral(arg1, out ii) == false)
+															return AddError("Only accepts a literal. Can't parse this as a literal.");
+
+														curFunction.byteCode.Add(instruction);
+														curFunction.byteCode.Add((ByteCode)ii);
+
+														i += 4; // @TODO @cleanup
+
+														break;
+													}
+												default:
+													return AddError("Instruction not implemented.");
+											}
+										}
+										else if (arg1[0] == '"' && arg1.Last() == '"')
 										{
 											string literal = arg1.Substring(1, arg1.Length - 2);
 											curFunction.byteCode.Add(ByteCode.PushL);
@@ -1280,6 +1362,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 							parsingStateStack.Push(ParsingState.HashCompile);
 							break;
+						case "#address":
+							{
+								uint ii;
+								if (ParseLiteral(tokens[i + 1].token, out ii) == false)
+									return AddError("Expected a literal. Can't parse this as a literal.");
+
+								relativeAddress = ii;
+
+								i += 1;
+
+								break;
+							}
 						case "const":
 							parsingStateStack.Push(ParsingState.Const);
 							break;
@@ -1421,7 +1515,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			LexerParse(filePath, tokens);
 
 			Function curFunction = new Function();
-			uint relativeAddress = 0;
 
 			int iMax = tokens.Count;
 			int i = 0;
@@ -1796,79 +1889,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			entryPoint = curFunction;
 
-			string outputFile = Path.ChangeExtension(filePath, ".com");
+			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
 
-			List<string> sList = new List<string>();
-			long[] sPosList;
-			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>();
-			int iLit = 0;
-
-			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default))
-			{
-				iMax = curFunction.byteCode.Count;
-				i = 0;
-				while (i < iMax)
-				{
-					ByteCode b = curFunction.byteCode[i];
-
-					switch (b)
-					{
-						case ByteCode.MovRImmB:
-							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));
-							writer.Write((byte)curFunction.byteCode[i + 2]);
-							i += 2;
-							break;
-						case ByteCode.Int:
-							writer.Write((byte)0xcd);
-							writer.Write((byte)curFunction.byteCode[i + 1]);
-							i += 1;
-							break;
-						case ByteCode.MovRImmW:
-							// @TODO 16bit vs 32bit
-							writer.Write((byte)(0xb8 + RegisterNumber(curFunction.byteCode[i + 1])));
-							if (curFunction.byteCode[i + 2] == (ByteCode)0xFEED1133)
-							{
-								sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
-								sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
-							}
-							writer.Write((ushort)curFunction.byteCode[i + 2]);
-							i += 2;
-							break;
-						case ByteCode.Ret:
-							writer.Write((byte)0xc3);
-							break;
-					}
-
-					i++;
-				}
-
-				iMax = sList.Count;
-				sPosList = new long[iMax];
-
-				for (i = 0; i < iMax; i++)
-				{
-					var s = sList[i];
-
-					sPosList[i] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
-					writer.Write(s);
-				}
-
-				iMax = sRefList.Count;
-
-				for (i = 0; i < iMax; i++)
-				{
-					var r = sRefList[i];
-
-					writer.Seek((int)r.Item1, SeekOrigin.Begin);
-					if (r.Item3 == 2)
-						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
-					// else // @TODO
-				}
-
-				writer.Close();
-			}
-
-
+			if (BytecodeCompileToBinary(outputFile) == false)
+				return false; // @TODO error
 
 			return true;
 		}
@@ -1986,6 +2010,84 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 
 			return sb.ToString();
+		}
+
+		bool BytecodeCompileToBinary(string outputFile)
+		{
+			Function curFunction = entryPoint; // @TODO non-EntryPoint function compile
+			List<string> sList = new List<string>();
+			long[] sPosList;
+			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>();
+			int iLit = 0;
+
+			int iMax, i;
+
+			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default))
+			{
+				iMax = curFunction.byteCode.Count;
+				i = 0;
+				while (i < iMax)
+				{
+					ByteCode b = curFunction.byteCode[i];
+
+					switch (b)
+					{
+						case ByteCode.MovRImmB:
+							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));
+							writer.Write((byte)curFunction.byteCode[i + 2]);
+							i += 2;
+							break;
+						case ByteCode.Int:
+							writer.Write((byte)0xcd);
+							writer.Write((byte)curFunction.byteCode[i + 1]);
+							i += 1;
+							break;
+						case ByteCode.MovRImmW:
+							// @TODO 16bit vs 32bit
+							writer.Write((byte)(0xb8 + RegisterNumber(curFunction.byteCode[i + 1])));
+							if (curFunction.byteCode[i + 2] == (ByteCode)0xFEED1133)
+							{
+								sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
+								sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
+							}
+							writer.Write((ushort)curFunction.byteCode[i + 2]);
+							i += 2;
+							break;
+						case ByteCode.Ret:
+							writer.Write((byte)0xc3);
+							break;
+					}
+
+					i++;
+				}
+
+				iMax = sList.Count;
+				sPosList = new long[iMax];
+
+				for (i = 0; i < iMax; i++)
+				{
+					var s = sList[i];
+
+					sPosList[i] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
+					writer.Write(s);
+				}
+
+				iMax = sRefList.Count;
+
+				for (i = 0; i < iMax; i++)
+				{
+					var r = sRefList[i];
+
+					writer.Seek((int)r.Item1, SeekOrigin.Begin);
+					if (r.Item3 == 2)
+						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
+					// else // @TODO
+				}
+
+				writer.Close();
+			}
+
+			return true;
 		}
 	}
 }

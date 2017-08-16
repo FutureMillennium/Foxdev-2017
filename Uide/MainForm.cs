@@ -148,166 +148,10 @@ namespace Uide
 						dataTextBox.Text = s.ToString();
 
 						#region disassembly
-
 						if (programHeaders.Length > 0)
 						{
-							uint at = programHeaders[0].p_offset;
-							// @TODO different entries than [0]
-							//uint max = at + programHeaders[0].p_filesz;
-							uint max = at + 8 * 8;
-
-							if (isMultiboot)
-								at += 12; // @TODO Multiboot header constant
-
-							string disassembly = "";
-
-							OPcodes.Init();
-							//List<string> list = new List<string>();
-
-							/*foreach (string line in OPcodes.opCodes)
-							{
-								string[] args = line.Split('\t');
-
-								if (args.Length > 2)
-								{
-									string arg = args[2];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);
-								}
-								if (args.Length == 4)
-								{
-									string arg = args[3];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);
-								}
-							}*/
-
-							while (at < max)
-							{
-								string output, op;
-								string[] parts;
-
-								op = OPcodes.opCodes[file[at]];
-								parts = op.Split('\t');
-
-								/*if (parts.Length > 2)
-								{
-									string arg = parts[parts.Length - 1];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);
-
-									arg = parts[parts.Length - 2];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);
-								}*/
-
-								output = parts[0] + '\t' + parts[1];
-
-								if (parts.Length > 2)
-								{
-									/*string arg = parts[2];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);*/
-
-									string operand = parts[2];
-
-									if (Array.IndexOf(OPcodes.literals, operand) != -1)
-									{
-										output += "\t" + operand;
-									}
-									else
-									{
-										switch (operand)
-										{
-											case "Ib":
-											case "I0":
-											case "Jb":
-												at++;
-												output += "\t0x" + file[at].ToString("x2");
-												break;
-											case "Iv":
-											case "Iw":
-											case "Jv":
-												{
-													at++;
-													uint word = BitConverter.ToUInt32(file, (int)at);
-													output += "\t0x" + word.ToString("x8");
-													at += 3;
-												}
-												break;
-										}
-										/* @TODO
-Eb
-Gb
-Ev
-Gv
-Ew
-Sw
-M
-Ap
-Ob
-Ov
-Mp */
-									}
-								}
-								if (parts.Length == 4)
-								{
-									/*string arg = parts[2];
-
-									if (list.IndexOf(arg) == -1)
-										list.Add(arg);*/
-
-									string operand = parts[3];
-
-									if (Array.IndexOf(OPcodes.literals, operand) != -1)
-									{
-										output += "\t" + operand;
-									}
-									else
-									{
-										// @TODO fix duplicate code
-										switch (operand)
-										{
-											case "Ib":
-											case "I0":
-											case "Jb":
-												at++;
-												output += "\t0x" + file[at].ToString("x2");
-												break;
-											case "Iv":
-											case "Iw":
-											case "Jv":
-												{
-													at++;
-													uint word = BitConverter.ToUInt32(file, (int)at);
-													output += "\t0x" + word.ToString("x8");
-													at += 3;
-												}
-												break;
-										}
-									}
-								}
-
-								disassembly += output + Environment.NewLine;
-
-								at++;
-							}
-
-							assemblyTextBox.Text = disassembly;
-
-							//assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
-							/*foreach (string str in list)
-							{
-								assemblyTextBox.Text += str + Environment.NewLine;
-							}*/
-
+							assemblyTextBox.Text = Disassemble(programHeaders[0].p_offset, 8 * 8);
 						}
-
 						#endregion
 
 						isELFfile = true;
@@ -318,13 +162,25 @@ Mp */
 						// @TODO 64bit ELF
 						MessageBox.Show("64bit ELF not implemented yet.");
 					}
-
 					#endregion
+
+					viewAssemblyRadio.Visible = true;
 				}
 				else
 				{
 					isELFfile = false;
+
+				if (fileName.EndsWith(".com"))
+				{
+					assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
+					viewAssemblyRadio.Checked = true;
+					viewAssemblyRadio.Visible = true;
+				} else
+				{
 					viewTextRadio.Checked = true;
+					viewAssemblyRadio.Visible = false;
+				}
+					
 				}
 
 				textBox.Text = System.Text.Encoding.Default.GetString(file);
@@ -332,7 +188,7 @@ Mp */
 				dragFileHereLabel.Visible = false;
 
 				viewSwitchPanel.Visible = true;
-				viewAssemblyRadio.Visible = isELFfile;
+				
 				//viewDataRadio.Visible = isELFfile;
 
 				MainForm_Resize(null, null);
@@ -371,6 +227,163 @@ Mp */
 					OpenFile(files[0]);
 				}
 			}
+		}
+
+		string Disassemble(uint at, uint max)
+		{
+			// @TODO different entries than [0]
+			//uint max = at + programHeaders[0].p_filesz;
+			max += at;
+
+			if (isMultiboot)
+				at += 12; // @TODO Multiboot header constant
+
+			string disassembly = "";
+
+			OPcodes.Init();
+			//List<string> list = new List<string>();
+
+			/*foreach (string line in OPcodes.opCodes)
+			{
+				string[] args = line.Split('\t');
+
+				if (args.Length > 2)
+				{
+					string arg = args[2];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);
+				}
+				if (args.Length == 4)
+				{
+					string arg = args[3];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);
+				}
+			}*/
+
+			while (at < max)
+			{
+				string output, op;
+				string[] parts;
+
+				op = OPcodes.opCodes[file[at]];
+				parts = op.Split('\t');
+
+				/*if (parts.Length > 2)
+				{
+					string arg = parts[parts.Length - 1];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);
+
+					arg = parts[parts.Length - 2];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);
+				}*/
+
+				output = parts[0] + '\t' + parts[1];
+
+				if (parts.Length > 2)
+				{
+					/*string arg = parts[2];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);*/
+
+					string operand = parts[2];
+
+					if (Array.IndexOf(OPcodes.literals, operand) != -1)
+					{
+						output += "\t" + operand;
+					}
+					else
+					{
+						switch (operand)
+						{
+							case "Ib":
+							case "I0":
+							case "Jb":
+								at++;
+								output += "\t0x" + file[at].ToString("x2");
+								break;
+							case "Iv":
+							case "Iw":
+							case "Jv":
+								{
+									at++;
+									uint word = BitConverter.ToUInt32(file, (int)at);
+									output += "\t0x" + word.ToString("x8");
+									at += 3;
+								}
+								break;
+						}
+						/* @TODO
+Eb
+Gb
+Ev
+Gv
+Ew
+Sw
+M
+Ap
+Ob
+Ov
+Mp */
+					}
+				}
+				if (parts.Length == 4)
+				{
+					/*string arg = parts[2];
+
+					if (list.IndexOf(arg) == -1)
+						list.Add(arg);*/
+
+					string operand = parts[3];
+
+					if (Array.IndexOf(OPcodes.literals, operand) != -1)
+					{
+						output += "\t" + operand;
+					}
+					else
+					{
+						// @TODO fix duplicate code
+						switch (operand)
+						{
+							case "Ib":
+							case "I0":
+							case "Jb":
+								at++;
+								output += "\t0x" + file[at].ToString("x2");
+								break;
+							case "Iv":
+							case "Iw":
+							case "Jv":
+								{
+									at++;
+									uint word = BitConverter.ToUInt32(file, (int)at);
+									output += "\t0x" + word.ToString("x8");
+									at += 3;
+								}
+								break;
+						}
+					}
+				}
+
+				disassembly += output + Environment.NewLine;
+
+				at++;
+			}
+
+			return disassembly;
+
+			//assemblyTextBox.Text += Environment.NewLine + Environment.NewLine;
+			/*foreach (string str in list)
+			{
+				assemblyTextBox.Text += str + Environment.NewLine;
+			}*/
 		}
 
 		private void MainForm_Resize(object sender, EventArgs e)
@@ -509,9 +522,18 @@ Mp */
 				sb.Append(Environment.NewLine);
 			}
 
-			sb.Append(Environment.NewLine);
+
+			sb.AppendLine();
+			sb.AppendLine("[Bytecode output]");
 
 			sb.Append(compiler.EchoBytecode());
+
+			if (compiler.output != null)
+			{
+				sb.AppendLine();
+				sb.AppendLine("[Binary output]");
+				sb.AppendLine(compiler.output);
+			}
 
 			// write out all tokens
 			/*sb.Append(Environment.NewLine);

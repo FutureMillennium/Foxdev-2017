@@ -112,6 +112,7 @@ namespace Uide
 		Project curProject;
 		Function entryPoint;
 		uint relativeAddress = 0;
+		public string output;
 
 		public bool CompileProject(string filePath)
 		{
@@ -236,6 +237,7 @@ namespace Uide
 			//GlobalWarningMessage("Binary compilation not implemented yet. Not outputting anything.");
 
 			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
+			output = outputFile;
 
 			if (BytecodeCompileToBinary(outputFile) == false)
 				return false; // @TODO error
@@ -1909,6 +1911,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			entryPoint = curFunction;
 
 			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
+			output = outputFile;
 
 			if (BytecodeCompileToBinary(outputFile) == false)
 				return false; // @TODO error

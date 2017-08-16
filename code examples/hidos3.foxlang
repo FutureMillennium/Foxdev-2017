@@ -1,0 +1,12 @@
+#address 0x100
+
+function Echo(String str) {
+	%ah = 0x9;
+	%dx = str;
+	Int(0x21);
+}
+
+function EntryPoint() {
+	Echo("Hello DOS!$");
+	return;
+}

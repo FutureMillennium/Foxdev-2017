@@ -341,8 +341,10 @@ Mp */
 				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj"))
 				{
 					compileButton.Visible = true;
-					// @TODO auto-compile for now
+
+#if DEBUG
 					compileButton_Click(null, null);
+#endif
 				}
 				else
 				{

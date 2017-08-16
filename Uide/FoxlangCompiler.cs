@@ -1887,6 +1887,25 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 			#endregion
 
+			foreach (var r in curFunction.unresolvedReferences)
+			{
+				bool AddError(string message) // @TODO @cleanup
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = r.token,
+						filename = filePath,
+					});
+					return false;
+				}
+
+				// @TODO
+
+				return AddError("Unresolved reference.");
+			}
+
 			entryPoint = curFunction;
 
 			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
@@ -2017,8 +2036,19 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			Function curFunction = entryPoint; // @TODO non-EntryPoint function compile
 			List<string> sList = new List<string>();
 			long[] sPosList;
-			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>();
+			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>(); // posInFile, iSList, width
 			int iLit = 0;
+
+			bool AddError(string message)
+			{
+				outputMessages.Add(new OutputMessage
+				{
+					type = OutputMessage.MessageType.Error,
+					message = message,
+					filename = outputFile,
+				});
+				return false;
+			}
 
 			int iMax, i;
 
@@ -2056,6 +2086,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case ByteCode.Ret:
 							writer.Write((byte)0xc3);
 							break;
+						default:
+							return AddError(b.ToString() + ": binary compilation not implemented.");
 					}
 
 					i++;

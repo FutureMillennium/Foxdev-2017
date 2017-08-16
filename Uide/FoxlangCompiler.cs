@@ -22,8 +22,9 @@ namespace Uide
 
 			Cli, Hlt,
 			MovRImmL, MovRImmW, MovRImmB,
+			MovRRL, MovRRW, MovRRB,
 			AddRMem, IncR, PopRW, PopRL,
-			MovRMemRB,
+			MovRMemRL, MovRMemRW, MovRMemRB,
 			MovRMemImmL, MovRMemImmW, MovRMemImmB,
 			AddLMemImm, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, Int,
 
@@ -75,6 +76,8 @@ namespace Uide
 			public List<Var> arguments = new List<Var>();
 			public List<ByteCode> byteCode = new List<ByteCode>();
 			public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
+			public List<UnresolvedReference> urLabelsUnresolved = new List<UnresolvedReference>();
+			public List<UnresolvedReference> urVarsUnresolved = new List<UnresolvedReference>();
 			public List<VarReference> varReferences = new List<VarReference>();
 			public List<SymbolReference> literalReferences = new List<SymbolReference>();
 			public List<SymbolReference> labels = new List<SymbolReference>();
@@ -1517,6 +1520,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			LexerParse(filePath, tokens);
 
 			Function curFunction = new Function();
+			entryPoint = curFunction;
 
 			int iMax = tokens.Count;
 			int i = 0;
@@ -1595,9 +1599,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case ByteCode.MovB:
 						case ByteCode.Mov:
 							{
-								ByteCode left;
-								bool isLeftMem = false;
-								int width;
+								ByteCode left, right;
+								bool isLeftMem = false,
+									isRightR = false;
+								int width, rWidth;
 
 								string t = tokens[i + 1].token;
 								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]") // @TODO
@@ -1624,59 +1629,85 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								UInt32 ii;
 								string literal;
 
-								if (isLeftMem)
-								{
-									if (width == 4)
-										curFunction.byteCode.Add(ByteCode.MovRMemImmL);
-									else if (width == 2)
-										curFunction.byteCode.Add(ByteCode.MovRMemImmW);
-									else if (width == 1)
-										curFunction.byteCode.Add(ByteCode.MovRMemImmB);
-								}
-								else
-								{
-									if (width == 4)
-										curFunction.byteCode.Add(ByteCode.MovRImmL);
-									else if (width == 2)
-										curFunction.byteCode.Add(ByteCode.MovRImmW);
-									else if (width == 1)
-										curFunction.byteCode.Add(ByteCode.MovRImmB);
-								}
-								curFunction.byteCode.Add(left);
-
 								if (StringLiteralTryParse(tokens[i + 3].token, out literal))
 								{
-									curFunction.byteCode.Add((ByteCode)0xFEED1133);
+									right = (ByteCode)0xFEED1133;
 									curFunction.literalReferences.Add(new SymbolReference
 									{
-										pos = curFunction.byteCode.Count - 1,
+										pos = curFunction.byteCode.Count + 2,
 										symbol = literal,
 									});
-									i += 3;
+								}
+								else if (RegisterTryParse(tokens[i + 3].token, out right, out rWidth))
+								{
+									isRightR = true;
 								}
 								else if (ParseLiteral(tokens[i + 3].token, out ii)) {
-									
-									curFunction.byteCode.Add((ByteCode)ii);
 
-									i += 3;
+									right = (ByteCode)ii;
 								}
 								else {
 
 									tok = tokens[i + 3];
 									token = tok.token;
 
-									curFunction.byteCode.Add((ByteCode)0xFEED11E5);
+									right = (ByteCode)0xFEED11E5;
 
-									curFunction.unresolvedReferences.Add(new UnresolvedReference
+									curFunction.urVarsUnresolved.Add(new UnresolvedReference
 									{
 										symbol = token,
-										pos = curFunction.byteCode.Count - 1,
+										pos = curFunction.byteCode.Count + 2,
 										token = tok,
 										filename = filePath,
 									});
-
-									i += 3;
 								}
+
+								i += 3;
+
+								if (isLeftMem)
+								{
+									if (isRightR)
+									{
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRMemRL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRMemRW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRMemRB);
+									}
+									else
+									{
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRMemImmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRMemImmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRMemImmB);
+									}
+								}
+								else
+								{
+									if (isRightR)
+									{
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRRL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRRW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRRB);
+									}
+									else
+									{
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRImmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRImmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRImmB);
+									}
+								}
+								curFunction.byteCode.Add(left);
+								curFunction.byteCode.Add(right);
 
 
 								break;
@@ -1707,7 +1738,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							curFunction.byteCode.Add(ByteCode.Call);
 							curFunction.byteCode.Add((ByteCode)0xFEED11E1);
 
-							curFunction.unresolvedReferences.Add(new UnresolvedReference
+							curFunction.urLabelsUnresolved.Add(new UnresolvedReference
 							{
 								symbol = tokens[i + 1].token,
 								pos = curFunction.byteCode.Count - 1,
@@ -1803,7 +1834,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 								token = tokens[i + 1].token;
 
-								curFunction.unresolvedReferences.Add(new UnresolvedReference()
+								curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
 								{
 									symbol = token,
 									pos = curFunction.byteCode.Count - 1,
@@ -1889,7 +1920,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 			#endregion
 
-			foreach (var r in curFunction.unresolvedReferences)
+			foreach (var r in curFunction.urLabelsUnresolved)
 			{
 				bool AddError(string message) // @TODO @cleanup
 				{
@@ -1903,12 +1934,51 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					return false;
 				}
 
-				// @TODO
+				SymbolReference foundSym = null;
+				foreach (var sym in curFunction.labels)
+				{
+					if (sym.symbol == r.symbol)
+					{
+						foundSym = sym;
+						break;
+					}
+				}
 
-				return AddError("Unresolved reference.");
+				if (foundSym == null)
+					return AddError("Label not found.");
+
+				curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - r.pos);
 			}
 
-			entryPoint = curFunction;
+			foreach (var r in curFunction.urVarsUnresolved)
+			{
+				bool AddError(string message) // @TODO @cleanup
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = r.token,
+						filename = filePath,
+					});
+					return false;
+				}
+
+				Var foundVar = null;
+				foreach (var sym in vars)
+				{
+					if (sym.symbol == r.symbol)
+					{
+						foundVar = sym;
+						break;
+					}
+				}
+
+				if (foundVar == null)
+					return AddError("Data definition not found.");
+
+				curFunction.byteCode[r.pos] = (ByteCode)(foundVar.value);
+			}
 
 			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
 			output = outputFile;
@@ -1972,7 +2042,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			int iMax = f.byteCode.Count;
 			int i = 0;
 			int iLit = 0,
-				iUnres = 0;
+				iURLabels = 0,
+				iURVars = 0;
 			int untilLine = 0;
 
 			while (i < iMax)
@@ -2002,16 +2073,16 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						goto default;
 					case (ByteCode)0xFEED11E1: // label
 						//sb.AppendLine(b.ToString("x"));
-						sb.Append(f.unresolvedReferences[iUnres].symbol);
-						iUnres++;
+						sb.Append(f.urLabelsUnresolved[iURLabels].symbol);
+						iURLabels++;
 						break;
 					case (ByteCode)0xFEED1133: // literal
 						sb.Append("\"" + f.literalReferences[iLit].symbol + "\"");
 						iLit++;
 						break;
 					case (ByteCode)0xFEED11E5: // .data var
-						sb.Append(f.unresolvedReferences[iUnres].symbol);
-						iUnres++;
+						sb.Append(f.urVarsUnresolved[iURVars].symbol);
+						iURVars++;
 						//sb.AppendLine(b.ToString("x"));
 						break;
 					default:
@@ -2054,40 +2125,95 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 
 			int iMax, i;
+			int iStringLiteral = -1,
+				iiStringLiteral = -1;
+
+			iiStringLiteral++;
+			if (curFunction.literalReferences.Count > iiStringLiteral)
+			{
+				iStringLiteral = curFunction.literalReferences[iiStringLiteral].pos;
+			}
 
 			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default))
 			{
 				iMax = curFunction.byteCode.Count;
 				i = 0;
+
+
+				void sLitAcceptStringLiteral(int di)
+				{
+					if (di == iStringLiteral)
+					{
+						sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
+						sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
+						iLit++;
+
+						iiStringLiteral++;
+						if (curFunction.literalReferences.Count > iiStringLiteral)
+						{
+							iStringLiteral = curFunction.literalReferences[iiStringLiteral].pos;
+						}
+					}
+				}
+
+
 				while (i < iMax)
 				{
 					ByteCode b = curFunction.byteCode[i];
 
 					switch (b)
 					{
-						case ByteCode.MovRImmB:
-							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));
-							writer.Write((byte)curFunction.byteCode[i + 2]);
-							i += 2;
+						case ByteCode.Cli:
+							writer.Write((byte)0xfa);
+							break;
+						case ByteCode.Ret:
+							writer.Write((byte)0xc3);
+							break;
+						case ByteCode.Hlt:
+							writer.Write((byte)0xf4);
 							break;
 						case ByteCode.Int:
 							writer.Write((byte)0xcd);
 							writer.Write((byte)curFunction.byteCode[i + 1]);
 							i += 1;
 							break;
+						case ByteCode.Call:
+							writer.Write((byte)0xE8);
+							i += 1;
+							writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
+							break;
+						case ByteCode.Jmp:
+							writer.Write((byte)0xE9);
+							i += 1;
+							writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
+							break;
+						case ByteCode.PushL:
+							writer.Write((byte)0x68);
+							i += 1;
+							sLitAcceptStringLiteral(i);
+							writer.Write((uint)curFunction.byteCode[i]);
+							break;
+						case ByteCode.MovRImmB:
+							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));
+							writer.Write((byte)curFunction.byteCode[i + 2]);
+							i += 2;
+							break;
 						case ByteCode.MovRImmW:
 							// @TODO 16bit vs 32bit
 							writer.Write((byte)(0xb8 + RegisterNumber(curFunction.byteCode[i + 1])));
-							if (curFunction.byteCode[i + 2] == (ByteCode)0xFEED1133)
-							{
-								sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
-								sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
-							}
+
+							sLitAcceptStringLiteral(i + 2);
+
 							writer.Write((ushort)curFunction.byteCode[i + 2]);
 							i += 2;
 							break;
-						case ByteCode.Ret:
-							writer.Write((byte)0xc3);
+						case ByteCode.MovRImmL: // @TODO @cleanup
+							writer.Write((byte)(0xb8 + RegisterNumber(curFunction.byteCode[i + 1])));
+
+							sLitAcceptStringLiteral(i + 2);
+
+							writer.Write((uint)curFunction.byteCode[i + 2]); //d
+							i += 2;
 							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");

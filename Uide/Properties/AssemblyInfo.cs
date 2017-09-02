@@ -7,11 +7,11 @@ using System.Windows;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Uide")]
-[assembly: AssemblyDescription("Uide")]
+[assembly: AssemblyTitle("Foxdev")]
+[assembly: AssemblyDescription("Foxdev by Zdenek Gromnica")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Zdenek Gromnica")]
-[assembly: AssemblyProduct("Uide")]
+[assembly: AssemblyProduct("Foxdev by Zdenek Gromnica")]
 [assembly: AssemblyCopyright("Copyright © 2017 Zdenek Gromnica")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

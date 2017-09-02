@@ -54,6 +54,7 @@ namespace Uide
 		class SymbolReference
 		{
 			public int pos;
+			public long bytePos;
 			public string symbol;
 		}
 
@@ -66,9 +67,12 @@ namespace Uide
 		class UnresolvedReference
 		{
 			public int pos;
+			public long bytePos;
+			public int bytes;
 			public string symbol;
 			public string filename;
 			public Token token;
+			public SymbolReference reference;
 		}
 
 		class Function
@@ -1975,6 +1979,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				if (foundSym == null)
 					return AddError("Label not found.");
 
+				r.reference = foundSym;
 				curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
 			}
 
@@ -2155,13 +2160,21 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			int iMax, i;
 			int iStringLiteral = -1,
-				iiStringLiteral = -1;
+				iiStringLiteral = -1,
+				nextLabelI = -1,
+				urNextLabelUnresolved = -1;
 
 			iiStringLiteral++;
 			if (curFunction.literalReferences.Count > iiStringLiteral)
 			{
 				iStringLiteral = curFunction.literalReferences[iiStringLiteral].pos;
 			}
+
+			if (curFunction.labels.Count > 0)
+				nextLabelI = 0;
+
+			if (curFunction.urLabelsUnresolved.Count > 0)
+				urNextLabelUnresolved = 0;
 
 			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default))
 			{
@@ -2174,7 +2187,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					if (di == iStringLiteral)
 					{
 						sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
-						sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2));
+						sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2)); // @TODO length/width
 						iLit++;
 
 						iiStringLiteral++;
@@ -2189,6 +2202,15 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				while (i < iMax)
 				{
 					ByteCode b = curFunction.byteCode[i];
+
+					if (nextLabelI != -1 && i == curFunction.labels[nextLabelI].pos)
+					{
+						curFunction.labels[nextLabelI].bytePos = writer.BaseStream.Position;
+						if (curFunction.labels.Count > nextLabelI + 1)
+							nextLabelI++;
+						else
+							nextLabelI = -1;
+					}
 
 					switch (b)
 					{
@@ -2207,13 +2229,35 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							i += 1;
 							break;
 						case ByteCode.Call:
-							writer.Write((byte)0xE8);
-							i += 1;
-							if (curFunction.bits == Bits.Bits32)
-								writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
-							else if (curFunction.bits == Bits.Bits16)
-								writer.Write((ushort)curFunction.byteCode[i]); // @TODO resolve correct address
-							break;
+							{
+								writer.Write((byte)0xE8);
+								i += 1;
+
+								int bytes;
+
+								if (curFunction.bits == Bits.Bits32)
+									bytes = 4;
+								else if (curFunction.bits == Bits.Bits16)
+									bytes = 2;
+								else
+									return AddError("???"); // @TODO?
+
+								if (urNextLabelUnresolved != -1 && i == curFunction.urLabelsUnresolved[urNextLabelUnresolved].pos)
+								{
+									curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytePos = writer.BaseStream.Position;
+									curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytes = bytes;
+									if (curFunction.urLabelsUnresolved.Count > urNextLabelUnresolved + 1)
+										urNextLabelUnresolved++;
+									else
+										urNextLabelUnresolved = -1;
+								}
+
+								if (curFunction.bits == Bits.Bits32)
+									writer.Write((uint)curFunction.byteCode[i]);
+								else if (curFunction.bits == Bits.Bits16)
+									writer.Write((ushort)curFunction.byteCode[i]);
+								break;
+							}
 						case ByteCode.Jmp:
 							writer.Write((byte)0xE9);
 							i += 1;
@@ -2275,6 +2319,19 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					if (r.Item3 == 2)
 						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
 					// else // @TODO
+				}
+
+				iMax = curFunction.urLabelsUnresolved.Count;
+				for (i = 0; i < iMax; i++)
+				{
+					var l = curFunction.urLabelsUnresolved[i];
+
+					writer.Seek((int)l.bytePos, SeekOrigin.Begin);
+					long val = l.reference.bytePos - (l.bytePos + l.bytes);
+					if (l.bytes == 2)
+						writer.Write((ushort)val);
+					else
+						return AddError("Not implemented!");
 				}
 
 				writer.Close();

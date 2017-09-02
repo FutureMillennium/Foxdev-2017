@@ -1,7 +1,10 @@
 #bits 16
 #address 0x100
 
-Mov %dx = "Hello DOS!$"
+Mov %dx = "Hello DOS!
+$"
+Call .Echo
+Mov %dx = "Hello again!$"
 Call .Echo
 Ret
 

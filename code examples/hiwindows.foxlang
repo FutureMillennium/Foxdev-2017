@@ -1,0 +1,10 @@
+#address 0x100
+
+function EntryPoint() {
+	%dx = "Hello Windows!
+$";
+	%ah = 9;
+	Int(0x21);
+	%ah = 0x4c;
+	Int(0x21);
+}

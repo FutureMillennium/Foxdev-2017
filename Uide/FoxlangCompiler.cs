@@ -13,6 +13,7 @@ namespace Uide
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess, While, Condition }
 		enum FoxlangType { Byte, Uint8, Char, Int8, Byte2, Uint16, Int16, Byte4, Address4, Index, Uint, Uint32, Pointer, Int, Int32, String }
 		enum Block { Namespace, Function }
+		enum Bits { Bits16, Bits32 }
 
 		enum ByteCode : UInt32 {
 			Al, Bl, Cl, Dl,
@@ -73,6 +74,7 @@ namespace Uide
 		class Function
 		{
 			public string symbol;
+			public Bits bits = Bits.Bits32;
 			public List<Var> arguments = new List<Var>();
 			public List<ByteCode> byteCode = new List<ByteCode>();
 			public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
@@ -1531,7 +1533,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				string token = tok.token;
 
 
-				void AddError(string message)
+				bool AddError(string message)
 				{
 					outputMessages.Add(new OutputMessage
 					{
@@ -1540,6 +1542,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						token = tok,
 						filename = filePath,
 					});
+					return false;
 				}
 
 
@@ -1558,6 +1561,31 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						symbol = token,
 					});
 					i += 1;
+				}
+				else if (token == "#bits")
+				{
+					uint bitNum;
+					if (ParseLiteral(tokens[i + 1].token, out bitNum))
+					{
+						if (bitNum == 32)
+						{
+							curFunction.bits = Bits.Bits32;
+						}
+						else if (bitNum == 16)
+						{
+							curFunction.bits = Bits.Bits16;
+						}
+						else
+						{
+							return AddError("Unsupported #bits value.");
+						}
+						i += 1;
+					}
+					else
+					{
+						AddError("Can't parse this literal."); // @TODO
+						return false;
+					}
 				}
 				else if (token == "#address")
 				{
@@ -1947,7 +1975,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				if (foundSym == null)
 					return AddError("Label not found.");
 
-				curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - r.pos);
+				curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
 			}
 
 			foreach (var r in curFunction.urVarsUnresolved)
@@ -2108,6 +2136,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 		bool BytecodeCompileToBinary(string outputFile)
 		{
 			Function curFunction = entryPoint; // @TODO non-EntryPoint function compile
+
 			List<string> sList = new List<string>();
 			long[] sPosList;
 			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>(); // posInFile, iSList, width
@@ -2180,7 +2209,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case ByteCode.Call:
 							writer.Write((byte)0xE8);
 							i += 1;
-							writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
+							if (curFunction.bits == Bits.Bits32)
+								writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
+							else if (curFunction.bits == Bits.Bits16)
+								writer.Write((ushort)curFunction.byteCode[i]); // @TODO resolve correct address
 							break;
 						case ByteCode.Jmp:
 							writer.Write((byte)0xE9);

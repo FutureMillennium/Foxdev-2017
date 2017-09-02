@@ -1,0 +1,11 @@
+#bits 16
+#address 0x100
+
+Mov %dx = "Hello DOS!$"
+Call .Echo
+Ret
+
+	.Echo:
+Mov %ah = 0x9
+Int 0x21
+Ret

@@ -27,7 +27,7 @@ namespace Uide
 			AddRMem, IncR, PopRW, PopRL,
 			MovRMemRL, MovRMemRW, MovRMemRB,
 			MovRMemImmL, MovRMemImmW, MovRMemImmB,
-			AddLMemImm, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, Int,
+			AddLMemImm, PushW, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, Int,
 
 			Mov, MovB,
 			Push,
@@ -1750,7 +1750,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								string literal;
 								if (StringLiteralTryParse(t, out literal))
 								{
-									curFunction.byteCode.Add(ByteCode.PushL);
+									if (curFunction.bits == Bits.Bits16)
+										curFunction.byteCode.Add(ByteCode.PushW);
+									else
+										curFunction.byteCode.Add(ByteCode.PushL);
 									curFunction.byteCode.Add((ByteCode)0xFEED1133);
 									curFunction.literalReferences.Add(new SymbolReference
 									{
@@ -2090,6 +2093,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case ByteCode.Jmp:
 					case ByteCode.Je:
 					case ByteCode.Jne:
+					case ByteCode.PopRW:
 					case ByteCode.PopRL:
 					case ByteCode.IncR:
 					case ByteCode.Int:
@@ -2263,11 +2267,22 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							i += 1;
 							writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
 							break;
+						case ByteCode.PushW:
+							// @TODO Now 16bit only. 32bit
+							writer.Write((byte)0x68);
+							i += 1;
+							sLitAcceptStringLiteral(i);
+							writer.Write((ushort)curFunction.byteCode[i]);
+							break;
 						case ByteCode.PushL:
 							writer.Write((byte)0x68);
 							i += 1;
 							sLitAcceptStringLiteral(i);
 							writer.Write((uint)curFunction.byteCode[i]);
+							break;
+						case ByteCode.PopRW:
+							writer.Write((byte)(0x58 + RegisterNumber(curFunction.byteCode[i + 1])));
+							i += 1;
 							break;
 						case ByteCode.MovRImmB:
 							writer.Write((byte)(0xb0 + RegisterNumber(curFunction.byteCode[i + 1])));

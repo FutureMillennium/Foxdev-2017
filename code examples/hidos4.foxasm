@@ -7,6 +7,6 @@ Ret
 
 	.Echo:
 Mov %ah = 0x9
-Pop %dx
+Pop %dx // Whoops this eats the address
 Int 0x21
 Ret

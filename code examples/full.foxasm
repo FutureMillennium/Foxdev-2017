@@ -1,0 +1,48 @@
+Mov %ebx = 0x07
+Mov %ebx = 0x1234
+Mov %ebx = 0x12345678
+
+Mov %ebx = %ecx
+
+Mov %ebx = [0x07]
+Mov %ebx = [0x1234]
+Mov %ebx = [0x12345678]
+
+Mov %ebx = [%ecx]
+Mov %ebx = [%ecx * 2]
+Mov %ebx = [%ecx * 4]
+Mov %ebx = [%ecx * 8]
+
+Mov %ebx = [%ebp]
+
+Mov %ebx = [%esp]
+
+Mov %ebx = [%ecx + 7]
+Mov %ebx = [%ecx * 2 + 7]
+Mov %ebx = [%ecx * 4 + 7]
+Mov %ebx = [%ecx * 8 + 7]
+
+Mov %ebx = [%ecx + 0x1234]
+Mov %ebx = [%ecx * 2 + 0x1234]
+Mov %ebx = [%ecx * 4 + 0x1234]
+Mov %ebx = [%ecx * 8 + 0x1234]
+
+Mov %ebx = [%ecx + 0x12345678]
+Mov %ebx = [%ecx * 2 + 0x12345678]
+Mov %ebx = [%ecx * 4 + 0x12345678]
+Mov %ebx = [%ecx * 8 + 0x12345678]
+
+Mov %ebx = [%ecx + %edx + 7]
+Mov %ebx = [%ecx * 2 + %edx + 7]
+Mov %ebx = [%ecx * 4 + %edx + 7]
+Mov %ebx = [%ecx * 8 + %edx + 7]
+
+Mov %ebx = [%ecx + %edx + 0x1234]
+Mov %ebx = [%ecx * 2 + %edx + 0x1234]
+Mov %ebx = [%ecx * 4 + %edx + 0x1234]
+Mov %ebx = [%ecx * 8 + %edx + 0x1234]
+
+Mov %ebx = [%ecx + %edx + 0x12345678]
+Mov %ebx = [%ecx * 2 + %edx + 0x12345678]
+Mov %ebx = [%ecx * 4 + %edx + 0x12345678]
+Mov %ebx = [%ecx * 8 + %edx + 0x12345678]

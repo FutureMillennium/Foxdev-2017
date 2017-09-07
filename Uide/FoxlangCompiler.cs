@@ -18,20 +18,44 @@ namespace Uide
 		enum ByteCode : UInt32 {
 			Al, Bl, Cl, Dl,
 			Ah, Bh, Ch, Dh,
-			Ax, Bx, Cx, Dx,
+			Ax, Bx, Cx, Dx, Sp, Bp, Si, Di,
 			Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi,
 
-			Cli, Hlt,
+			// Rm: mod-reg-R/M
+			// R: register
+			// S: segment register (FS, GS, CS, SS, DS, ES)
+			// Imm: immediate value
+			// B: byte, 8 bits
+			// W: word – 2 bytes, 16 bits
+			// L: long – 4 bytes, 32 bits
+			// Q: quadword – 8 bytes, 64 bits
+			Cli, Sti, Hlt,
+
+			Ret, Je, Jne, Int,
+
+			// ByteCode only:
+			CallRelW, CallRelL, CallRmW, CallRmL, CallPtrWW, CallPtrWL, CallMemWW, CallMemWL,
+			JmpRelB, JmpRelW, JmpRelL, JmpRmW, JmpRmL, JmpPtrWW, JmpPtrWL, JmpMemWW, JmpMemWL,
+			MovRmRB,
+				MovRmRW, MovRmRL,
+				MovRRmB,
+				MovRRmW, MovRRmL,
+				MovRmSW,
 			MovRImmL, MovRImmW, MovRImmB,
 			MovRRL, MovRRW, MovRRB,
 			AddRMem, IncR, PopRW, PopRL,
 			MovRMemRL, MovRMemRW, MovRMemRB,
 			MovRMemImmL, MovRMemImmW, MovRMemImmB,
-			AddLMemImm, PushW, PushL, Jmp, Call, Ret, CmpRMemImmB, CmpRImmB, Je, Jne, Int,
+			AddLMemImm,
+			PushRMW, PushRML, PushRW, PushRL, PushImmB, PushImmW, PushImmL, PushS,
+			CmpRMemImmB, CmpRImmB,
 
-			Mov, MovB,
-			Push,
-			Pop, PopW,
+			// Foxasm only:
+			Call,
+			Jmp, JmpB, JmpW, JmpL,
+			Mov, MovB, MovW, MovL,
+			Push, PushW, PushL,
+			Pop, PopW, PopL,
 			CmpB,
 			Inc,
 		}

@@ -1474,7 +1474,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 		bool RegisterTryParse(string token, out ByteCode register, out int width)
 		{
-			if (token.Length >= 3)
+			if (token.Length >= 2)
 			{
 				token = (char)(token[1] - ('a' - 'A')) + token.Substring(2);
 			}
@@ -1521,6 +1521,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 		public bool FoxasmCompile(string filePath)
 		{
+			string fileExtension = null;
+
 			List<Token> tokens = new List<Token>();
 
 			LexerParse(filePath, tokens);
@@ -1547,6 +1549,17 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						filename = filePath,
 					});
 					return false;
+				}
+
+				void AddWarning(string message)
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Warning,
+						message = message,
+						token = tok,
+						filename = filePath,
+					});
 				}
 
 
@@ -1591,6 +1604,19 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						return false;
 					}
 				}
+				else if (token == "#format")
+				{
+					Project.Format format;
+
+					if (Enum.TryParse(tokens[i + 1].token, out format))
+					{
+						AddWarning("#format isn't implemented – is always Flat. Ignoring for now.");
+						i += 1;
+					}
+					else
+						return AddError("Invalid #format.");
+
+				}
 				else if (token == "#address")
 				{
 					if (ParseLiteral(tokens[i + 1].token, out relativeAddress))
@@ -1602,6 +1628,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						AddError("Can't parse this literal.");
 						return false;
 					}
+				}
+				else if (token == "#extension")
+				{
+					if (StringLiteralTryParse(tokens[i + 1].token, out fileExtension) == false)
+						return AddError("Invalid string literal.");
+
+					i += 1;
 				}
 				else if (Enum.TryParse(token, out inByte)) {
 
@@ -2016,10 +2049,15 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				curFunction.byteCode[r.pos] = (ByteCode)(foundVar.value);
 			}
 
-			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
-			output = outputFile;
+			if (output == null)
+			{
+				if (fileExtension == null)
+					fileExtension = ".bin";
 
-			if (BytecodeCompileToBinary(outputFile) == false)
+				output = Path.ChangeExtension(filePath, fileExtension);
+			}
+
+			if (BytecodeCompileToBinary(output) == false)
 				return false; // @TODO error
 
 			return true;

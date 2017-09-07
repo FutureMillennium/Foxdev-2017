@@ -1,10 +1,32 @@
-Mov %ebx = 0x07
+Mov %bl = 0xfe
+Mov %bh = 0xfe
+//Mov %bl = 0x1234
+//Mov %bh = 0x1234
+//Mov %bl = 0x12345678
+//Mov %bh = 0x12345678
+
+Mov %bx = 0xfe
+Mov %bx = 0x1234
+//Mov %bx = 0x12345678
+
+Mov %ebx = 0xfe
 Mov %ebx = 0x1234
 Mov %ebx = 0x12345678
 
-Mov %ebx = %ecx
+Mov %bl = %cl
+Mov %bh = %ch
 
-Mov %ebx = [0x07]
+Mov %bx = %cx
+//Mov %bx = %ch
+//Mov %bx = %cl
+//Mov %bx = %ecx
+
+Mov %ebx = %ecx
+//Mov %ebx = %cx
+//Mov %ebx = %ch
+//Mov %ebx = %cl
+
+Mov %ebx = [0xfe]
 Mov %ebx = [0x1234]
 Mov %ebx = [0x12345678]
 
@@ -17,10 +39,10 @@ Mov %ebx = [%ebp]
 
 Mov %ebx = [%esp]
 
-Mov %ebx = [%ecx + 7]
-Mov %ebx = [%ecx * 2 + 7]
-Mov %ebx = [%ecx * 4 + 7]
-Mov %ebx = [%ecx * 8 + 7]
+Mov %ebx = [%ecx + 0xfe]
+Mov %ebx = [%ecx * 2 + 0xfe]
+Mov %ebx = [%ecx * 4 + 0xfe]
+Mov %ebx = [%ecx * 8 + 0xfe]
 
 Mov %ebx = [%ecx + 0x1234]
 Mov %ebx = [%ecx * 2 + 0x1234]
@@ -32,10 +54,10 @@ Mov %ebx = [%ecx * 2 + 0x12345678]
 Mov %ebx = [%ecx * 4 + 0x12345678]
 Mov %ebx = [%ecx * 8 + 0x12345678]
 
-Mov %ebx = [%ecx + %edx + 7]
-Mov %ebx = [%ecx * 2 + %edx + 7]
-Mov %ebx = [%ecx * 4 + %edx + 7]
-Mov %ebx = [%ecx * 8 + %edx + 7]
+Mov %ebx = [%ecx + %edx + 0xfe]
+Mov %ebx = [%ecx * 2 + %edx + 0xfe]
+Mov %ebx = [%ecx * 4 + %edx + 0xfe]
+Mov %ebx = [%ecx * 8 + %edx + 0xfe]
 
 Mov %ebx = [%ecx + %edx + 0x1234]
 Mov %ebx = [%ecx * 2 + %edx + 0x1234]

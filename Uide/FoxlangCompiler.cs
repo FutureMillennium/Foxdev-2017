@@ -36,18 +36,32 @@ namespace Uide
 			// ByteCode only:
 			CallRelW, CallRelL, CallRmW, CallRmL, CallPtrWW, CallPtrWL, CallMemWW, CallMemWL,
 			JmpRelB, JmpRelW, JmpRelL, JmpRmW, JmpRmL, JmpPtrWW, JmpPtrWL, JmpMemWW, JmpMemWL,
-			MovRmRB,
-				MovRmRW, MovRmRL,
-				MovRRmB,
-				MovRRmW, MovRRmL,
-				MovRmSW,
-			MovRImmL, MovRImmW, MovRImmB,
-			MovRRL, MovRRW, MovRRB,
-			AddRMem, IncR, PopRW, PopRL,
-			MovRMemRL, MovRMemRW, MovRMemRB,
-			MovRMemImmL, MovRMemImmW, MovRMemImmB,
+			MovRmRB, //88
+				MovRmRW, MovRmRL, //89
+				MovRRmB, //8A
+				MovRRmW, MovRRmL, //8B
+				MovRmSW, MovSRmW, //8C //8E
+				// @TODO: A0, A1, A2, A3
+				MovRImmB, //B0–B7 B0+ rb
+				MovRImmW, MovRImmL, //B8–BF B8+ rw B8+ rd
+				MovRmImmB, //C6 /0
+				MovRmImmW, MovRmImmL, //C7 /0
+			// @TODO 0F 21/r, 0F 23 /r, 0F 22 /r, 0F 20 /r
+			
+			MovRRL, MovRRW, MovRRB, // @TODO delete
+			AddRMem,
+			IncR,
+			PopRW, PopRL,
+			MovRMemRL, MovRMemRW, MovRMemRB, // @TODO delete
+			MovRMemImmL, MovRMemImmW, MovRMemImmB, // @TODO delete
 			AddLMemImm,
-			PushRMW, PushRML, PushRW, PushRL, PushImmB, PushImmW, PushImmL, PushS,
+			PushRmW, PushRML, //FF /6
+				PushRW, PushRL, //50+rw	//50+rd
+				PushImmB, //6A
+				PushImmW, PushImmL, //68
+				PushS, //0E //16 //1E //06 //0F A0 //0F A8
+			PushA, PushAD, //60
+			PushF, PushFD, //9C
 			CmpRMemImmB, CmpRImmB,
 
 			// Foxasm only:

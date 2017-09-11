@@ -1388,6 +1388,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						untilLine += 1;
 						goto default;
 
+					case ByteCode.PushW:
 					case ByteCode.PushL:
 					case ByteCode.Call:
 					case ByteCode.Jmp:

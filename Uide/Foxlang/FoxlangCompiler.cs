@@ -1383,6 +1383,11 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 				switch (b)
 				{
+					case ByteCode.RRMemOffset1:
+					case ByteCode.RRMemOffset4:
+						untilLine += 1;
+						goto default;
+
 					case ByteCode.PushL:
 					case ByteCode.Call:
 					case ByteCode.Jmp:
@@ -1403,8 +1408,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case ByteCode.CmpRMemImmB:
 						untilLine = 2;
 						goto default;
+					case ByteCode.MovRRmB:
+					case ByteCode.MovRRmW:
+					case ByteCode.MovRRmL:
+						untilLine = 3;
+						goto default;
 					case (ByteCode)0xFEED11E1: // label
-						//sb.AppendLine(b.ToString("x"));
+											   //sb.AppendLine(b.ToString("x"));
 						sb.Append(f.urLabelsUnresolved[iURLabels].symbol);
 						iURLabels++;
 						break;

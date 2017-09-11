@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Uide
 {
-	class FoxlangCompiler
+	partial class FoxlangCompiler
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 		enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess, While, Condition }
@@ -47,6 +47,9 @@ namespace Uide
 				MovRmImmB, //C6 /0
 				MovRmImmW, MovRmImmL, //C7 /0
 			// @TODO 0F 21/r, 0F 23 /r, 0F 22 /r, 0F 20 /r
+
+			// mod (reg r/m):
+				RRMem, RRMemOffset1, RRMemOffset4, RToR, RMemImm, // 00 xxx 100
 			
 			MovRRL, MovRRW, MovRRB, // @TODO delete
 			AddRMem,
@@ -2106,7 +2109,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			switch(register)
 			{
 				case ByteCode.Al:
-				
 				case ByteCode.Ax:
 				case ByteCode.Eax:
 					return 0;
@@ -2122,19 +2124,19 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case ByteCode.Bx:
 				case ByteCode.Ebx:
 					return 3;
-				//case ByteCode.Sp:
+				case ByteCode.Sp:
 				case ByteCode.Esp:
 				case ByteCode.Ah:
 					return 4;
-				//case ByteCode.Bp:
+				case ByteCode.Bp:
 				case ByteCode.Ebp:
 				case ByteCode.Ch:
 					return 5;
-				//case ByteCode.Si:
+				case ByteCode.Si:
 				case ByteCode.Esi:
 				case ByteCode.Dh:
 					return 6;
-				//case ByteCode.Di:
+				case ByteCode.Di:
 				case ByteCode.Edi:
 				case ByteCode.Bh:
 					return 6;

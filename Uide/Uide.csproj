@@ -70,6 +70,7 @@
     <Compile Include="ELFheader.cs" />
     <Compile Include="EntryPoint.cs" />
     <Compile Include="FoxlangCompiler.cs" />
+    <Compile Include="FoxlangCompiler.FoxBCCompileFile.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

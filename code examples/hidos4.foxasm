@@ -6,9 +6,11 @@ Call .Echo
 Ret
 
 	.Echo:
+Push %bp
+Mov %bp = %sp
+
 Mov %ah = 0x9
-Pop %bx
-Pop %dx // Whoops this eats the address
+Mov %dx = [%bp + 4]
 Int 0x21
-Push %bx
-Ret
+Pop %bp
+Ret 2

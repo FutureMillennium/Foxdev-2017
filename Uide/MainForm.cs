@@ -194,7 +194,7 @@ namespace Uide
 				MainForm_Resize(null, null);
 				scrollBarV.Value = 0;
 
-				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj"))
+				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc"))
 				{
 					compileButton.Visible = true;
 
@@ -501,6 +501,8 @@ Mp */
 
 			if (filePath.EndsWith(".foxasm"))
 				success = compiler.FoxasmCompile(filePath);
+			else if (filePath.EndsWith(".foxbc"))
+				success = compiler.FoxBCCompileFile(filePath);
 			else
 				success = compiler.CompileProject(filePath);
 

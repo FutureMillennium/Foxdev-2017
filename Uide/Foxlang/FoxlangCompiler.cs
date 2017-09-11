@@ -508,9 +508,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										string nToken = MakeNamespace(token);
 										if (FindVar(token, out foundVar, curFunction.arguments))
 										{
+											return AddError("Not implemented."); // @TODO
 											curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
 											curFunction.byteCode.Add(ByteCode.Ebx);
-											curFunction.byteCode.Add(ByteCode.MovRMemRB);
+											//curFunction.byteCode.Add(ByteCode.MovRMemRB);
 											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add(ByteCode.Ebx);
 										}
@@ -527,7 +528,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										}
 										else if (FindVar(nToken, out foundVar, consts))
 										{
-											curFunction.byteCode.Add(ByteCode.MovRMemImmB);
+											return AddError("Not implemented."); // @TODO
+											//curFunction.byteCode.Add(ByteCode.MovRMemImmB);
 											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)foundVar.value);
 										}
@@ -706,7 +708,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 										if (StringLiteralTryParse(t, out literal))
 										{
-											curFunction.byteCode.Add((ByteCode)0xFEED1133);
+											curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
 											curFunction.literalReferences.Add(new SymbolReference
 											{
 												pos = curFunction.byteCode.Count - 1,
@@ -842,7 +844,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										{
 											string literal = arg1.Substring(1, arg1.Length - 2);
 											curFunction.byteCode.Add(ByteCode.PushL);
-											curFunction.byteCode.Add((ByteCode)0xFEED1133);
+											curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
 											curFunction.literalReferences.Add(new SymbolReference
 											{
 												pos = curFunction.byteCode.Count - 1,
@@ -1403,9 +1405,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case ByteCode.MovRImmL:
 					case ByteCode.MovRImmW:
 					case ByteCode.MovRImmB:
-					case ByteCode.MovRMemImmL:
-					case ByteCode.MovRMemImmW:
-					case ByteCode.MovRMemImmB:
 					case ByteCode.CmpRMemImmB:
 						untilLine = 2;
 						goto default;
@@ -1414,16 +1413,16 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case ByteCode.MovRRmL:
 						untilLine = 3;
 						goto default;
-					case (ByteCode)0xFEED11E1: // label
+					case ByteCode.LabelFeedMe:
 											   //sb.AppendLine(b.ToString("x"));
 						sb.Append(f.urLabelsUnresolved[iURLabels].symbol);
 						iURLabels++;
 						break;
-					case (ByteCode)0xFEED1133: // literal
+					case ByteCode.StringLiteralFeedMe:
 						sb.Append("\"" + f.literalReferences[iLit].symbol + "\"");
 						iLit++;
 						break;
-					case (ByteCode)0xFEED11E5: // .data var
+					case ByteCode.VarFeedMe:
 						sb.Append(f.urVarsUnresolved[iURVars].symbol);
 						iURVars++;
 						//sb.AppendLine(b.ToString("x"));

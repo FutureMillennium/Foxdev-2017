@@ -42,13 +42,10 @@ namespace Foxlang
 
 		// mod (reg r/m):
 		RRMem, RRMemOffset1, RRMemOffset4, RToR, RMemImm, // 00 xxx 100
-
-		MovRRL, MovRRW, MovRRB, // @TODO delete
+		
 		AddRMem,
 		IncR,
 		PopRW, PopRL,
-		MovRMemRL, MovRMemRW, MovRMemRB, // @TODO delete
-		MovRMemImmL, MovRMemImmW, MovRMemImmB, // @TODO delete
 		AddLMemImm,
 		PushRmW, PushRML, //FF /6
 		PushRW, PushRL, //50+rw	//50+rd
@@ -67,5 +64,10 @@ namespace Foxlang
 		Pop, PopW, PopL,
 		CmpB,
 		Inc,
+
+		// placeholders only:
+		StringLiteralFeedMe = 0xFEED1133,
+		LabelFeedMe = 0xFEED11E1,
+		VarFeedMe = 0xFEED11E5,
 	}
 }

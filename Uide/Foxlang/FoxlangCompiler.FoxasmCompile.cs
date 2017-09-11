@@ -154,7 +154,8 @@ namespace Foxlang
 							{
 								ByteCode left, right;
 								bool isLeftMem = false,
-									isRightR = false;
+									isRightR = false,
+									isRightMem = false;
 								int width, rWidth;
 
 								string t = tokens[i + 1].token;
@@ -182,23 +183,37 @@ namespace Foxlang
 								UInt32 ii;
 								string literal;
 
-								if (StringLiteralTryParse(tokens[i + 3].token, out literal))
+								if (tokens[i + 3].token == "[" && tokens[i + 5].token == "]")
 								{
-									right = (ByteCode)0xFEED1133;
+									isRightMem = true;
+
+									if (RegisterTryParse(tokens[i + 4].token, out right, out rWidth) == false)
+										return AddError("Invalid register.");
+
+									i += 5;
+								}
+								else if (StringLiteralTryParse(tokens[i + 3].token, out literal))
+								{
+									right = ByteCode.StringLiteralFeedMe;
 									curFunction.literalReferences.Add(new SymbolReference
 									{
 										pos = curFunction.byteCode.Count + 2,
 										symbol = literal,
 									});
+
+									i += 3;
 								}
 								else if (RegisterTryParse(tokens[i + 3].token, out right, out rWidth))
 								{
 									isRightR = true;
+
+									i += 3;
 								}
 								else if (ParseLiteral(tokens[i + 3].token, out ii))
 								{
-
 									right = (ByteCode)ii;
+
+									i += 3;
 								}
 								else
 								{
@@ -206,7 +221,7 @@ namespace Foxlang
 									tok = tokens[i + 3];
 									token = tok.token;
 
-									right = (ByteCode)0xFEED11E5;
+									right = ByteCode.VarFeedMe;
 
 									curFunction.urVarsUnresolved.Add(new UnresolvedReference
 									{
@@ -215,29 +230,35 @@ namespace Foxlang
 										token = tok,
 										filename = filePath,
 									});
-								}
 
-								i += 3;
+									i += 3;
+								}
 
 								if (isLeftMem)
 								{
+									
+
 									if (isRightR)
 									{
 										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRMemRL);
+											curFunction.byteCode.Add(ByteCode.MovRmRB);
 										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRMemRW);
+											curFunction.byteCode.Add(ByteCode.MovRmRW);
 										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRMemRB);
+											curFunction.byteCode.Add(ByteCode.MovRmRB);
+
+										curFunction.byteCode.Add(ByteCode.RRMem);
 									}
 									else
 									{
 										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRMemImmL);
+											curFunction.byteCode.Add(ByteCode.MovRmImmL);
 										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRMemImmW);
+											curFunction.byteCode.Add(ByteCode.MovRmImmW);
 										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRMemImmB);
+											curFunction.byteCode.Add(ByteCode.MovRmImmB);
+
+										curFunction.byteCode.Add(ByteCode.RRMem);
 									}
 								}
 								else
@@ -245,11 +266,13 @@ namespace Foxlang
 									if (isRightR)
 									{
 										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRRL);
+											curFunction.byteCode.Add(ByteCode.MovRmRL);
 										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRRW);
+											curFunction.byteCode.Add(ByteCode.MovRmRW);
 										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRRB);
+											curFunction.byteCode.Add(ByteCode.MovRmRB);
+
+										curFunction.byteCode.Add(ByteCode.RToR);
 									}
 									else
 									{
@@ -277,7 +300,7 @@ namespace Foxlang
 										curFunction.byteCode.Add(ByteCode.PushW);
 									else
 										curFunction.byteCode.Add(ByteCode.PushL);
-									curFunction.byteCode.Add((ByteCode)0xFEED1133);
+									curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
 									curFunction.literalReferences.Add(new SymbolReference
 									{
 										pos = curFunction.byteCode.Count - 1,
@@ -294,7 +317,7 @@ namespace Foxlang
 							}
 						case ByteCode.Call:
 							curFunction.byteCode.Add(ByteCode.Call);
-							curFunction.byteCode.Add((ByteCode)0xFEED11E1);
+							curFunction.byteCode.Add(ByteCode.LabelFeedMe);
 
 							curFunction.urLabelsUnresolved.Add(new UnresolvedReference
 							{
@@ -389,7 +412,7 @@ namespace Foxlang
 						case ByteCode.Jne:
 							{
 								curFunction.byteCode.Add(inByte);
-								curFunction.byteCode.Add((ByteCode)0xFEED11E1);
+								curFunction.byteCode.Add(ByteCode.LabelFeedMe);
 
 								token = tokens[i + 1].token;
 

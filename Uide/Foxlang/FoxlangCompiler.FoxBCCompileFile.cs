@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Uide
+namespace Foxlang
 {
 	partial class FoxlangCompiler
 	{
@@ -60,7 +60,7 @@ namespace Uide
 			if (output == null)
 			{
 				if (fileExtension == null)
-					fileExtension = ".bin";
+					fileExtension = ".bin"; // @TODO cleanup
 
 				output = Path.ChangeExtension(filePath, fileExtension);
 			}

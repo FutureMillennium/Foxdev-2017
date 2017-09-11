@@ -66,11 +66,15 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Foxlang\ByteCode.cs" />
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />
     <Compile Include="EntryPoint.cs" />
-    <Compile Include="FoxlangCompiler.cs" />
-    <Compile Include="FoxlangCompiler.FoxBCCompileFile.cs" />
+    <Compile Include="Foxlang\FoxlangCompiler.BytecodeCompileToBinary.cs" />
+    <Compile Include="Foxlang\FoxlangCompiler.cs" />
+    <Compile Include="Foxlang\FoxlangCompiler.FoxasmCompile.cs" />
+    <Compile Include="Foxlang\FoxlangCompiler.FoxBCCompileFile.cs" />
+    <Compile Include="Foxlang\FoxlangCompiler.LexerParse.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

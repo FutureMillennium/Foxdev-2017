@@ -2384,6 +2384,46 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							writer.Write((uint)curFunction.byteCode[i + 2]); //d
 							i += 2;
 							break;
+						case ByteCode.MovRRmL:
+							writer.Write((byte)0x8b);
+
+							switch (curFunction.byteCode[i + 1])
+							{
+								case ByteCode.RRMemOffset1:
+								{
+									byte modRegRm = 0b01_000_000;
+
+									modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]) << 3);
+
+									modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 3]));
+
+									writer.Write((byte)modRegRm);
+
+									writer.Write((byte)curFunction.byteCode[i + 4]);
+
+									i += 4;
+									break;
+								}
+								case ByteCode.RToR:
+								{
+									byte modRegRm = 0b11_000_000;
+
+									modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]) << 3);
+
+									modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 3]));
+
+									writer.Write((byte)modRegRm);
+									
+									i += 3;
+
+									break;
+								}
+									// @TODO
+								default:
+									return AddError("Invalid mod or not implemented.");
+							}
+
+							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");
 					}

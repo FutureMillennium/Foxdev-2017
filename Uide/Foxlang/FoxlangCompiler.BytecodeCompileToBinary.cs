@@ -56,7 +56,20 @@ namespace Foxlang
 					if (di == iStringLiteral)
 					{
 						sList.Add(curFunction.literalReferences[iLit].symbol); // @TODO duplicate literals
-						sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, 2)); // @TODO length/width
+
+						int width;
+
+						if (curFunction.bits == Bits.Bits32)
+							width = 4;
+						else if (curFunction.bits == Bits.Bits16)
+							width = 2;
+						else
+						{
+							width = 0;
+							AddError("???");
+						}
+
+						sRefList.Add(new Tuple<long, int, int>(writer.BaseStream.Position, sList.Count - 1, width)); // @TODO length/width
 						iLit++;
 
 						iiStringLiteral++;
@@ -64,6 +77,19 @@ namespace Foxlang
 						{
 							iStringLiteral = curFunction.literalReferences[iiStringLiteral].pos;
 						}
+					}
+				}
+
+				void UnresolvedLabelAccept(int bytes)
+				{
+					if (urNextLabelUnresolved != -1 && i == curFunction.urLabelsUnresolved[urNextLabelUnresolved].pos)
+					{
+						curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytePos = writer.BaseStream.Position;
+						curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytes = bytes;
+						if (curFunction.urLabelsUnresolved.Count > urNextLabelUnresolved + 1)
+							urNextLabelUnresolved++;
+						else
+							urNextLabelUnresolved = -1;
 					}
 				}
 
@@ -111,15 +137,7 @@ namespace Foxlang
 								else
 									return AddError("???"); // @TODO?
 
-								if (urNextLabelUnresolved != -1 && i == curFunction.urLabelsUnresolved[urNextLabelUnresolved].pos)
-								{
-									curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytePos = writer.BaseStream.Position;
-									curFunction.urLabelsUnresolved[urNextLabelUnresolved].bytes = bytes;
-									if (curFunction.urLabelsUnresolved.Count > urNextLabelUnresolved + 1)
-										urNextLabelUnresolved++;
-									else
-										urNextLabelUnresolved = -1;
-								}
+								UnresolvedLabelAccept(bytes);
 
 								if (curFunction.bits == Bits.Bits32)
 									writer.Write((uint)curFunction.byteCode[i]);
@@ -127,10 +145,21 @@ namespace Foxlang
 									writer.Write((ushort)curFunction.byteCode[i]);
 								break;
 							}
-						case ByteCode.Jmp:
+						case ByteCode.Jne: // @TODO add size/width!
+							writer.Write((byte)0x75);
+							i += 1;
+
+							UnresolvedLabelAccept(1); // @TODO size/width!
+
+							writer.Write((byte)curFunction.byteCode[i]);
+							break;
+						case ByteCode.Jmp: // @TODO size/width!
 							writer.Write((byte)0xE9);
 							i += 1;
-							writer.Write((uint)curFunction.byteCode[i]); // @TODO resolve correct address
+
+							UnresolvedLabelAccept(4); // @TODO size/width!
+
+							writer.Write((uint)curFunction.byteCode[i]);
 							break;
 						case ByteCode.PushW:
 							// @TODO Now 16bit only. 32bit
@@ -171,8 +200,14 @@ namespace Foxlang
 							writer.Write((uint)curFunction.byteCode[i + 2]); //d
 							i += 2;
 							break;
+						case ByteCode.MovRmRB:
+							writer.Write((byte)0x88);
+							goto MovCommon;
 						case ByteCode.MovRmRL:
 							writer.Write((byte)0x89);
+							goto MovCommon;
+						case ByteCode.MovRRmB:
+							writer.Write((byte)0x8A);
 							goto MovCommon;
 						case ByteCode.MovRRmL:
 							writer.Write((byte)0x8b);
@@ -180,6 +215,19 @@ namespace Foxlang
 
 							switch (curFunction.byteCode[i + 1])
 							{
+								case ByteCode.RRMem:
+									{
+										byte modRegRm = 0b00_000_000;
+
+										modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]) << 3);
+
+										modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 3]));
+
+										writer.Write((byte)modRegRm);
+										
+										i += 3;
+										break;
+									}
 								case ByteCode.RRMemOffset1:
 									{
 										byte modRegRm = 0b01_000_000;
@@ -213,7 +261,54 @@ namespace Foxlang
 								default:
 									return AddError("Invalid mod or not implemented.");
 							}
+							break;
+						case ByteCode.MovRmImmB:
+							{
+								writer.Write((byte)0xc6);
 
+								switch (curFunction.byteCode[i + 1])
+								{
+									case ByteCode.RRMem:
+										{
+											byte modRegRm = 0b00_000_000;
+											modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]));
+											writer.Write((byte)modRegRm);
+
+											writer.Write((byte)curFunction.byteCode[i + 3]);
+
+											i += 3;
+										}
+										break;
+									default:
+										return AddError("Invalid mod or not implemented. (" + b.ToString() + ")");
+								}
+							}
+							break;
+						case ByteCode.IncR:
+							writer.Write((byte)(0x40 + RegisterNumber(curFunction.byteCode[i + 1])));
+							i += 1;
+							break;
+						case ByteCode.CmpRImmB:
+							{
+								writer.Write((byte)0x80);
+
+								/*switch (curFunction.byteCode[i + 1]) // @TODO
+								{
+									case ByteCode.RRMem:
+										{*/
+											byte modRegRm = 0b11_111_000;
+											modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 1]));
+											writer.Write((byte)modRegRm);
+
+											writer.Write((byte)curFunction.byteCode[i + 2]);
+
+											i += 2;
+										/*}
+										break;
+									default:
+										return AddError("Invalid mod or not implemented. (" + b.ToString() + ")");
+								}*/
+							}
 							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");
@@ -240,8 +335,12 @@ namespace Foxlang
 					var r = sRefList[i];
 
 					writer.Seek((int)r.Item1, SeekOrigin.Begin);
-					if (r.Item3 == 2)
+					if (r.Item3 == 4)
+						writer.Write((uint)(sPosList[r.Item2] + relativeAddress));
+					else if (r.Item3 == 2)
 						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
+					else
+						return AddError("Not implemented!");
 					// else // @TODO
 				}
 
@@ -252,8 +351,12 @@ namespace Foxlang
 
 					writer.Seek((int)l.bytePos, SeekOrigin.Begin);
 					long val = l.reference.bytePos - (l.bytePos + l.bytes);
-					if (l.bytes == 2)
+					if (l.bytes == 1)
+						writer.Write((byte)val);
+					else if (l.bytes == 2)
 						writer.Write((ushort)val);
+					else if (l.bytes == 4)
+						writer.Write((uint)val);
 					else
 						return AddError("Not implemented!");
 				}

@@ -99,6 +99,7 @@ namespace Foxlang
 						case ByteCode.MovRRmL:
 							untilLine = 3;
 							goto default;
+						case ByteCode.MovRmImmB:
 						case ByteCode.MovRmImmL:
 							stack.Push(BytecodeType.Literal);
 							stack.Push(BytecodeType.Bytecode);

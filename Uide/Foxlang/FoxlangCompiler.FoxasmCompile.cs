@@ -6,6 +6,16 @@ namespace Foxlang
 {
 	partial class FoxlangCompiler
 	{
+		class MovSide
+		{
+			internal enum SideType { Invalid, Register, MemoryAccess, ImmediateValue, StringLiteral, VariableReference }
+
+			internal int width = 0;
+			internal SideType type = SideType.Invalid;
+			internal ByteCode byteCode;
+			internal string stringValue;
+		}
+
 		public bool FoxasmCompile(string filePath)
 		{
 			string fileExtension = null;
@@ -47,6 +57,54 @@ namespace Foxlang
 						token = tok,
 						filename = filePath,
 					});
+				}
+
+				bool ParseSide(out MovSide side)
+				{
+					side = new MovSide();
+
+					if (tokens[i].token == "[")
+					{
+						i++;
+						side.type = MovSide.SideType.MemoryAccess;
+					}
+					else if (StringLiteralTryParse(tokens[i].token, out side.stringValue))
+					{
+						side.byteCode = ByteCode.StringLiteralFeedMe;
+						side.type = MovSide.SideType.StringLiteral;
+						return true;
+					}
+
+					uint immediate;
+
+					if (RegisterTryParse(tokens[i].token, out side.byteCode, out side.width))
+					{
+						if (side.type == MovSide.SideType.Invalid)
+							side.type = MovSide.SideType.Register;
+					}
+					else if (ParseLiteral(tokens[i].token, out immediate))
+					{
+						side.byteCode = (ByteCode)immediate;
+						if (side.type == MovSide.SideType.Invalid)
+							side.type = MovSide.SideType.ImmediateValue;
+					}
+					else
+					{
+						side.stringValue = tokens[i].token;
+						if (side.type == MovSide.SideType.Invalid)
+							side.type = MovSide.SideType.VariableReference;
+					}
+
+					if (side.type == MovSide.SideType.MemoryAccess)
+					{
+						i++;
+						if (tokens[i].token != "]")
+						{
+							return false;
+						}
+					}
+
+					return true;
 				}
 
 
@@ -125,6 +183,7 @@ namespace Foxlang
 				}
 				else if (Enum.TryParse(token, out inByte))
 				{
+					int width = 0;
 
 					switch (inByte)
 					{
@@ -150,104 +209,80 @@ namespace Foxlang
 								break;
 							}
 						case ByteCode.MovB:
+							width = 1;
+							goto MovCommon;
+
 						case ByteCode.Mov:
+							width = 0;
+							goto MovCommon;
+
+						MovCommon:
 							{
-								ByteCode left, right;
-								bool isLeftMem = false,
-									isRightR = false,
-									isRightMem = false;
-								int width, rWidth;
+								MovSide left, right;
 
-								string t = tokens[i + 1].token;
-								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]") // @TODO
+								i++;
+								if (ParseSide(out left) == false)
+									return AddError("Can't parse left side."); // @TODO better errors?
+
+								if (left.type == MovSide.SideType.StringLiteral)
+									return AddError("Can't Mov to string literal.");
+								// @TODO variable references on left side
+
+
+								i++;
+								if (tokens[i].token != "=" && tokens[i].token != ",")
+									return AddError("Mov foo = bar."); // @TODO better errors?
+
+
+								i++;
+								if (ParseSide(out right) == false)
+									return AddError("Can't parse right side."); // @TODO better errors?
+
+								if (left.type == MovSide.SideType.MemoryAccess && right.type == MovSide.SideType.MemoryAccess)
+									return AddError("Can't access memory on both sides.");
+
+								if (right.type == MovSide.SideType.StringLiteral)
 								{
-									t = tokens[i + 2].token;
-									isLeftMem = true;
-
-									i += 2;
-								}
-
-								if (RegisterTryParse(t, out left, out width) == false)
-								{
-									AddError("Unknown register.");
-									return false;
-								}
-
-								if (tokens[i + 2].token != "=")
-								{
-									AddError("Mov foo = bar."); // @TODO
-									return false;
-								}
-
-
-								UInt32 ii;
-								string literal;
-
-								if (tokens[i + 3].token == "[" && tokens[i + 5].token == "]")
-								{
-									isRightMem = true;
-
-									if (RegisterTryParse(tokens[i + 4].token, out right, out rWidth) == false)
-										return AddError("Invalid register.");
-
-									i += 5;
-								}
-								else if (StringLiteralTryParse(tokens[i + 3].token, out literal))
-								{
-									right = ByteCode.StringLiteralFeedMe;
 									curFunction.literalReferences.Add(new SymbolReference
 									{
-										pos = curFunction.byteCode.Count + 2,
-										symbol = literal,
+										pos = curFunction.byteCode.Count + 2, // @TODO Might not be true?
+										symbol = right.stringValue,
 									});
-
-									i += 3;
 								}
-								else if (RegisterTryParse(tokens[i + 3].token, out right, out rWidth))
+								else if (right.stringValue != null)
 								{
-									isRightR = true;
-
-									i += 3;
-								}
-								else if (ParseLiteral(tokens[i + 3].token, out ii))
-								{
-									right = (ByteCode)ii;
-
-									i += 3;
-								}
-								else
-								{
-
-									tok = tokens[i + 3];
-									token = tok.token;
-
-									right = ByteCode.VarFeedMe;
-
 									curFunction.urVarsUnresolved.Add(new UnresolvedReference
 									{
-										symbol = token,
-										pos = curFunction.byteCode.Count + 2,
+										symbol = right.stringValue,
+										pos = curFunction.byteCode.Count + 2, // @TODO Might not be true?
 										token = tok,
 										filename = filePath,
 									});
-
-									i += 3;
 								}
-
-								if (isLeftMem)
+								
+								
+								if (left.type == MovSide.SideType.MemoryAccess)
 								{
-									
-
-									if (isRightR)
+									if (right.type == MovSide.SideType.Register)
 									{
+										if (width == 0)
+											width = right.width;
+
 										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRmRB);
+											curFunction.byteCode.Add(ByteCode.MovRmRL);
 										else if (width == 2)
 											curFunction.byteCode.Add(ByteCode.MovRmRW);
 										else if (width == 1)
 											curFunction.byteCode.Add(ByteCode.MovRmRB);
+										else
+											return AddError("No register size detected. This shouldn't happen! (#1)");
 
 										curFunction.byteCode.Add(ByteCode.RRMem);
+
+										// swap sides:
+										MovSide temp = left;
+										left = right;
+										right = temp;
 									}
 									else
 									{
@@ -257,20 +292,64 @@ namespace Foxlang
 											curFunction.byteCode.Add(ByteCode.MovRmImmW);
 										else if (width == 1)
 											curFunction.byteCode.Add(ByteCode.MovRmImmB);
+										else
+											return AddError("Indeterminant operand size on right side."); // @TODO better error message
+
+										curFunction.byteCode.Add(ByteCode.RRMem);
+									}
+								}
+								else if (right.type == MovSide.SideType.MemoryAccess)
+								{
+									if (left.type == MovSide.SideType.Register)
+									{
+										if (width == 0)
+											width = left.width;
+
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRRmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRRmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRRmB);
+										else
+											return AddError("No register size detected. This shouldn't happen! (#2)"); // @TODO cleanup numbers
+
+										curFunction.byteCode.Add(ByteCode.RRMem);
+									}
+									else
+									{
+										return AddError("Not implemented.");
+										// @TODO This is probably wrong!
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRmImmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRmImmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRmImmB);
+										else
+											return AddError("Indeterminant operand size on left side. (#1)"); // @TODO better error message
 
 										curFunction.byteCode.Add(ByteCode.RRMem);
 									}
 								}
 								else
 								{
-									if (isRightR)
+									if (width == 0)
+										width = left.width;
+
+									if (right.type == MovSide.SideType.Register)
 									{
+										if (width != right.width)
+											return AddError("Operand size doesn't match.");
+
 										if (width == 4)
 											curFunction.byteCode.Add(ByteCode.MovRmRL);
 										else if (width == 2)
 											curFunction.byteCode.Add(ByteCode.MovRmRW);
 										else if (width == 1)
 											curFunction.byteCode.Add(ByteCode.MovRmRB);
+										else
+											return AddError("No register size detected. This shouldn't happen! (#3)"); // @TODO cleanup numbers
 
 										curFunction.byteCode.Add(ByteCode.RToR);
 									}
@@ -282,10 +361,12 @@ namespace Foxlang
 											curFunction.byteCode.Add(ByteCode.MovRImmW);
 										else if (width == 1)
 											curFunction.byteCode.Add(ByteCode.MovRImmB);
+										else
+											return AddError("Indeterminant operand size on left side. (#2)"); // @TODO better error message
 									}
 								}
-								curFunction.byteCode.Add(left);
-								curFunction.byteCode.Add(right);
+								curFunction.byteCode.Add(left.byteCode);
+								curFunction.byteCode.Add(right.byteCode);
 
 
 								break;
@@ -333,7 +414,7 @@ namespace Foxlang
 						case ByteCode.Pop:
 							{
 								ByteCode left;
-								int width = 4;
+								width = 4;
 
 								if (inByte == ByteCode.PopW)
 									width = 2;
@@ -359,7 +440,6 @@ namespace Foxlang
 							{
 								bool isLeftMem = false;
 								ByteCode left;
-								int width;
 
 								string t;
 								if (tokens[i + 1].token == "[" && tokens[i + 3].token == "]")
@@ -430,7 +510,6 @@ namespace Foxlang
 						case ByteCode.Inc:
 							{
 								ByteCode left;
-								int width;
 								string t = tokens[i + 1].token;
 
 								if (RegisterTryParse(t, out left, out width) == false)

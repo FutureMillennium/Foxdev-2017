@@ -32,6 +32,8 @@ namespace Uide
 		{
 			InitializeComponent();
 
+			this.Text = PRODUCT_NAME;
+
 			MainForm_Resize(null, null);
 
 			if (args.Length > 0)

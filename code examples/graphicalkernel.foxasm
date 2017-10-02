@@ -1,0 +1,51 @@
+#format Flat
+#extension '.bin'
+#address 1M
+
+.MultibootHeader:
+	#Put4 MULTIBOOT_MAGIC
+	#Put4 MULTIBOOT_FLAGS
+	#Put4 MULTIBOOT_CHECKSUM
+	#Put4 0x100000
+	#Put4 0x100000
+	#Put4 0
+	#Put4 0
+	#Put4 0x100030
+	
+	#Put4 0
+	#Put4 1280
+	#Put4 720
+	#Put4 8
+
+.Start:
+	Cli
+
+	Mov %ecx = "This isn't a graphical mode?!"
+	Mov %eax = SCREEN_BUFFER
+	
+	MovB %bl = [%ecx]
+.Loop:
+	MovB [%eax] = %bl
+	Inc %eax
+	
+	MovB [%eax] = 0x87
+	Inc %eax
+
+	Inc %ecx
+
+	MovB %bl = [%ecx]
+	CmpB %bl, 0
+	Jne .Loop
+
+.Hang:
+	Cli
+	Hlt
+	Jmp .Hang
+
+
+.data:
+	MULTIBOOT_MAGIC = 0x1BADB002
+	MULTIBOOT_FLAGS = 0x10006
+	MULTIBOOT_CHECKSUM = 0xE4514FF8
+	
+	SCREEN_BUFFER = 0xB8000

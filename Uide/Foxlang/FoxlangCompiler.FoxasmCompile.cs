@@ -193,7 +193,7 @@ namespace Foxlang
 
 					if (Enum.TryParse(tokens[i + 1].token, out format))
 					{
-						AddWarning("#format isn't implemented – is always Flat. Ignoring for now.");
+						//AddWarning("#format isn't implemented – is always Flat. Ignoring for now."); // @TODO
 						i += 1;
 					}
 					else

@@ -129,6 +129,7 @@ namespace Foxlang
 								case '[':
 								case ']':
 								case ':':
+								case ',':
 									AddImmediately:
 									addImmediately = true;
 									BreakingSymbol:

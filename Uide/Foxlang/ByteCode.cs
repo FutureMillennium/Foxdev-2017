@@ -41,8 +41,22 @@ namespace Foxlang
 							  // @TODO 0F 21/r, 0F 23 /r, 0F 22 /r, 0F 20 /r
 
 		// mod (reg r/m):
-		RRMem, RRMemOffset1, RRMemOffset4, RToR, RMemImm, // 00 xxx 100
-		
+		RRMem, // 00 xxx xxx
+		RRMemOffset1, // 01 xxx xxx
+		RRMemOffset4, // 10 xxx xxx
+		RToR, // 11 xxx xxx
+
+		RMemImm, // 00 xxx 101 – Displacement-Only Mode
+
+		SIB, // 00 xxx 100 – SIB Mode
+		SIBPlus1, // 01 xxx 100 – SIB + disp8 Mode
+		SIBPlus4, // 10 xxx 100 – SIB + disp32 Mode
+
+		// SIB (Scaled Index Byte):
+		ZeroEiz, // xx 100 xxx
+		DisplacementOnlyIndex, // 00 xxx xxx  xx xxx 101
+
+
 		AddRMem,
 		IncR,
 		PopRW, PopRL,

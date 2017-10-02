@@ -171,8 +171,12 @@ namespace Foxlang
 							writer.Write((uint)curFunction.byteCode[i + 2]); //d
 							i += 2;
 							break;
+						case ByteCode.MovRmRL:
+							writer.Write((byte)0x89);
+							goto MovCommon;
 						case ByteCode.MovRRmL:
 							writer.Write((byte)0x8b);
+						MovCommon:
 
 							switch (curFunction.byteCode[i + 1])
 							{

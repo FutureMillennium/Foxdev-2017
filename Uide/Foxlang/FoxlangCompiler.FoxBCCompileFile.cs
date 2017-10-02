@@ -44,9 +44,9 @@ namespace Foxlang
 				}
 				else
 				{
-					Int32 ii;
+					UInt32 ii;
 
-					if (Int32.TryParse(token, out ii))
+					if (ParseLiteral(token, out ii))
 					{
 						curFunction.byteCode.Add((ByteCode)ii);
 					}

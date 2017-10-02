@@ -1,2 +1,5 @@
 MovRRmL RToR Ebp Esp
 MovRRmL RRMemOffset1 Edx Ebp 4
+
+MovRmRL RToR Ebp Esp
+MovRmRL RRMemOffset1 Edx Ebp 4

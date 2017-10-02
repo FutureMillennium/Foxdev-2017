@@ -1,0 +1,5 @@
+Mov %ebp = %esp
+Mov %edx = [%ebp + 0x4]
+
+Mov %esp = %ebp
+Mov [%ebp + 0x4] = %edx

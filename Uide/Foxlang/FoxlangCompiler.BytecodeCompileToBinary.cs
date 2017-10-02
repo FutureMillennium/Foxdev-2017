@@ -326,6 +326,7 @@ namespace Foxlang
 
 					sPosList[i] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
 					writer.Write(s);
+					writer.Write((byte)0); // @TODO @hack 0/null-terminated string for now
 				}
 
 				iMax = sRefList.Count;

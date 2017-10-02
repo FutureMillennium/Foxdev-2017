@@ -310,6 +310,11 @@ namespace Foxlang
 								}*/
 							}
 							break;
+						case ByteCode.Put4BytesHere:
+							i++;
+							writer.Write((uint)curFunction.byteCode[i]);
+							//UnresolvedLabelAccept(4); // @TODO absolute label address
+							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");
 					}

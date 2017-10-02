@@ -11,7 +11,7 @@ namespace Uide
 {
 	public partial class MainForm : Form
 	{
-		const string PRODUCT_NAME = "Foxdev by Zdenek Gromnica";
+		const string PRODUCT_NAME = "Foxdev by Zdeněk Gromnica";
 
 		bool isFileLoaded = false,
 			isELFfile;

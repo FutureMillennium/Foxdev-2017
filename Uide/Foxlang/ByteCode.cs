@@ -79,9 +79,14 @@ namespace Foxlang
 		CmpB,
 		Inc,
 
+		// compiler/preprocessor only:
+		Put4BytesHere, // dd
+		// @TODO db, dw
+
 		// placeholders only:
 		StringLiteralFeedMe = 0xFEED1133,
 		LabelFeedMe = 0xFEED11E1,
 		VarFeedMe = 0xFEED11E5,
+		
 	}
 }

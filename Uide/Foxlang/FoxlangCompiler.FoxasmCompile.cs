@@ -149,6 +149,44 @@ namespace Foxlang
 						return false;
 					}
 				}
+				else if (token == "#Put4")
+				{
+					i++;
+
+					curFunction.byteCode.Add(ByteCode.Put4BytesHere);
+
+					uint ii;
+
+					if (ParseLiteral(tokens[i].token, out ii)) {
+						curFunction.byteCode.Add((ByteCode)ii);
+					}
+					else if (tokens[i].token[0] == '.')
+					{
+						curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+						{
+							symbol = tokens[i].token,
+							pos = curFunction.byteCode.Count,
+							token = tok,
+							filename = filePath,
+						});
+
+						curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+					}
+					else
+					{
+						// @TODO cleanup
+						curFunction.urVarsUnresolved.Add(new UnresolvedReference
+						{
+							symbol = tokens[i].token,
+							pos = curFunction.byteCode.Count,
+							token = tok,
+							filename = filePath,
+						});
+
+						curFunction.byteCode.Add(ByteCode.VarFeedMe);
+					}
+
+				}
 				else if (token == "#format")
 				{
 					Project.Format format;

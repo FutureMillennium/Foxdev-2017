@@ -80,6 +80,8 @@ namespace Foxlang
 						case ByteCode.PopRL:
 						case ByteCode.IncR:
 						case ByteCode.Int:
+						case ByteCode.Put4BytesHere:
+							stack.Push(BytecodeType.Literal);
 							untilLine = 1;
 							goto default;
 						case ByteCode.MovRImmL:

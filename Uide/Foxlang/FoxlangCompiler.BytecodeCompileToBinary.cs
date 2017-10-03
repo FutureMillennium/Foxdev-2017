@@ -266,6 +266,20 @@ namespace Foxlang
 
 										break;
 									}
+								case ByteCode.RMemImm:
+									{
+										byte modRegRm = 0b00_000_101;
+
+										modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]) << 3);
+
+										writer.Write((byte)modRegRm);
+
+										writer.Write((uint)curFunction.byteCode[i + 3]);
+
+										i += 3;
+
+										break;
+									}
 								// @TODO
 								default:
 									return AddError("Invalid mod or not implemented.");

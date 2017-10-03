@@ -8,10 +8,11 @@ namespace Foxlang
 	{
 		class MovSide
 		{
-			internal enum SideType { Invalid, Register, MemoryAccess, ImmediateValue, StringLiteral, VariableReference }
+			internal enum SideType { Invalid, Register, ImmediateValue, StringLiteral, VariableReference }
 
 			internal int width = 0;
 			internal int offset;
+			internal bool isMemoryAccess = false;
 			internal SideType type = SideType.Invalid;
 			internal ByteCode byteCode;
 			internal string stringValue;
@@ -45,7 +46,7 @@ namespace Foxlang
 				if (tokens[i].token == "[")
 				{
 					i++;
-					side.type = MovSide.SideType.MemoryAccess;
+					side.isMemoryAccess = true;
 				}
 				else if (StringLiteralTryParse(tokens[i].token, out side.stringValue))
 				{
@@ -58,23 +59,20 @@ namespace Foxlang
 
 				if (RegisterTryParse(tokens[i].token, out side.byteCode, out side.width))
 				{
-					if (side.type == MovSide.SideType.Invalid)
-						side.type = MovSide.SideType.Register;
+					side.type = MovSide.SideType.Register;
 				}
 				else if (ParseLiteral(tokens[i].token, out immediate))
 				{
 					side.byteCode = (ByteCode)immediate;
-					if (side.type == MovSide.SideType.Invalid)
-						side.type = MovSide.SideType.ImmediateValue;
+					side.type = MovSide.SideType.ImmediateValue;
 				}
 				else
 				{
 					side.stringValue = tokens[i].token;
-					if (side.type == MovSide.SideType.Invalid)
-						side.type = MovSide.SideType.VariableReference;
+					side.type = MovSide.SideType.VariableReference;
 				}
 
-				if (side.type == MovSide.SideType.MemoryAccess)
+				if (side.isMemoryAccess)
 				{
 					i++;
 
@@ -83,7 +81,7 @@ namespace Foxlang
 						switch (tokens[i].token)
 						{
 							case "+":
-								{
+								{ // @TODO shouldn't allow offsets for immediate values?
 									uint val;
 									i++;
 									if (ParseLiteral(tokens[i].token, out val))
@@ -299,7 +297,9 @@ namespace Foxlang
 						case ByteCode.MovB:
 							width = 1;
 							goto MovCommon;
-
+						case ByteCode.MovL:
+							width = 4;
+							goto MovCommon;
 						case ByteCode.Mov:
 							width = 0;
 							goto MovCommon;
@@ -312,8 +312,13 @@ namespace Foxlang
 								if (ParseSide(out left) == false)
 									return AddError("Can't parse left side."); // @TODO better errors?
 
-								if (left.type == MovSide.SideType.StringLiteral)
-									return AddError("Can't Mov to string literal.");
+								if (left.isMemoryAccess == false)
+								{
+									if (left.type == MovSide.SideType.StringLiteral)
+										return AddError("Can't Mov to string literal.");
+									else if (left.type == MovSide.SideType.ImmediateValue)
+										return AddError("Can't Mov to immediate value.");
+								}
 								// @TODO variable references on left side
 
 
@@ -326,7 +331,7 @@ namespace Foxlang
 								if (ParseSide(out right) == false)
 									return AddError("Can't parse right side."); // @TODO better errors?
 
-								if (left.type == MovSide.SideType.MemoryAccess && right.type == MovSide.SideType.MemoryAccess)
+								if (left.isMemoryAccess && right.isMemoryAccess)
 									return AddError("Can't access memory on both sides.");
 
 								if (right.type == MovSide.SideType.StringLiteral)
@@ -349,9 +354,34 @@ namespace Foxlang
 								}
 								
 								
-								if (left.type == MovSide.SideType.MemoryAccess)
+								if (left.isMemoryAccess) // @TODO cleanup
 								{
-									if (right.type == MovSide.SideType.Register)
+									if (left.type != MovSide.SideType.Register)
+									{
+										if (right.type == MovSide.SideType.Register)
+										{
+											if (width == 0)
+												width = right.width;
+
+											if (width == 4)
+												curFunction.byteCode.Add(ByteCode.MovRmRL);
+											else if (width == 2)
+												curFunction.byteCode.Add(ByteCode.MovRmRW);
+											else if (width == 1)
+												curFunction.byteCode.Add(ByteCode.MovRmRB);
+											else
+												return AddError("No register size detected. This shouldn't happen! (#1)");
+											
+											curFunction.byteCode.Add(ByteCode.RMemImm);
+
+											// reverse order!
+											curFunction.byteCode.Add(right.byteCode);
+											curFunction.byteCode.Add(left.byteCode);
+										}
+										else
+											return AddError("Moving immediate value into immediate memory not supported.");
+									}
+									else if (right.type == MovSide.SideType.Register)
 									{
 										if (width == 0)
 											width = right.width;
@@ -365,11 +395,19 @@ namespace Foxlang
 										else
 											return AddError("No register size detected. This shouldn't happen! (#1)");
 
-										curFunction.byteCode.Add(ByteCode.RRMem);
+										if (left.byteCode == ByteCode.Esp) // @TODO
+											return AddError("%Esp memory access isn't supported.");
+										else if (left.offset != 0 || left.byteCode == ByteCode.Ebp)
+											curFunction.byteCode.Add(ByteCode.RRMemOffset1);
+										else
+											curFunction.byteCode.Add(ByteCode.RRMem);
 
 										// reverse order!
 										curFunction.byteCode.Add(right.byteCode);
 										curFunction.byteCode.Add(left.byteCode);
+
+										if (left.offset != 0 || left.byteCode == ByteCode.Ebp)
+											curFunction.byteCode.Add((ByteCode)left.offset);
 									}
 									else
 									{
@@ -388,9 +426,33 @@ namespace Foxlang
 										curFunction.byteCode.Add(right.byteCode);
 									}
 								}
-								else if (right.type == MovSide.SideType.MemoryAccess)
+								else if (right.isMemoryAccess)
 								{
-									if (left.type == MovSide.SideType.Register)
+									if (right.type != MovSide.SideType.Register)
+									{
+										if (left.type == MovSide.SideType.Register)
+										{
+											if (width == 0)
+												width = left.width;
+
+											if (width == 4)
+												curFunction.byteCode.Add(ByteCode.MovRRmL);
+											else if (width == 2)
+												curFunction.byteCode.Add(ByteCode.MovRRmW);
+											else if (width == 1)
+												curFunction.byteCode.Add(ByteCode.MovRRmB);
+											else
+												return AddError("No register size detected. This shouldn't happen! (#1)");
+
+											curFunction.byteCode.Add(ByteCode.RMemImm);
+
+											curFunction.byteCode.Add(left.byteCode);
+											curFunction.byteCode.Add(right.byteCode);
+										}
+										else
+											return AddError("Moving immediate value into immediate memory not supported.");
+									}
+									else if (left.type == MovSide.SideType.Register)
 									{
 										if (width == 0)
 											width = left.width;
@@ -404,7 +466,9 @@ namespace Foxlang
 										else
 											return AddError("No register size detected. This shouldn't happen! (#2)"); // @TODO cleanup numbers
 
-										if (right.offset != 0)
+										if (right.byteCode == ByteCode.Esp) // @TODO
+											return AddError("%Esp memory access isn't supported.");
+										else if (right.offset != 0 || right.byteCode == ByteCode.Ebp)
 											curFunction.byteCode.Add(ByteCode.RRMemOffset1);
 										else
 											curFunction.byteCode.Add(ByteCode.RRMem);
@@ -412,7 +476,7 @@ namespace Foxlang
 										curFunction.byteCode.Add(left.byteCode);
 										curFunction.byteCode.Add(right.byteCode);
 
-										if (right.offset != 0)
+										if (right.offset != 0 || right.byteCode == ByteCode.Ebp)
 											curFunction.byteCode.Add((ByteCode)right.offset);
 									}
 									else

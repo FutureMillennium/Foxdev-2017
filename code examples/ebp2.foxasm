@@ -1,5 +1,33 @@
-Mov %ebp = %esp
-Mov %edx = [%ebp + 0x4]
+// Invalid:
+//Mov [%edx], [%ecx]
+//Mov [0x12345678], [0x12345678]
+//Mov 0x12345678 = [0x12345678]
 
-Mov %esp = %ebp
-Mov [%ebp + 0x4] = %edx
+//MovL [0x12345678], 0x12345678 // @TODO
+
+Mov %edx , 0xC7
+Mov %edx , 0x1234
+Mov %edx , 0x12345678
+
+Mov %edx , [0xC7]
+Mov %edx , [0x1234]
+Mov %edx , [0x12345678]
+
+Mov %ebp , %esp
+Mov %edx , [%ebp + 0x4]
+
+Mov %edx , [%ecx]
+Mov %edx , [%ebp]
+//Mov %edx , [%esp] // @TODO
+
+
+Mov [0xC7] , %edx
+Mov [0x1234] , %edx
+Mov [0x12345678] , %edx
+
+Mov %esp , %ebp
+Mov [%ebp + 0x4] , %edx
+
+Mov [%ecx] , %edx
+Mov [%ebp] , %edx
+//Mov [%esp] , %edx // @TODO

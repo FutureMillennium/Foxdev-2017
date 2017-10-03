@@ -312,8 +312,19 @@ namespace Foxlang
 							break;
 						case ByteCode.Put4BytesHere:
 							i++;
+							UnresolvedLabelAccept(4);
 							writer.Write((uint)curFunction.byteCode[i]);
-							//UnresolvedLabelAccept(4); // @TODO absolute label address
+							break;
+						case ByteCode.Align:
+							i++;
+							uint alignBy = (uint)curFunction.byteCode[i];
+							long left = (writer.BaseStream.Position) % alignBy;
+							if (left != 0)
+							{
+								left = alignBy - left;
+								for (int j = 0; j < left; j++)
+									writer.Write((byte)0x90);
+							}
 							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");
@@ -346,8 +357,7 @@ namespace Foxlang
 					else if (r.Item3 == 2)
 						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
 					else
-						return AddError("Not implemented!");
-					// else // @TODO
+						return AddError("Invalid string literal reference size!");
 				}
 
 				iMax = curFunction.urLabelsUnresolved.Count;
@@ -356,7 +366,13 @@ namespace Foxlang
 					var l = curFunction.urLabelsUnresolved[i];
 
 					writer.Seek((int)l.bytePos, SeekOrigin.Begin);
-					long val = l.reference.bytePos - (l.bytePos + l.bytes);
+					long val;
+					
+					if (l.isAbsolute)
+						val = l.reference.bytePos + this.relativeAddress;
+					else
+						val = l.reference.bytePos - (l.bytePos + l.bytes);
+
 					if (l.bytes == 1)
 						writer.Write((byte)val);
 					else if (l.bytes == 2)
@@ -364,7 +380,7 @@ namespace Foxlang
 					else if (l.bytes == 4)
 						writer.Write((uint)val);
 					else
-						return AddError("Not implemented!");
+						return AddError("Invalid label reference size!");
 				}
 
 				writer.Close();

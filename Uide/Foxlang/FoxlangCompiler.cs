@@ -52,6 +52,7 @@ namespace Foxlang
 			public string filename;
 			public Token token;
 			public SymbolReference reference;
+			public bool isAbsolute = false;
 		}
 
 		class Function
@@ -1361,6 +1362,21 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					return 6;
 			}
 			return 0xFF;
+		}
+
+		Var FindVar(string symbol)
+		{
+			Var foundVar = null;
+			foreach (var sym in vars)
+			{
+				if (sym.symbol == symbol)
+				{
+					foundVar = sym;
+					break;
+				}
+			}
+
+			return foundVar;
 		}
 	}
 }

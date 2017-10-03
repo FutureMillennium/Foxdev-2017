@@ -82,6 +82,7 @@ namespace Foxlang
 		// compiler/preprocessor only:
 		Put4BytesHere, // dd
 		// @TODO db, dw
+		Align,
 
 		// placeholders only:
 		StringLiteralFeedMe = 0xFEED1133,

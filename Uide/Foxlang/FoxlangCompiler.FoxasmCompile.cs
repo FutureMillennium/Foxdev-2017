@@ -16,6 +16,12 @@ namespace Foxlang
 			internal string stringValue;
 		}
 
+		class MathStack
+		{
+			internal uint? val = null;
+			internal char op = (char)0;
+		}
+
 		public bool FoxasmCompile(string filePath)
 		{
 			string fileExtension = null;
@@ -157,7 +163,11 @@ namespace Foxlang
 
 					uint ii;
 
-					if (ParseLiteral(tokens[i].token, out ii)) {
+					if (tokens[i].token == "#address") // @TODO cleanup
+					{
+						curFunction.byteCode.Add((ByteCode)relativeAddress);
+					}
+					else if (ParseLiteral(tokens[i].token, out ii)) {
 						curFunction.byteCode.Add((ByteCode)ii);
 					}
 					else if (tokens[i].token[0] == '.')
@@ -168,6 +178,7 @@ namespace Foxlang
 							pos = curFunction.byteCode.Count,
 							token = tok,
 							filename = filePath,
+							isAbsolute = true,
 						});
 
 						curFunction.byteCode.Add(ByteCode.LabelFeedMe);
@@ -186,6 +197,21 @@ namespace Foxlang
 						curFunction.byteCode.Add(ByteCode.VarFeedMe);
 					}
 
+				}
+				else if (token == "#Align")
+				{
+					i++;
+
+					curFunction.byteCode.Add(ByteCode.Align);
+
+					uint ii;
+
+					if (ParseLiteral(tokens[i].token, out ii))
+					{
+						curFunction.byteCode.Add((ByteCode)ii);
+					}
+					else
+						return AddError("#Align needs to a numeric literal.");
 				}
 				else if (token == "#format")
 				{
@@ -583,7 +609,7 @@ namespace Foxlang
 				string token = tok.token;
 
 
-				void AddError(string message) // @TODO @cleanup
+				bool AddError(string message) // @TODO @cleanup
 				{
 					outputMessages.Add(new OutputMessage
 					{
@@ -592,22 +618,125 @@ namespace Foxlang
 						token = tok,
 						filename = filePath,
 					});
+					return false;
 				}
 
 
 				if (tokens[i + 1].token == "=")
 				{
-					uint ii;
-					if (ParseLiteral(tokens[i + 2].token, out ii) == false)
+					i += 2;
+
+					bool canEnd = false;
+
+					Stack<MathStack> stack = new Stack<MathStack>();
+					MathStack curEl = new MathStack();
+					stack.Push(curEl);
+
+					uint DoOp(uint left, char op, uint right)
 					{
-						AddError("Can't parse this literal."); // @TODO
-						return false;
+						switch (op)
+						{
+							case '+':
+								left += right;
+								break;
+							case '-':
+								left -= right;
+								break;
+						}
+						return left;
+					}
+
+					bool DoVar(uint val)
+					{
+						if (curEl.op != 0 && curEl.val != null)
+							curEl.val = DoOp((uint)curEl.val, curEl.op, val);
+						else if (curEl.val == null)
+							curEl.val = val;
+						else
+							return AddError("Error: This shouldn't happen.");
+
+						if (stack.Count == 1)
+							canEnd = true;
+
+						return true;
+					}
+
+
+					while (i < iMax)
+					{
+						uint newVal;
+						
+						if (ParseLiteral(tokens[i].token, out newVal))
+						{
+							if (DoVar(newVal) == false)
+								return false;
+						}
+						else switch (tokens[i].token)
+							{
+								case "+":
+								case "-":
+									curEl.op = tokens[i].token[0];
+									canEnd = false;
+									break;
+								case "(":
+									if ((curEl.op == 0 && curEl.val == null)
+										|| curEl.val != null)
+									{
+										curEl = new MathStack();
+										stack.Push(curEl);
+										canEnd = false;
+									}
+									else
+										return AddError("Unexpected '('.");
+									break;
+								case ")":
+									if (stack.Count > 1)
+									{
+										stack.Pop();
+										MathStack prevEl = stack.Peek();
+										if (prevEl.op != 0)
+											prevEl.val = DoOp((uint)prevEl.val, prevEl.op, (uint)curEl.val);
+										else
+											prevEl.val = curEl.val;
+
+										curEl = prevEl;
+
+										if (stack.Count == 1)
+											canEnd = true;
+									}
+									else
+										return AddError("Unexpected ')'.");
+									break;
+								default:
+									if (canEnd)
+									{
+										goto DoEnd;
+									}
+									else
+									{
+										Var foundVar = FindVar(tokens[i].token);
+										if (foundVar == null)
+											return AddError("Can't parse this literal, or undefined constant: " + tokens[i].token);
+
+										if (DoVar((uint)foundVar.value) == false)
+											return false;
+
+										canEnd = true;
+									}
+									break;
+							}
+
+						i++;
+
+						continue;
+						DoEnd:
+							break;
 					}
 
 					vars.Add(new Var
 					{
 						symbol = token,
-						value = ii
+						value = curEl.val
 					});
 				}
 				else
@@ -615,8 +744,6 @@ namespace Foxlang
 					AddError("Foo = bar"); // @TODO
 					return false;
 				}
-
-				i += 3;
 			}
 			#endregion
 
@@ -648,7 +775,10 @@ namespace Foxlang
 					return AddError("Label not found.");
 
 				r.reference = foundSym;
-				curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
+				if (r.isAbsolute)
+					curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos);
+				else
+					curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
 			}
 
 			foreach (var r in curFunction.urVarsUnresolved)
@@ -665,18 +795,10 @@ namespace Foxlang
 					return false;
 				}
 
-				Var foundVar = null;
-				foreach (var sym in vars)
-				{
-					if (sym.symbol == r.symbol)
-					{
-						foundVar = sym;
-						break;
-					}
-				}
+				Var foundVar = FindVar(r.symbol);
 
 				if (foundVar == null)
-					return AddError("Data definition not found.");
+					return AddError("Undefined: " + r.symbol);
 
 				curFunction.byteCode[r.pos] = (ByteCode)(foundVar.value);
 			}

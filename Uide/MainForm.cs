@@ -34,6 +34,7 @@ namespace Uide
 			InitializeComponent();
 
 			this.Text = PRODUCT_NAME;
+			this.Icon = Uide.Properties.Resources.Foxdev;
 
 			MainForm_Resize(null, null);
 

@@ -112,18 +112,19 @@ namespace Foxlang
 						case ByteCode.Cli:
 							writer.Write((byte)0xfa);
 							break;
-						case ByteCode.Ret:
+						case ByteCode.RetNear:
 							writer.Write((byte)0xc3);
 							break;
 						case ByteCode.Hlt:
 							writer.Write((byte)0xf4);
 							break;
-						case ByteCode.Int:
+						case ByteCode.IntImmB:
 							writer.Write((byte)0xcd);
 							writer.Write((byte)curFunction.byteCode[i + 1]);
 							i += 1;
 							break;
-						case ByteCode.Call:
+						case ByteCode.CallRelW:
+						case ByteCode.CallRelL:
 							{
 								writer.Write((byte)0xE8);
 								i += 1;
@@ -145,37 +146,45 @@ namespace Foxlang
 									writer.Write((ushort)curFunction.byteCode[i]);
 								break;
 							}
-						case ByteCode.Jne: // @TODO add size/width!
+						case ByteCode.JeRelB:
+							writer.Write((byte)0x74);
+							goto JmpCommon;
+						case ByteCode.JneRelB:
 							writer.Write((byte)0x75);
+							goto JmpCommon;
+						case ByteCode.JmpRelB:
+							writer.Write((byte)0xEB);
+						JmpCommon:
 							i += 1;
 
-							UnresolvedLabelAccept(1); // @TODO size/width!
+							UnresolvedLabelAccept(1);
 
 							writer.Write((byte)curFunction.byteCode[i]);
 							break;
-						case ByteCode.Jmp: // @TODO size/width!
-							writer.Write((byte)0xE9);
-							i += 1;
-
-							UnresolvedLabelAccept(4); // @TODO size/width!
-
-							writer.Write((uint)curFunction.byteCode[i]);
-							break;
-						case ByteCode.PushW:
+						case ByteCode.PushImmW:
 							// @TODO Now 16bit only. 32bit
 							writer.Write((byte)0x68);
 							i += 1;
 							sLitAcceptStringLiteral(i);
 							writer.Write((ushort)curFunction.byteCode[i]);
 							break;
-						case ByteCode.PushL:
+						case ByteCode.PushImmL:
 							writer.Write((byte)0x68);
 							i += 1;
 							sLitAcceptStringLiteral(i);
 							writer.Write((uint)curFunction.byteCode[i]);
 							break;
-						case ByteCode.PopRW:
+						case ByteCode.PopRW: // @TODO 16-bit
+						case ByteCode.PopRL:
 							writer.Write((byte)(0x58 + RegisterNumber(curFunction.byteCode[i + 1])));
+							i += 1;
+							break;
+						case ByteCode.IncR:
+							writer.Write((byte)(0x40 + RegisterNumber(curFunction.byteCode[i + 1])));
+							i += 1;
+							break;
+						case ByteCode.PushRL:
+							writer.Write((byte)(0x50 + RegisterNumber(curFunction.byteCode[i + 1])));
 							i += 1;
 							break;
 						case ByteCode.MovRImmB:
@@ -283,10 +292,6 @@ namespace Foxlang
 										return AddError("Invalid mod or not implemented. (" + b.ToString() + ")");
 								}
 							}
-							break;
-						case ByteCode.IncR:
-							writer.Write((byte)(0x40 + RegisterNumber(curFunction.byteCode[i + 1])));
-							i += 1;
 							break;
 						case ByteCode.CmpRImmB:
 							{

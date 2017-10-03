@@ -14,7 +14,8 @@ namespace Uide
 		const string PRODUCT_NAME = "Foxdev by Zdeněk Gromnica";
 
 		bool isFileLoaded = false,
-			isELFfile;
+			isELFfile,
+			isCompilable = false;
 		string filePath,
 			fileName;
 		byte[] file;
@@ -173,16 +174,17 @@ namespace Uide
 				{
 					isELFfile = false;
 
-				if (fileName.EndsWith(".com"))
-				{
-					assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
-					viewAssemblyRadio.Checked = true;
-					viewAssemblyRadio.Visible = true;
-				} else
-				{
-					viewTextRadio.Checked = true;
-					viewAssemblyRadio.Visible = false;
-				}
+					if (fileName.EndsWith(".com"))
+					{
+						assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
+						viewAssemblyRadio.Checked = true;
+						viewAssemblyRadio.Visible = true;
+					}
+					else
+					{
+						viewTextRadio.Checked = true;
+						viewAssemblyRadio.Visible = false;
+					}
 					
 				}
 
@@ -191,16 +193,20 @@ namespace Uide
 				dragFileHereLabel.Visible = false;
 
 				viewSwitchPanel.Visible = true;
-				
-				//viewDataRadio.Visible = isELFfile;
 
 				MainForm_Resize(null, null);
 				scrollBarV.Value = 0;
 
 				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc"))
 				{
-					compileButton.Visible = true;
+					isCompilable = true;
+				}
+				else
+					isCompilable = false;
 
+				if (isCompilable)
+				{
+					compileButton.Visible = true;
 #if DEBUG
 					compileButton_Click(null, null);
 #endif
@@ -209,6 +215,13 @@ namespace Uide
 				{
 					compileButton.Visible = false;
 				}
+
+				if (isCompilable || isELFfile)
+				{
+					viewDataRadio.Visible = true;
+				}
+				else
+					viewDataRadio.Visible = false;
 
 				this.Text = fileName + " – " + PRODUCT_NAME;
 			/*}
@@ -528,17 +541,19 @@ Mp */
 			}
 
 
-			sb.AppendLine();
-			sb.AppendLine("[Bytecode output]");
-
-			sb.Append(compiler.EchoBytecode());
-
 			if (compiler.output != null)
 			{
 				sb.AppendLine();
 				sb.AppendLine("[Binary output]");
 				sb.AppendLine(compiler.output);
 			}
+
+
+			sb.AppendLine();
+			sb.AppendLine("[Bytecode output]");
+
+			sb.Append(compiler.EchoBytecode());
+
 
 			// write out all tokens
 			/*sb.Append(Environment.NewLine);

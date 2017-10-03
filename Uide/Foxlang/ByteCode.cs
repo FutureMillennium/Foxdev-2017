@@ -8,9 +8,13 @@ namespace Foxlang
 {
 	public enum ByteCode : UInt32
 	{
-		Al, Bl, Cl, Dl,
-		Ah, Bh, Ch, Dh,
-		Ax, Bx, Cx, Dx, Sp, Bp, Si, Di,
+		// registers:
+		// 8-bit:
+		Al, Cl, Dl, Bl,
+		Ah, Ch, Dh, Bh,
+		// 16-bit:
+		Ax, Cx, Dx, Bx, Sp, Bp, Si, Di,
+		// 32-bit:
 		Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi,
 
 		// Rm: mod-reg-R/M
@@ -23,11 +27,49 @@ namespace Foxlang
 		// Q: quadword – 8 bytes, 64 bits
 		Cli, Sti, Hlt,
 
-		Ret, Je, Jne, Int,
-
 		// ByteCode only:
-		CallRelW, CallRelL, CallRmW, CallRmL, CallPtrWW, CallPtrWL, CallMemWW, CallMemWL,
-		JmpRelB, JmpRelW, JmpRelL, JmpRmW, JmpRmL, JmpPtrWW, JmpPtrWL, JmpMemWW, JmpMemWL,
+		CallRelW, //E8 cw   CALL rel16  Call near, relative, displacement relative to next instruction
+		CallRelL, //E8 cd   CALL rel32  Call near, relative, displacement relative to next instruction
+		// @TODO
+		//CallRmW, //FF /2	CALL r/m16  Call near, absolute indirect, address given in r/m16
+		//CallRmL, //FF /2	CALL r/m32  Call near, absolute indirect, address given in r/m32
+		//CallPtrWW, //9A cd   CALL ptr16:16	Call far, absolute, address given in operand
+		//CallPtrWL, //9A cp   CALL ptr16:32	Call far, absolute, address given in operand
+		//CallMemWW, //FF /3	CALL m16:16	Call far, absolute indirect, address given in m16:16
+		//CallMemWL, //FF /3	CALL m16:32	Call far, absolute indirect, address given in m16:32
+
+		RetNear, //C3	RET	Near return to calling procedure.
+		// @TODO
+		//CB	RET	Far return to calling procedure.
+		//C2 iw	RET imm16	Near return to calling procedure and pop imm16 bytes from stack.
+		//CA iw	RET imm16	Far return to calling procedure and pop imm16 bytes from stack.
+
+		//CC	INT 3	Interrupt 3 - trap to debugger.
+		IntImmB, //CD ib	INT imm8	Interrupt vector number specified by immediate byte.
+		//CE	INTO	Interrupt 4 - if overflow flag is 1.
+
+		JmpRelB, //EB cb	JMP rel8	Jump short, relative, displacement relative to next instruction.
+		// @TODO
+		//JmpRelW,
+		//JmpRelL,
+		//JmpRmW,
+		//JmpRmL,
+		//JmpPtrWW,
+		//JmpPtrWL,
+		//JmpMemWW,
+		//JmpMemWL,
+		//E9 cw	JMP rel16	Jump near, relative, displacement relative to next instruction.
+		//E9 cd	JMP rel32	Jump near, relative, displacement relative to next instruction.
+		//FF /4	JMP r/m16	Jump near, absolute indirect, address given in r/m16.
+		//FF /4	JMP r/m32	Jump near, absolute indirect, address given in r/m32.
+		//EA cd	JMP ptr16:16	Jump far, absolute, address given in operand.
+		//EA cp	JMP ptr16:32	Jump far, absolute, address given in operand.
+		//FF /5	JMP m16:16	Jump far, absolute indirect, address given in m16:16.
+		//FF /5	JMP m16:32	Jump far, absolute indirect, address given in m16:32.
+
+		JeRelB, // 74 cb	JE rel8	Jump short if equal (ZF=1).
+		JneRelB, // 75 cb	JNE rel8	Jump short if not equal (ZF=0).
+
 		MovRmRB, //88
 		MovRmRW, MovRmRL, //89
 		MovRRmB, //8A
@@ -61,13 +103,14 @@ namespace Foxlang
 		IncR,
 		PopRW, PopRL,
 		AddLMemImm,
-		PushRmW, PushRML, //FF /6
-		PushRW, PushRL, //50+rw	//50+rd
+		//PushRmW, PushRmL, //FF /6
+		PushRW, // 50+rw	PUSH r16	Push r16.
+		PushRL, // 50+rd   PUSH r32    Push r32.
 		PushImmB, //6A
 		PushImmW, PushImmL, //68
-		PushS, //0E //16 //1E //06 //0F A0 //0F A8
-		PushA, PushAD, //60
-		PushF, PushFD, //9C
+		//PushS, //0E //16 //1E //06 //0F A0 //0F A8
+		//PushA, PushAD, //60
+		//PushF, PushFD, //9C
 		CmpRMemImmB, CmpRImmB,
 
 		// Foxasm only:
@@ -78,6 +121,9 @@ namespace Foxlang
 		Pop, PopW, PopL,
 		CmpB,
 		Inc,
+		Ret,
+		Int,
+		Je, Jne,
 
 		// compiler/preprocessor only:
 		Put4BytesHere, // dd

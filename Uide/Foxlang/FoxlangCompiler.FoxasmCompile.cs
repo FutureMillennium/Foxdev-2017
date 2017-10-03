@@ -11,6 +11,7 @@ namespace Foxlang
 			internal enum SideType { Invalid, Register, MemoryAccess, ImmediateValue, StringLiteral, VariableReference }
 
 			internal int width = 0;
+			internal int offset;
 			internal SideType type = SideType.Invalid;
 			internal ByteCode byteCode;
 			internal string stringValue;
@@ -36,6 +37,75 @@ namespace Foxlang
 			int iMax = tokens.Count;
 			int i = 0;
 
+
+			bool ParseSide(out MovSide side)
+			{
+				side = new MovSide();
+
+				if (tokens[i].token == "[")
+				{
+					i++;
+					side.type = MovSide.SideType.MemoryAccess;
+				}
+				else if (StringLiteralTryParse(tokens[i].token, out side.stringValue))
+				{
+					side.byteCode = ByteCode.StringLiteralFeedMe;
+					side.type = MovSide.SideType.StringLiteral;
+					return true;
+				}
+
+				uint immediate;
+
+				if (RegisterTryParse(tokens[i].token, out side.byteCode, out side.width))
+				{
+					if (side.type == MovSide.SideType.Invalid)
+						side.type = MovSide.SideType.Register;
+				}
+				else if (ParseLiteral(tokens[i].token, out immediate))
+				{
+					side.byteCode = (ByteCode)immediate;
+					if (side.type == MovSide.SideType.Invalid)
+						side.type = MovSide.SideType.ImmediateValue;
+				}
+				else
+				{
+					side.stringValue = tokens[i].token;
+					if (side.type == MovSide.SideType.Invalid)
+						side.type = MovSide.SideType.VariableReference;
+				}
+
+				if (side.type == MovSide.SideType.MemoryAccess)
+				{
+					i++;
+
+					while (i < iMax)
+					{
+						switch (tokens[i].token)
+						{
+							case "+":
+								{
+									uint val;
+									i++;
+									if (ParseLiteral(tokens[i].token, out val))
+										side.offset = (int)val;
+									else
+										return false;
+								break;
+								}
+							case "]":
+								return true;
+							default:
+								return false;
+						}
+
+						i++;
+					}
+				}
+
+				return true;
+			}
+
+
 			while (i < iMax)
 			{
 				Token tok = tokens[i];
@@ -54,7 +124,7 @@ namespace Foxlang
 					return false;
 				}
 
-				void AddWarning(string message)
+				/*void AddWarning(string message)
 				{
 					outputMessages.Add(new OutputMessage
 					{
@@ -63,55 +133,7 @@ namespace Foxlang
 						token = tok,
 						filename = filePath,
 					});
-				}
-
-				bool ParseSide(out MovSide side)
-				{
-					side = new MovSide();
-
-					if (tokens[i].token == "[")
-					{
-						i++;
-						side.type = MovSide.SideType.MemoryAccess;
-					}
-					else if (StringLiteralTryParse(tokens[i].token, out side.stringValue))
-					{
-						side.byteCode = ByteCode.StringLiteralFeedMe;
-						side.type = MovSide.SideType.StringLiteral;
-						return true;
-					}
-
-					uint immediate;
-
-					if (RegisterTryParse(tokens[i].token, out side.byteCode, out side.width))
-					{
-						if (side.type == MovSide.SideType.Invalid)
-							side.type = MovSide.SideType.Register;
-					}
-					else if (ParseLiteral(tokens[i].token, out immediate))
-					{
-						side.byteCode = (ByteCode)immediate;
-						if (side.type == MovSide.SideType.Invalid)
-							side.type = MovSide.SideType.ImmediateValue;
-					}
-					else
-					{
-						side.stringValue = tokens[i].token;
-						if (side.type == MovSide.SideType.Invalid)
-							side.type = MovSide.SideType.VariableReference;
-					}
-
-					if (side.type == MovSide.SideType.MemoryAccess)
-					{
-						i++;
-						if (tokens[i].token != "]")
-						{
-							return false;
-						}
-					}
-
-					return true;
-				}
+				}*/
 
 
 				ByteCode inByte;
@@ -252,6 +274,8 @@ namespace Foxlang
 					switch (inByte)
 					{
 						case ByteCode.Ret:
+							curFunction.byteCode.Add(ByteCode.RetNear);
+							break;
 						case ByteCode.Hlt:
 						case ByteCode.Cli:
 							curFunction.byteCode.Add(inByte);
@@ -261,7 +285,7 @@ namespace Foxlang
 								uint ii;
 								if (ParseLiteral(tokens[i + 1].token, out ii))
 								{
-									curFunction.byteCode.Add(inByte);
+									curFunction.byteCode.Add(ByteCode.IntImmB);
 									curFunction.byteCode.Add((ByteCode)ii);
 									i += 1;
 								}
@@ -343,10 +367,9 @@ namespace Foxlang
 
 										curFunction.byteCode.Add(ByteCode.RRMem);
 
-										// swap sides:
-										MovSide temp = left;
-										left = right;
-										right = temp;
+										// reverse order!
+										curFunction.byteCode.Add(right.byteCode);
+										curFunction.byteCode.Add(left.byteCode);
 									}
 									else
 									{
@@ -360,6 +383,9 @@ namespace Foxlang
 											return AddError("Indeterminant operand size on right side."); // @TODO better error message
 
 										curFunction.byteCode.Add(ByteCode.RRMem);
+
+										curFunction.byteCode.Add(left.byteCode);
+										curFunction.byteCode.Add(right.byteCode);
 									}
 								}
 								else if (right.type == MovSide.SideType.MemoryAccess)
@@ -378,22 +404,20 @@ namespace Foxlang
 										else
 											return AddError("No register size detected. This shouldn't happen! (#2)"); // @TODO cleanup numbers
 
-										curFunction.byteCode.Add(ByteCode.RRMem);
+										if (right.offset != 0)
+											curFunction.byteCode.Add(ByteCode.RRMemOffset1);
+										else
+											curFunction.byteCode.Add(ByteCode.RRMem);
+
+										curFunction.byteCode.Add(left.byteCode);
+										curFunction.byteCode.Add(right.byteCode);
+
+										if (right.offset != 0)
+											curFunction.byteCode.Add((ByteCode)right.offset);
 									}
 									else
 									{
-										return AddError("Not implemented.");
-										// @TODO This is probably wrong!
-										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRmImmL);
-										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRmImmW);
-										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRmImmB);
-										else
-											return AddError("Indeterminant operand size on left side. (#1)"); // @TODO better error message
-
-										curFunction.byteCode.Add(ByteCode.RRMem);
+										return AddError("This probably shouldn't happen?");
 									}
 								}
 								else
@@ -416,6 +440,10 @@ namespace Foxlang
 											return AddError("No register size detected. This shouldn't happen! (#3)"); // @TODO cleanup numbers
 
 										curFunction.byteCode.Add(ByteCode.RToR);
+										
+										// reverse order!
+										curFunction.byteCode.Add(right.byteCode);
+										curFunction.byteCode.Add(left.byteCode);
 									}
 									else
 									{
@@ -427,24 +455,28 @@ namespace Foxlang
 											curFunction.byteCode.Add(ByteCode.MovRImmB);
 										else
 											return AddError("Indeterminant operand size on left side. (#2)"); // @TODO better error message
+
+										curFunction.byteCode.Add(left.byteCode);
+										curFunction.byteCode.Add(right.byteCode);
 									}
 								}
-								curFunction.byteCode.Add(left.byteCode);
-								curFunction.byteCode.Add(right.byteCode);
 
 
 								break;
 							}
+						case ByteCode.PushL:
 						case ByteCode.Push:
 							{
 								string t = tokens[i + 1].token;
 								string literal;
+								ByteCode register;
+
 								if (StringLiteralTryParse(t, out literal))
 								{
 									if (curFunction.bits == Bits.Bits16)
-										curFunction.byteCode.Add(ByteCode.PushW);
+										curFunction.byteCode.Add(ByteCode.PushImmW);
 									else
-										curFunction.byteCode.Add(ByteCode.PushL);
+										curFunction.byteCode.Add(ByteCode.PushImmL);
 									curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
 									curFunction.literalReferences.Add(new SymbolReference
 									{
@@ -453,15 +485,22 @@ namespace Foxlang
 									});
 									i += 1;
 								}
-								else
+								else if (RegisterTryParse(t, out register, out width))
 								{
-									AddError("Can't parse string literal.");
-									return false;
+									curFunction.byteCode.Add(ByteCode.PushRL);
+									curFunction.byteCode.Add(register);
+									i += 1;
 								}
+								else
+									return AddError("Not a string literal or register: " + t);
+
 								break;
 							}
 						case ByteCode.Call:
-							curFunction.byteCode.Add(ByteCode.Call);
+							if (curFunction.bits == Bits.Bits16)
+								curFunction.byteCode.Add(ByteCode.CallRelW);
+							else
+								curFunction.byteCode.Add(ByteCode.CallRelL);
 							curFunction.byteCode.Add(ByteCode.LabelFeedMe);
 
 							curFunction.urLabelsUnresolved.Add(new UnresolvedReference
@@ -552,10 +591,15 @@ namespace Foxlang
 								break;
 							}
 						case ByteCode.Jmp:
+							curFunction.byteCode.Add(ByteCode.JmpRelB);
+							goto JmpCommon;
 						case ByteCode.Je:
+							curFunction.byteCode.Add(ByteCode.JeRelB);
+							goto JmpCommon;
 						case ByteCode.Jne:
+							curFunction.byteCode.Add(ByteCode.JneRelB);
+						JmpCommon:
 							{
-								curFunction.byteCode.Add(inByte);
 								curFunction.byteCode.Add(ByteCode.LabelFeedMe);
 
 								token = tokens[i + 1].token;

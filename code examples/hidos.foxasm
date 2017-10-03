@@ -1,4 +1,6 @@
 #address 0x100
+#extension '.com'
+
 Mov %ah = 0x9
 Mov %dx = "Hello DOS!$"
 Int 0x21

@@ -510,11 +510,11 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										if (FindVar(token, out foundVar, curFunction.arguments))
 										{
 											return AddError("Not implemented."); // @TODO
-											curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
+											/*curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
 											curFunction.byteCode.Add(ByteCode.Ebx);
 											//curFunction.byteCode.Add(ByteCode.MovRMemRB);
 											curFunction.byteCode.Add(ByteCode.Eax);
-											curFunction.byteCode.Add(ByteCode.Ebx);
+											curFunction.byteCode.Add(ByteCode.Ebx);*/
 										}
 										else if (FindVar(nToken, out foundVar, vars))
 										{
@@ -531,8 +531,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										{
 											return AddError("Not implemented."); // @TODO
 											//curFunction.byteCode.Add(ByteCode.MovRMemImmB);
-											curFunction.byteCode.Add(ByteCode.Eax);
-											curFunction.byteCode.Add((ByteCode)foundVar.value);
+											/*curFunction.byteCode.Add(ByteCode.Eax);
+											curFunction.byteCode.Add((ByteCode)foundVar.value);*/
 										}
 										else
 										{
@@ -672,7 +672,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (tokens[i + 1].token != ";") // @TODO
 										return AddError("Returning values isn't implemented.");
 
-									curFunction.byteCode.Add(ByteCode.Ret);
+									curFunction.byteCode.Add(ByteCode.RetNear);
 
 									i += 1;
 
@@ -681,8 +681,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									FoxlangType type;
 									if (ExitingBlock())
 									{
-										if (curFunction.byteCode.Last() != ByteCode.Ret) // @TODO possible conflicts with literal value of .Ret?
-											curFunction.byteCode.Add(ByteCode.Ret);
+										if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
+											curFunction.byteCode.Add(ByteCode.RetNear);
 										parsingStateStack.Pop();
 									}
 									else if (token[0] == '%' && tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
@@ -830,7 +830,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 														if (ParseLiteral(arg1, out ii) == false)
 															return AddError("Only accepts a literal. Can't parse this as a literal.");
 
-														curFunction.byteCode.Add(instruction);
+														curFunction.byteCode.Add(ByteCode.IntImmB);
 														curFunction.byteCode.Add((ByteCode)ii);
 
 														i += 4; // @TODO @cleanup
@@ -1377,6 +1377,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			}
 
 			return foundVar;
+		}
+
+		static void Swap<T>(ref T left, ref T right)
+		{
+			T temp = left;
+			left = right;
+			right = temp;
 		}
 	}
 }

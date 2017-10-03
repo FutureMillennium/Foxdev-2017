@@ -69,18 +69,24 @@ namespace Foxlang
 							stack.Push(BytecodeType.Bytecode);
 							untilLine += 1;
 							goto default;
-
-						case ByteCode.PushW:
-						case ByteCode.PushL:
-						case ByteCode.Call:
-						case ByteCode.Jmp:
-						case ByteCode.Je:
-						case ByteCode.Jne:
 						case ByteCode.PopRW:
 						case ByteCode.PopRL:
 						case ByteCode.IncR:
-						case ByteCode.Int:
+						case ByteCode.PushRL:
+							untilLine = 1;
+							goto default;
+
+						case ByteCode.PushImmB:
+						case ByteCode.PushImmW:
+						case ByteCode.PushImmL:
+						case ByteCode.CallRelW:
+						case ByteCode.CallRelL:
+						case ByteCode.JmpRelB:
+						case ByteCode.JeRelB:
+						case ByteCode.JneRelB:
+						case ByteCode.IntImmB:
 						case ByteCode.Put4BytesHere:
+						case ByteCode.Align:
 							stack.Push(BytecodeType.Literal);
 							untilLine = 1;
 							goto default;

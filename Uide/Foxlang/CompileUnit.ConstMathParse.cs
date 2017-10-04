@@ -26,7 +26,7 @@ namespace Foxlang
 				return left;
 			}
 
-			bool DoVar(uint val)
+			bool DoVal(uint val)
 			{
 				if (curEl.op != 0 && curEl.val != null)
 					curEl.val = DoOp((uint)curEl.val, curEl.op, val);
@@ -46,69 +46,74 @@ namespace Foxlang
 			{
 				uint newVal;
 
-				if (ParseLiteral(tokens[i].token, out newVal))
+				switch (tokens[i].token)
 				{
-					if (DoVar(newVal) == false)
-						return false;
-				}
-				else switch (tokens[i].token)
-					{
-						case "+":
-						case "-":
-							curEl.op = tokens[i].token[0];
+					case "+":
+					case "-":
+						curEl.op = tokens[i].token[0];
+						canEnd = false;
+						break;
+					case ";":
+						if (canEnd)
+						{
+							return true;
+						}
+						else
+							return AddError("Unexpected ';'.");
+					case "(":
+						if ((curEl.op == 0 && curEl.val == null)
+							|| curEl.val != null)
+						{
+							curEl = new MathEl();
+							stack.Push(curEl);
 							canEnd = false;
-							break;
-						case "(":
-							if ((curEl.op == 0 && curEl.val == null)
-								|| curEl.val != null)
-							{
-								curEl = new MathEl();
-								stack.Push(curEl);
-								canEnd = false;
-							}
+						}
+						else
+							return AddError("Unexpected '('.");
+						break;
+					case ")":
+						if (stack.Count > 1)
+						{
+							stack.Pop();
+							MathEl prevEl = stack.Peek();
+							if (prevEl.op != 0)
+								prevEl.val = DoOp((uint)prevEl.val, prevEl.op, (uint)curEl.val);
 							else
-								return AddError("Unexpected '('.");
-							break;
-						case ")":
-							if (stack.Count > 1)
-							{
-								stack.Pop();
-								MathEl prevEl = stack.Peek();
-								if (prevEl.op != 0)
-									prevEl.val = DoOp((uint)prevEl.val, prevEl.op, (uint)curEl.val);
-								else
-									prevEl.val = curEl.val;
+								prevEl.val = curEl.val;
 
-								curEl = prevEl;
+							curEl = prevEl;
 
-								if (stack.Count == 1)
-									canEnd = true;
-							}
-							else
-								return AddError("Unexpected ')'.");
-							break;
-						default:
-							if (canEnd)
-							{
-								return true;
-							}
-							else
-							{
-								Var foundVar;
-								if (FindVar(MakeNamespace(tokens[i].token), out foundVar, consts) == false)
-									return AddError("Can't parse this literal, or undefined constant: " + tokens[i].token);
-
-								if (DoVar((uint)foundVar.value) == false)
-									return false;
-
+							if (stack.Count == 1)
 								canEnd = true;
-							}
-							break;
-					}
+						}
+						else
+							return AddError("Unexpected ')'.");
+						break;
+					default:
+						if (canEnd)
+						{
+							return true;
+						}
+						else if (ParseLiteral(tokens[i].token, out newVal))
+						{
+							if (DoVal(newVal) == false)
+								return false;
+						}
+						else
+						{
+							Var foundVar;
+							if (FindVar(MakeNamespace(tokens[i].token), out foundVar, consts) == false)
+								return AddError("Can't parse this literal, or undefined constant: " + tokens[i].token);
+
+							if (DoVal((uint)foundVar.value) == false)
+								return false;
+
+							canEnd = true;
+						}
+						break;
+				}
 
 				i++;
-
-				continue;
 			}
 
 			return false;

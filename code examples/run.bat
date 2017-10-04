@@ -2,7 +2,6 @@
 
 @SET "PATH=%qemu%;%PATH%"
 
-@REM grub-mkrescue -o iso/alopos.iso bin
-@REM qemu-system-i386 -cdrom iso/alopos.iso
-
-qemu-system-i386 -kernel hellokernel.bin
+if defined %1 then (
+qemu-system-i386 -kernel %1
+) else (qemu-system-i386 -kernel hellokernel.bin)

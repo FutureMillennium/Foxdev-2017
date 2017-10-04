@@ -372,9 +372,9 @@ namespace Foxlang
 
 					writer.Seek((int)r.Item1, SeekOrigin.Begin);
 					if (r.Item3 == 4)
-						writer.Write((uint)(sPosList[r.Item2] + relativeAddress));
+						writer.Write((uint)(sPosList[r.Item2] + curUnit.relativeAddress));
 					else if (r.Item3 == 2)
-						writer.Write((ushort)(sPosList[r.Item2] + relativeAddress));
+						writer.Write((ushort)(sPosList[r.Item2] + curUnit.relativeAddress));
 					else
 						return AddError("Invalid string literal reference size!");
 				}
@@ -388,7 +388,7 @@ namespace Foxlang
 					long val;
 					
 					if (l.isAbsolute)
-						val = l.reference.bytePos + this.relativeAddress;
+						val = l.reference.bytePos + curUnit.relativeAddress;
 					else
 						val = l.reference.bytePos - (l.bytePos + l.bytes);
 

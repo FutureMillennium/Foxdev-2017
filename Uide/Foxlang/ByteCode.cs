@@ -80,7 +80,7 @@ namespace Foxlang
 		MovRImmW, MovRImmL, //B8–BF B8+ rw B8+ rd
 		MovRmImmB, //C6 /0
 		MovRmImmW, MovRmImmL, //C7 /0
-							  // @TODO 0F 21/r, 0F 23 /r, 0F 22 /r, 0F 20 /r
+		// @TODO 0F 21/r, 0F 23 /r, 0F 22 /r, 0F 20 /r
 
 		// mod (reg r/m):
 		RRMem, // 00 xxx xxx

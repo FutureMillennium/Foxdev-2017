@@ -5,7 +5,7 @@ namespace Foxlang
 {
 	partial class FoxlangCompiler
 	{
-		public void LexerParse(string filePath, List<Token> tokens)
+		static public void LexerParse(string filePath, List<Token> tokens)
 		{
 			#region Lexical parsing
 			try

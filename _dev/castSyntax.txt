@@ -1,0 +1,49 @@
+		Char a = (Char)1 + 24;
+		Char a = (Char)(1 + 24);
+		Char a = Char(1 + 24);
+		Char a = (Char 1 + 24);
+		Char a = (Char (1 + 24));
+		Char a = (Char(1 + 24));
+		Char a = Char[1 + 24];
+		Char a = Char{1 + 24};
+		Char a = Char<1 + 24>;
+		Char a = Char\1 + 24\;
+		Char a = Char/1 + 24/;
+		Char a = Char\1 + 24/;
+		Char a = Char/1 + 24\;
+		Char a = Char|1 + 24|;
+		Char a = Char#1 + 24#;
+		Char a = #Char(1 + 24);
+		Char a = @Char(1 + 24);
+		Char a = &Char(1 + 24);
+		Char a = {Char 1 + 24};
+		Char a = [Char 1 + 24];
+		Char a = <Char 1 + 24>;
+		Char a = >Char 1 + 24<;
+		Char a = Char>1 + 24<;
+		Char a = Char!1 + 24!;
+		Char a = Char!(1 + 24);
+		Char a = Char.(1 + 24);
+		Char a = .Char(1 + 24);
+		Char a = !Char(1 + 24);
+		Char a = Char,(1 + 24);
+		Char a = Char_(1 + 24);
+		Char a = _Char(1 + 24);
+		Char a = $Char(1 + 24);
+		Char a = Char$(1 + 24);
+		Char a = $(Char 1 + 24);
+		Char a = $.Char(1 + 24);
+		Char a = Char.Cast(1 + 24);
+		Char a = Cast.Char(1 + 24);
+		Char a = Cast<Char>(1 + 24);
+		
+		Int i = 256; // == 0x100
+		Int iNegative = -256; // == 0xFFFF_FF00
+		Float f = Int.Convert(i); // == 256f == 0x777AB6C8 // conversion has computing cost
+		Byte b = Byte.Cast(i); // == 0 // (0x100 = 0x1(00) = 00)
+		Byte b2 = Byte.Cast(iNegative); // == 0 // (0xFFFF_FF00 = 0xFFFF_FF(00) = 00)
+		Byte b3 = Byte.Clamp(i); // == 255 // clamping has computing cost
+		Byte b4 = Byte.Clamp(iNegative); // == 0
+		Int8b i8b = Int8b.Clamp(i); // == 127 == 0x7F
+		Int8b i8b2 = Int8b.Clamp(iNegative); // == -128 == 0xFF
+		

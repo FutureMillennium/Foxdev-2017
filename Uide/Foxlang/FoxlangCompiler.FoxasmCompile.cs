@@ -38,6 +38,10 @@ namespace Foxlang
 			int iMax = tokens.Count;
 			int i = 0;
 
+			if (curUnit == null)
+				curUnit = new UnitInfo();
+
+
 
 			bool ParseSide(out MovSide side)
 			{
@@ -185,7 +189,7 @@ namespace Foxlang
 
 					if (tokens[i].token == "#address") // @TODO cleanup
 					{
-						curFunction.byteCode.Add((ByteCode)relativeAddress);
+						curFunction.byteCode.Add((ByteCode)curUnit.relativeAddress);
 					}
 					else if (ParseLiteral(tokens[i].token, out ii)) {
 						curFunction.byteCode.Add((ByteCode)ii);
@@ -235,7 +239,7 @@ namespace Foxlang
 				}
 				else if (token == "#format")
 				{
-					Project.Format format;
+					UnitInfo.Format format;
 
 					if (Enum.TryParse(tokens[i + 1].token, out format))
 					{
@@ -248,7 +252,7 @@ namespace Foxlang
 				}
 				else if (token == "#address")
 				{
-					if (ParseLiteral(tokens[i + 1].token, out relativeAddress))
+					if (ParseLiteral(tokens[i + 1].token, out curUnit.relativeAddress))
 					{
 						i += 1;
 					}

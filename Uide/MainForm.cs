@@ -532,7 +532,7 @@ Mp */
 
 			sb.Append(Environment.NewLine);
 
-			foreach (FoxlangCompiler.OutputMessage msg in compiler.outputMessages)
+			foreach (Foxlang.OutputMessage msg in compiler.outputMessages)
 			{
 				if (msg.token != null)
 					sb.Append("[" + msg.type.ToString() + "] \t" + msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]");

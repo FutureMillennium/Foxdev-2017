@@ -75,10 +75,12 @@
     <Compile Include="EntryPoint.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.BytecodeCompileToBinary.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.cs" />
+    <Compile Include="Foxlang\CompileUnit.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.EchoBytecode.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.FoxasmCompile.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.FoxBCCompileFile.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.LexerParse.cs" />
+    <Compile Include="Foxlang\types.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

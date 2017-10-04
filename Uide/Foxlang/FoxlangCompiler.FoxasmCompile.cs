@@ -18,12 +18,6 @@ namespace Foxlang
 			internal string stringValue;
 		}
 
-		class MathStack
-		{
-			internal uint? val = null;
-			internal char op = (char)0;
-		}
-
 		public bool FoxasmCompile(string filePath)
 		{
 			string fileExtension = null;
@@ -740,8 +734,8 @@ namespace Foxlang
 
 					bool canEnd = false;
 
-					Stack<MathStack> stack = new Stack<MathStack>();
-					MathStack curEl = new MathStack();
+					Stack<MathEl> stack = new Stack<MathEl>();
+					MathEl curEl = new MathEl();
 					stack.Push(curEl);
 
 					uint DoOp(uint left, char op, uint right)
@@ -794,7 +788,7 @@ namespace Foxlang
 									if ((curEl.op == 0 && curEl.val == null)
 										|| curEl.val != null)
 									{
-										curEl = new MathStack();
+										curEl = new MathEl();
 										stack.Push(curEl);
 										canEnd = false;
 									}
@@ -805,7 +799,7 @@ namespace Foxlang
 									if (stack.Count > 1)
 									{
 										stack.Pop();
-										MathStack prevEl = stack.Peek();
+										MathEl prevEl = stack.Peek();
 										if (prevEl.op != 0)
 											prevEl.val = DoOp((uint)prevEl.val, prevEl.op, (uint)curEl.val);
 										else

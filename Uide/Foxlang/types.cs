@@ -94,4 +94,10 @@ namespace Foxlang
 	{
 		internal string name;
 	}
+
+	internal class MathEl
+	{
+		internal uint? val = null;
+		internal char op = (char)0;
+	}
 }

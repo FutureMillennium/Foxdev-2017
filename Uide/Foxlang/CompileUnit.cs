@@ -5,7 +5,7 @@ using static Foxlang.FoxlangCompiler;
 
 namespace Foxlang
 {
-	internal class CompileUnit
+	internal partial class CompileUnit
 	{
 		delegate bool DirectiveFn();
 
@@ -53,10 +53,75 @@ namespace Foxlang
 			directiveDict = new Dictionary<string, DirectiveFn>()
 			{
 				{ "#format", () => {
+
+					UnitInfo.Format format;
+
 					if (Require("=") == false)
 						return AddError("#format = Format;"); // @TODO
 
-					return false;
+					i++;
+					if (Enum.TryParse(tokens[i].token, out format))
+					{
+						//AddWarning("#format isn't implemented – is always Flat. Ignoring for now."); // @TODO
+						
+						if (Require(";") == false)
+							return AddError("#format = Format;"); // @TODO
+					}
+					else
+						return AddError("Invalid #format: " + tokens[i].token);
+
+					return true;
+				} },
+
+				{ "#Compile", () => {
+
+					curUnit = new UnitInfo
+					{
+						files = new List<string>(),
+						run = new List<string>(),
+					};
+					units.Add(curUnit);
+
+					parsingStateStack.Push(ParsingState.HashCompile);
+
+					return true;
+
+				} },
+
+				{ "#address", () => {
+
+					uint ii;
+
+					if (Require("=") == false)
+						return AddError("#address = number;"); // @TODO
+										
+					i++;
+					if (ParseLiteral(tokens[i].token, out ii) == false)
+						return AddError("Expected a literal. Can't parse as a literal: " + tokens[i].token);
+
+					if (Require(";") == false)
+						return AddError("#address = number;"); // @TODO
+
+					curUnit.relativeAddress = ii;
+					
+					return true;
+
+				} },
+
+				{ "#extension", () => {
+
+					if (Require("=") == false)
+						return AddError("#extension = '.foo';"); // @TODO
+						
+					i++;
+					if (StringLiteralTryParse(tokens[i].token, out curUnit.extension) == false)
+						return AddError("Invalid string literal: " + tokens[i].token);
+
+					if (Require(";") == false)
+						return AddError("#extension = '.foo';"); // @TODO
+
+					return true;
+
 				} },
 			};
 		}
@@ -149,9 +214,10 @@ namespace Foxlang
 				i += 2;
 				return true;
 			}
-			else if (tokens[i + 2].token == "=" && tokens[i + 4].token == ";")
+			else if (tokens[i + 2].token == "=")
 			{
-				string strVal = tokens[i + 3].token;
+				i += 3;
+				string strVal = tokens[i].token;
 				dynamic value = null;
 
 				switch (type)
@@ -163,17 +229,14 @@ namespace Foxlang
 					case FoxlangType.Index:
 					case FoxlangType.Uint:
 					case FoxlangType.Pointer:
-						UInt32 ii;
-						//if (strVal == "_" && )
-						if (ParseLiteral(strVal, out ii))
-						{
-							value = ii;
-						}
-						else
-						{
-							AddError("Can't parse this literal of type '" + type.ToString() + "'."); // @TODO
+
+						MathEl curEl = new MathEl();
+
+						if (ConstMathParse(curEl) == false)
 							return false;
-						}
+						// AddError("Can't parse this literal of type '" + type.ToString() + "'."); // @TODO
+
+						value = curEl.val;
 
 						break;
 					case FoxlangType.String:
@@ -185,7 +248,10 @@ namespace Foxlang
 				}
 
 				outVar.value = value;
-				i += 4;
+
+				i--; // @TODO why does this happen?
+				if (Require(";") == false)
+					return AddError("Missing ;"); // @TODO
 
 				return true;
 			}
@@ -222,8 +288,11 @@ namespace Foxlang
 
 		bool Require(string token)
 		{
-			// @TODO
-			return false;
+			i++;
+			if (tokens[i].token != token)
+				return false;
+			else
+				return true;
 		}
 
 		public bool Compile(string filePath)
@@ -237,6 +306,9 @@ namespace Foxlang
 
 			iMax = tokens.Count;
 			i = 0;
+
+			if (curUnit == null)
+				curUnit = new UnitInfo();
 
 			while (i < iMax)
 			{
@@ -955,52 +1027,16 @@ namespace Foxlang
 				}
 				else
 				{
-					switch (token)
+					if (token[0] == '#')
 					{
-						case "#format":
-							{
-								UnitInfo.Format format;
+						if (directiveDict.ContainsKey(token) == false)
+							return AddError("Unknown compiler directive.");
 
-								if (tokens[i + 1].token != "=")
-									return AddError("#format = Format;"); // @TODO
-
-								i += 2;
-
-								if (Enum.TryParse(tokens[i].token, out format))
-								{
-									//AddWarning("#format isn't implemented – is always Flat. Ignoring for now."); // @TODO
-
-									i++;
-
-									if (tokens[i].token != ";")
-										return AddError("#format = Format;"); // @TODO
-								}
-								else
-									return AddError("Invalid #format.");
-								break;
-							}
-						case "#Compile":
-							curUnit = new UnitInfo
-							{
-								files = new List<string>(),
-								run = new List<string>(),
-							};
-							units.Add(curUnit);
-
-							parsingStateStack.Push(ParsingState.HashCompile);
-							break;
-						case "#address":
-							{
-								uint ii;
-								if (ParseLiteral(tokens[i + 1].token, out ii) == false)
-									return AddError("Expected a literal. Can't parse this as a literal.");
-
-								curUnit.relativeAddress = ii;
-
-								i += 1;
-
-								break;
-							}
+						if (directiveDict[token]() == false)
+							return false;
+					}
+					else switch (token)
+					{
 						case "const":
 							parsingStateStack.Push(ParsingState.Const);
 							break;

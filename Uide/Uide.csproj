@@ -73,6 +73,7 @@
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />
     <Compile Include="EntryPoint.cs" />
+    <Compile Include="Foxlang\CompileUnit.ConstMathParse.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.BytecodeCompileToBinary.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.cs" />
     <Compile Include="Foxlang\CompileUnit.cs" />

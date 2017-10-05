@@ -211,14 +211,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 		static internal bool StringLiteralTryParse(string literal, out string outS)
 		{
-			outS = null;
-
 			if ((literal[0] == '"' && literal.Last() == '"') || (literal[0] == '\'' && literal.Last() == '\''))
 			{
 				outS = literal.Substring(1, literal.Length - 2);
 				return true;
 			}
 
+			outS = null;
 			return false;
 		}
 

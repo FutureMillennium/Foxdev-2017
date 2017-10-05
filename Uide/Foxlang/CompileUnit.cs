@@ -245,20 +245,29 @@ namespace Foxlang
 			}
 		}
 
-		bool ParseVar(FoxlangType type, out Var outVar, bool isAddNamespace = true)
+		bool ParseVar(out Var outVar, bool isAddNamespace = true)
 		{
-			// @TODO cleanup
-			if (tokens[i + 1].token == "Pointer")
+			FoxlangType type;
+			if (Enum.TryParse(token, out type) == false)
 			{
-				type = FoxlangType.Pointer;
-				i += 1;
-				// @TODO type of Pointer
+				outVar = null;
+				return false;
 			}
 
-			outVar = new Var
+			outVar = new Var()
 			{
 				type = type,
 			};
+
+			// @TODO cleanup
+			if (tokens[i + 1].token == "Pointer")
+			{
+				outVar.pointerType = type;
+				outVar.type = FoxlangType.Pointer;
+				i += 1;
+				type = FoxlangType.Pointer;
+			}
+
 			if (isAddNamespace)
 				outVar.symbol = MakeNamespace(tokens[i + 1].token);
 			else
@@ -272,18 +281,29 @@ namespace Foxlang
 			else if (tokens[i + 2].token == "=")
 			{
 				i += 3;
-				string strVal = tokens[i].token;
-				dynamic value = null;
+				string strVal;
 
-				switch (type)
+				MathEl curEl = new MathEl();
+
+				if (StringLiteralTryParse(tokens[i].token, out strVal))
+					outVar.value = strVal;
+				else if (ConstMathParse(curEl))
+				{
+					outVar.value = curEl.val;
+					i--; // @TODO why does this happen?
+				}
+				else
+					return false;
+
+				// @TODO type checking
+				/*switch (type)
 				{
 					case FoxlangType.Byte:
 					case FoxlangType.Char:
 					case FoxlangType.Byte4:
 					case FoxlangType.Address4:
 					case FoxlangType.Index:
-					case FoxlangType.Uint:
-					case FoxlangType.Pointer:
+					case FoxlangType.UInt:
 
 						MathEl curEl = new MathEl();
 
@@ -302,11 +322,9 @@ namespace Foxlang
 						return false;
 				}
 
-				outVar.value = value;
-
-				i--; // @TODO why does this happen?
-				if (Require(";") == false)
-					return AddError("Missing ;"); // @TODO
+				outVar.value = value;*/
+				
+				Require(";");
 
 				return true;
 			}
@@ -480,19 +498,11 @@ namespace Foxlang
 							}
 							else
 							{
-								FoxlangType type;
-								if (Enum.TryParse(token, out type))
+								Var newVar;
+								if (ParseVar(out newVar, false))
 								{
-									Var newVar;
-									if (ParseVar(type, out newVar, false))
-									{
-										curFunction.arguments.Add(newVar);
-										i--;
-									}
-									else
-									{
-										return false;
-									}
+									curFunction.arguments.Add(newVar);
+									i--;
 								}
 								else
 								{
@@ -583,7 +593,7 @@ namespace Foxlang
 
 									break;
 								default:
-									FoxlangType type;
+									Var var;
 									if (ExitingBlock())
 									{
 										if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
@@ -598,7 +608,7 @@ namespace Foxlang
 										if (directiveDict[token]() == false)
 											return false;
 									}
-									else if (token[0] == '%' && tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
+									else if (token[0] == '%' && tokens[i + 1].token == "=")
 									{
 										ByteCode register;
 										int width;
@@ -616,11 +626,11 @@ namespace Foxlang
 
 										curFunction.byteCode.Add(register);
 
-										string t = tokens[i + 2].token;
-										uint ii;
+										i += 2;
 										string literal;
+										MathEl mathEl = new MathEl();
 
-										if (StringLiteralTryParse(t, out literal))
+										if (StringLiteralTryParse(tokens[i].token, out literal))
 										{
 											curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
 											curFunction.literalReferences.Add(new SymbolReference
@@ -629,16 +639,15 @@ namespace Foxlang
 												symbol = literal,
 											});
 										}
-										else if (ParseLiteral(tokens[i + 2].token, out ii))
+										else if (ConstMathParse(mathEl))
 										{
-											curFunction.byteCode.Add((ByteCode)ii);
+											curFunction.byteCode.Add((ByteCode)mathEl.val);
 										}
 										else
-										{
-											return AddError("Register assignment only accepts literals."); // @TODO
-										}
+											return false;
 
-										i += 3;
+										i--;
+										Require(";");
 									}
 									else if (tokens[i + 1].token == "[")
 									{
@@ -792,22 +801,14 @@ namespace Foxlang
 										});
 										i += 1;
 									}
-									else if (Enum.TryParse(token, out type))
+									else if (ParseVar(out var, false))
 									{
-										// @TODO hack af
-										if (tokens[i + 1].token == "Pointer"
-											&& tokens[i + 3].token == "="
-											&& tokens[i + 5].token == ";")
-										{
-											curFunction.byteCode.Add(ByteCode.PopRL);
-											curFunction.byteCode.Add(ByteCode.Ecx);
-											i += 5;
-										}
-										else
-										{
-											AddError("Unsupported local variable declaration."); // @TODO
-											return false;
-										}
+										curFunction.localVars.Add(var);
+
+										// @TODO assign to a free register
+
+										
+
 									}
 									else
 									{
@@ -821,23 +822,15 @@ namespace Foxlang
 						case ParsingState.Const:
 
 							{
-								FoxlangType type;
-								if (Enum.TryParse(token, out type))
+								Var newVar;
+								if (ParseVar(out newVar))
 								{
-									Var newVar;
-									if (ParseVar(type, out newVar))
+									if (blockStack.Count == 0 || blockStack.Peek() != Block.Namespace)
 									{
-										if (blockStack.Count == 0 || blockStack.Peek() != Block.Namespace)
-										{
-											parsingStateStack.Pop();
-										}
+										parsingStateStack.Pop();
+									}
 
-										consts.Add(newVar);
-									}
-									else
-									{
-										return false;
-									}
+									consts.Add(newVar);
 								}
 								else if (ExitingBlock())
 								{
@@ -1134,18 +1127,10 @@ namespace Foxlang
 							}
 							else
 							{
-								FoxlangType type;
-								if (Enum.TryParse(token, out type))
+								Var newVar;
+								if (ParseVar(out newVar))
 								{
-									Var newVar;
-									if (ParseVar(type, out newVar))
-									{
-										vars.Add(newVar);
-									}
-									else
-									{
-										return false;
-									}
+									vars.Add(newVar);
 								}
 								else
 								{

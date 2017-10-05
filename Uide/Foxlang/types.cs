@@ -8,7 +8,19 @@ namespace Foxlang
 {
 	enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
 	enum ParsingState { HashCompile, HashCompileBlock, ComposeString, OutputProjectAssign, AddFileProject, HashCompileRunBlock, AddRunFileProject, Const, FunctionBlock, FunctionArguments, ValueParsing, ArrayAccess, While, Condition }
-	enum FoxlangType { Byte, Uint8, Char, Int8, Byte2, Uint16, Int16, Byte4, Address4, Index, Uint, Uint32, Pointer, Int, Int32, String }
+	enum FoxlangType
+	{
+		Byte, UInt8, Char,
+		Int8,
+
+		Byte2, UInt16,
+		Int16,
+
+		Byte4, Address4, Index, UInt, UInt32, Pointer,
+		Int, Int32,
+
+		String
+	}
 	enum Block { Namespace, Function }
 	enum Bits { Bits16, Bits32 }
 
@@ -24,6 +36,7 @@ namespace Foxlang
 	{
 		public string symbol;
 		public FoxlangType type;
+		public FoxlangType pointerType;
 		public dynamic value;
 	}
 
@@ -57,6 +70,7 @@ namespace Foxlang
 		public string symbol;
 		public Bits bits = Bits.Bits32;
 		public List<Var> arguments = new List<Var>();
+		public List<Var> localVars = new List<Var>();
 		public List<ByteCode> byteCode = new List<ByteCode>();
 		public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
 		public List<UnresolvedReference> urLabelsUnresolved = new List<UnresolvedReference>();

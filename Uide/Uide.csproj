@@ -81,6 +81,7 @@
     <Compile Include="Foxlang\FoxlangCompiler.FoxasmCompile.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.FoxBCCompileFile.cs" />
     <Compile Include="Foxlang\FoxlangCompiler.LexerParse.cs" />
+    <Compile Include="Foxlang\InvalidSyntaxException.cs" />
     <Compile Include="Foxlang\types.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

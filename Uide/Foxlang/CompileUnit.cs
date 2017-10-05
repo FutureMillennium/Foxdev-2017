@@ -52,23 +52,80 @@ namespace Foxlang
 
 			directiveDict = new Dictionary<string, DirectiveFn>()
 			{
+				{ "#Put4", () => {
+
+					Require("(");
+
+					i++;
+					curFunction.byteCode.Add(ByteCode.Put4BytesHere);
+
+					uint ii;
+
+					if (tokens[i].token == "#address") // @TODO cleanup
+					{
+						curFunction.byteCode.Add((ByteCode)curUnit.relativeAddress);
+					}
+					else if (ParseLiteral(tokens[i].token, out ii)) {
+						curFunction.byteCode.Add((ByteCode)ii);
+					}
+					else if (tokens[i].token == "addressOf") // @TODO @hack
+					{
+						i++;
+						AddLabelReference(true);
+					}
+					else
+					{
+						// @TODO cleanup
+						curFunction.urVarsUnresolved.Add(new UnresolvedReference
+						{
+							symbol = tokens[i].token,
+							pos = curFunction.byteCode.Count,
+							token = tok,
+							filename = filePath,
+						});
+
+						curFunction.byteCode.Add(ByteCode.VarFeedMe);
+					}
+
+					Require(")");
+					Require(";");
+
+					return true;
+				} },
+
+				{ "#Align", () => {
+
+					Require("(");
+
+					uint val;
+
+					i++;
+					if (ParseLiteral(tokens[i].token, out val) == false)
+						return AddError("#Align needs a numeric literal.");
+
+					curFunction.byteCode.Add(ByteCode.Align);
+					curFunction.byteCode.Add((ByteCode)val);
+
+					Require(")");
+					Require(";");
+
+					return true;
+
+				} },
+
 				{ "#format", () => {
+
+					Require("=");
 
 					UnitInfo.Format format;
 
-					if (Require("=") == false)
-						return AddError("#format = Format;"); // @TODO
-
 					i++;
-					if (Enum.TryParse(tokens[i].token, out format))
-					{
-						//AddWarning("#format isn't implemented – is always Flat. Ignoring for now."); // @TODO
-						
-						if (Require(";") == false)
-							return AddError("#format = Format;"); // @TODO
-					}
-					else
+					if (Enum.TryParse(tokens[i].token, out format) == false)
 						return AddError("Invalid #format: " + tokens[i].token);
+					
+					curUnit.format = format;
+						
+					Require(";");
 
 					return true;
 				} },
@@ -92,15 +149,13 @@ namespace Foxlang
 
 					uint ii;
 
-					if (Require("=") == false)
-						return AddError("#address = number;"); // @TODO
+					Require("=");
 										
 					i++;
 					if (ParseLiteral(tokens[i].token, out ii) == false)
 						return AddError("Expected a literal. Can't parse as a literal: " + tokens[i].token);
 
-					if (Require(";") == false)
-						return AddError("#address = number;"); // @TODO
+					Require(";");
 
 					curUnit.relativeAddress = ii;
 					
@@ -286,11 +341,13 @@ namespace Foxlang
 				return name;
 		}
 
-		bool Require(string token)
+		bool Require(string requiredToken)
 		{
 			i++;
-			if (tokens[i].token != token)
-				return false;
+			if (tokens[i].token != requiredToken)
+			{
+				throw new InvalidSyntaxException("Expected '" + requiredToken + "', got '" + tokens[i].token + "'.", tokens[i], filePath);
+			}
 			else
 				return true;
 		}
@@ -476,23 +533,11 @@ namespace Foxlang
 									if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
 									{
 										curFunction.byteCode.Add(ByteCode.Jmp);
-										int jmax = curFunction.labels.Count;
-										int found = -1;
-										for (int j = 0; j < jmax; j++)
-										{
-											if (curFunction.labels[j].symbol == tokens[i + 2].token)
-											{
-												found = j;
-												break;
-											}
-										}
-										if (found == -1)
-										{
-											AddError("Label " + tokens[i + 2].token + " not found"); // @TODO
-											return false;
-										}
-										curFunction.byteCode.Add((ByteCode)(curFunction.labels[found].pos - curFunction.byteCode.Count));
-										i += 4;
+
+										i += 2;
+										AddLabelReference();
+
+										i += 2;
 									}
 									else
 									{
@@ -544,6 +589,14 @@ namespace Foxlang
 										if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
 											curFunction.byteCode.Add(ByteCode.RetNear);
 										parsingStateStack.Pop();
+									}
+									else if (token[0] == '#')
+									{
+										if (directiveDict.ContainsKey(token) == false)
+											return AddError("Unknown compiler directive.");
+
+										if (directiveDict[token]() == false)
+											return false;
 									}
 									else if (token[0] == '%' && tokens[i + 1].token == "=" && tokens[i + 3].token == ";")
 									{
@@ -1108,6 +1161,20 @@ namespace Foxlang
 			}
 
 			return true;
+		}
+
+		void AddLabelReference(bool isAbsolute = false)
+		{
+			curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+			{
+				symbol = tokens[i].token,
+				pos = curFunction.byteCode.Count,
+				token = tokens[i],
+				filename = filePath,
+				isAbsolute = isAbsolute,
+			});
+
+			curFunction.byteCode.Add(ByteCode.LabelFeedMe);
 		}
 	}
 }

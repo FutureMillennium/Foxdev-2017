@@ -52,8 +52,22 @@ namespace Foxlang
 			curProject.name = Path.GetFileNameWithoutExtension(filePath);
 			CompileUnit compileUnit = new CompileUnit(this);
 
-			if (compileUnit.Compile(filePath) == false)
+			try
 			{
+				if (compileUnit.Compile(filePath) == false)
+				{
+					return false;
+				}
+			}
+			catch (InvalidSyntaxException ex)
+			{
+				outputMessages.Add(new OutputMessage
+				{
+					type = OutputMessage.MessageType.Error,
+					message = ex.Message,
+					token = ex.token,
+					filename = ex.filename,
+				});
 				return false;
 			}
 

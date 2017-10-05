@@ -229,7 +229,7 @@ namespace Foxlang
 						curFunction.byteCode.Add((ByteCode)ii);
 					}
 					else
-						return AddError("#Align needs to a numeric literal.");
+						return AddError("#Align needs a numeric literal.");
 				}
 				else if (token == "#format")
 				{

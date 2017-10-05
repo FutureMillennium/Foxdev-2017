@@ -1,4 +1,4 @@
-#address 0x100
+#address = 0x100;
 
 function EntryPoint() {
 	%ah = 0x9;

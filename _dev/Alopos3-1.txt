@@ -1,0 +1,28 @@
+		push ret
+		call foo
+		
+		push %ebp
+		%ebp = %esp
+		
+		Byte Pointer curPos = SCREEN_BUFFER;
+Mov %ebx = SCREEN_BUFFER
+		Char Pointer message = "Alopos3 says hello!";
+Mov %ecx = "Alopos3 says hello!"
+		while ([message] != 0) {
+.Loop:
+Cmp [%ecx], 0
+Je .End
+			[curPos] = [message];
+Mov %al = [%ecx]
+Mov [%ebx] = %al
+			curPos++;
+Inc %ebx
+			[curPos] = 0x87;
+Mov [%ebx] = 0x87
+			curPos++;
+Inc %ebx
+			message++;
+Inc %ecx
+		}
+Jmp .Loop
+.End:

@@ -1,0 +1,26 @@
+#format Flat
+#extension '.bin'
+#bits 16
+#address 0x7c00
+
+	Mov %si = "Hello world!"
+	Mov %ah = 0x0e
+
+.loop:
+	LodsB
+	//Test %al, %al // @TODO
+	//Jz .halt // @TODO
+	CmpB %al, 0
+	Je .halt
+	Int 0x10
+	Jmp .loop
+
+.halt:
+	Cli
+	Hlt
+
+//#Pad (512 - 2) // @TODO
+//#Align (512 - 2) // @TODO
+#Align 508
+//#Put2 0xaa55 // @TODO
+#Put4 0xaa550000

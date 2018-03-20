@@ -124,6 +124,7 @@ namespace Foxlang
 		Ret,
 		Int,
 		Je, Jne,
+		LodsB,
 
 		// compiler/preprocessor only:
 		Put4BytesHere, // dd

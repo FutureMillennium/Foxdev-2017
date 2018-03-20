@@ -274,6 +274,7 @@ namespace Foxlang
 							break;
 						case ByteCode.Hlt:
 						case ByteCode.Cli:
+						case ByteCode.LodsB:
 							curFunction.byteCode.Add(inByte);
 							break;
 						case ByteCode.Int:

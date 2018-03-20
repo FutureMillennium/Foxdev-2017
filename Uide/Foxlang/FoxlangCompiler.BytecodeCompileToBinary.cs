@@ -118,6 +118,9 @@ namespace Foxlang
 						case ByteCode.Hlt:
 							writer.Write((byte)0xf4);
 							break;
+						case ByteCode.LodsB:
+							writer.Write((byte)0xAC);
+							break;
 						case ByteCode.IntImmB:
 							writer.Write((byte)0xcd);
 							writer.Write((byte)curFunction.byteCode[i + 1]);

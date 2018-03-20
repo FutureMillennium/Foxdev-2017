@@ -249,6 +249,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case ByteCode.Cx:
 				case ByteCode.Dx:
 				case ByteCode.Bx:
+				case ByteCode.Si:
+				case ByteCode.Di:
 					width = 2;
 					break;
 				case ByteCode.Eax:

@@ -231,6 +231,10 @@ namespace Foxlang
 					else
 						return AddError("#Align needs a numeric literal.");
 				}
+				else if (token == "#WriteData")
+				{
+					curFunction.byteCode.Add(ByteCode.WriteDataHere);
+				}
 				else if (token == "#format")
 				{
 					UnitInfo.Format format;

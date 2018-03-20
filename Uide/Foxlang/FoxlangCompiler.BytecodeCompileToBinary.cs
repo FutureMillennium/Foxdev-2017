@@ -12,9 +12,10 @@ namespace Foxlang
 			Function curFunction = entryPoint; // @TODO non-EntryPoint function compile
 
 			List<string> sList = new List<string>();
-			long[] sPosList;
+			long[] sPosList = null;
 			List<Tuple<long, int, int>> sRefList = new List<Tuple<long, int, int>>(); // posInFile, iSList, width
 			int iLit = 0;
+			bool isDataWritten = false;
 
 			bool AddError(string message)
 			{
@@ -91,6 +92,23 @@ namespace Foxlang
 						else
 							urNextLabelUnresolved = -1;
 					}
+				}
+
+				void WriteData()
+				{
+					int jMax = sList.Count;
+					sPosList = new long[jMax];
+
+					for (int j = 0; j < jMax; j++)
+					{
+						var s = sList[j];
+
+						sPosList[j] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
+						writer.Write(s);
+						writer.Write((byte)0); // @TODO @hack 0/null-terminated string for now
+					}
+
+					isDataWritten = true;
 				}
 
 
@@ -348,6 +366,9 @@ namespace Foxlang
 									writer.Write((byte)0x90);
 							}
 							break;
+						case ByteCode.WriteDataHere:
+							WriteData();
+							break;
 						default:
 							return AddError(b.ToString() + ": binary compilation not implemented.");
 					}
@@ -355,17 +376,8 @@ namespace Foxlang
 					i++;
 				}
 
-				iMax = sList.Count;
-				sPosList = new long[iMax];
-
-				for (i = 0; i < iMax; i++)
-				{
-					var s = sList[i];
-
-					sPosList[i] = writer.BaseStream.Position + 1; // @TODO non-prefixed strings?
-					writer.Write(s);
-					writer.Write((byte)0); // @TODO @hack 0/null-terminated string for now
-				}
+				if (isDataWritten == false)
+					WriteData();
 
 				iMax = sRefList.Count;
 

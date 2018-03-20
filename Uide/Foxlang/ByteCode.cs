@@ -130,6 +130,7 @@ namespace Foxlang
 		Put4BytesHere, // dd
 		// @TODO db, dw
 		Align,
+		WriteDataHere,
 
 		// placeholders only:
 		StringLiteralFeedMe = 0xFEED1133,

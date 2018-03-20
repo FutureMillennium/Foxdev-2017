@@ -3,7 +3,7 @@
 #bits 16
 #address 0x7c00
 
-	Mov %si = "Hello world!"
+	Mov %si = "Hello world! Booted from Foxasm!"
 	Mov %ah = 0x0e
 
 .loop:
@@ -19,6 +19,7 @@
 	Cli
 	Hlt
 
+#WriteData
 //#Pad (512 - 2) // @TODO
 //#Align (512 - 2) // @TODO
 #Align 508

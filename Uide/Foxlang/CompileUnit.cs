@@ -378,6 +378,12 @@ namespace Foxlang
 
 			curFunction = null; // @TODO cleanup?
 			string composedString = ""; // @TODO cleanup
+			Var resultVar = null; // @TODO cleanup
+			ByteCode resRegister = 0; // @TODO cleanup
+			int registerWidth = 0; // @TODO cleanup
+			ByteCode resRightRegister = 0; // @TODO cleanup
+			int resWidthRightRegister = 0; // @TODO cleanup
+			bool resIsImmediateValue = false; // @TODO cleanup
 
 			iMax = tokens.Count;
 			i = 0;
@@ -442,7 +448,20 @@ namespace Foxlang
 									{
 										Var foundVar;
 										string nToken = MakeNamespace(token);
-										if (FindVar(token, out foundVar, curFunction.arguments))
+
+										if (token[0] == '%')
+										{
+											ByteCode register;
+											int width;
+											if (RegisterTryParse(token, out register, out width) == false)
+												return AddError("Can't parse this register."); // @TODO
+
+											resRightRegister = register;
+											resWidthRightRegister = width;
+											resIsImmediateValue = false;
+
+										}
+										else if (FindVar(token, out foundVar, curFunction.arguments))
 										{
 											return AddError("Not implemented."); // @TODO
 																				 /*curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
@@ -453,25 +472,24 @@ namespace Foxlang
 										}
 										else if (FindVar(nToken, out foundVar, vars))
 										{
-											curFunction.byteCode.Add(ByteCode.AddRMem);
+											return AddError("Not implemented."); // @TODO
+											/*curFunction.byteCode.Add(ByteCode.AddRMem);
 											curFunction.byteCode.Add(ByteCode.Eax);
 											curFunction.byteCode.Add((ByteCode)0xFEED1135);
 											curFunction.varReferences.Add(new VarReference
 											{
 												pos = curFunction.byteCode.Count - 1,
 												var = foundVar,
-											});
+											});*/
 										}
 										else if (FindVar(nToken, out foundVar, consts))
 										{
-											return AddError("Not implemented."); // @TODO
-																				 //curFunction.byteCode.Add(ByteCode.MovRMemImmB);
-																				 /*curFunction.byteCode.Add(ByteCode.Eax);
-																				 curFunction.byteCode.Add((ByteCode)foundVar.value);*/
+											resultVar = foundVar;
+											resIsImmediateValue = true;
 										}
 										else
 										{
-											AddError("Undeclared symbol, I guess?"); // @TODO
+											AddError("Undeclared symbol: " + token); // @TODO
 											return false;
 										}
 										break;
@@ -515,7 +533,7 @@ namespace Foxlang
 						case ParsingState.FunctionBlock:
 							switch (token)
 							{
-								case "Cli":
+								case "Cli": // @TODO cleanup
 									if (tokens[i + 1].token == "(" && tokens[i + 2].token == ")" && tokens[i + 3].token == ";")
 									{
 										curFunction.byteCode.Add(ByteCode.Cli);
@@ -608,24 +626,22 @@ namespace Foxlang
 										if (directiveDict[token]() == false)
 											return false;
 									}
-									else if (token[0] == '%' && tokens[i + 1].token == "=")
+									else if (token[0] == '%' && tokens[i + 1].token == "=") // @TODO cleanup
 									{
 										ByteCode register;
 										int width;
 										if (RegisterTryParse(token, out register, out width) == false)
 											return AddError("Can't parse this register."); // @TODO
 
-										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRImmL);
-										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRImmW);
-										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRImmB);
-										else
-											return AddError("Unknown register width!"); // @TODO
+										resRegister = register;
+										registerWidth = width;
 
-										curFunction.byteCode.Add(register);
+										i++; // @TODO cleanup
 
+										parsingStateStack.Push(ParsingState.Assignment);
+										parsingStateStack.Push(ParsingState.ValueParsing);
+
+										/*
 										i += 2;
 										string literal;
 										MathEl mathEl = new MathEl();
@@ -647,7 +663,7 @@ namespace Foxlang
 											return false;
 
 										i--;
-										Require(";");
+										Require(";");*/
 									}
 									else if (tokens[i + 1].token == "[")
 									{
@@ -1065,6 +1081,54 @@ namespace Foxlang
 							}
 							// @TODO
 							break;
+
+						case ParsingState.Assignment:
+							{
+								if (resIsImmediateValue)
+								{
+									int width = registerWidth;
+
+									if (width == 4)
+										curFunction.byteCode.Add(ByteCode.MovRImmL);
+									else if (width == 2)
+										curFunction.byteCode.Add(ByteCode.MovRImmW);
+									else if (width == 1)
+										curFunction.byteCode.Add(ByteCode.MovRImmB);
+									else
+										return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+
+									curFunction.byteCode.Add(resRegister);
+
+									curFunction.byteCode.Add((ByteCode)resultVar.value);
+								}
+								else
+								{
+									// result is register
+
+									if (registerWidth != resWidthRightRegister)
+										return AddError("Register sizes don't match. Can't assign.");
+
+									// @TODO cleanup:
+									if (registerWidth == 4)
+										curFunction.byteCode.Add(ByteCode.MovRmRL);
+									else if (registerWidth == 2)
+										curFunction.byteCode.Add(ByteCode.MovRmRW);
+									else if (registerWidth == 1)
+										curFunction.byteCode.Add(ByteCode.MovRmRB);
+									else
+										return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
+
+									curFunction.byteCode.Add(ByteCode.RToR);
+
+									// 89 mov order: to, from
+									curFunction.byteCode.Add(resRegister);
+									curFunction.byteCode.Add(resRightRegister);
+								}
+
+								parsingStateStack.Pop();
+							}
+							break;
+
 						default:
 							AddError("Unknown parser state."); // @TODO
 							return false;

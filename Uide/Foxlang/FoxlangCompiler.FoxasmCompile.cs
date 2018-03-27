@@ -377,7 +377,7 @@ namespace Foxlang
 											
 											curFunction.byteCode.Add(ByteCode.RMemImm);
 
-											// reverse order!
+											// 89 mov order: to, from
 											curFunction.byteCode.Add(right.byteCode);
 											curFunction.byteCode.Add(left.byteCode);
 										}
@@ -405,7 +405,7 @@ namespace Foxlang
 										else
 											curFunction.byteCode.Add(ByteCode.RRMem);
 
-										// reverse order!
+										// 89 mov order: to, from
 										curFunction.byteCode.Add(right.byteCode);
 										curFunction.byteCode.Add(left.byteCode);
 
@@ -507,8 +507,8 @@ namespace Foxlang
 											return AddError("No register size detected. This shouldn't happen! (#3)"); // @TODO cleanup numbers
 
 										curFunction.byteCode.Add(ByteCode.RToR);
-										
-										// reverse order!
+
+										// 89 mov order: to, from
 										curFunction.byteCode.Add(right.byteCode);
 										curFunction.byteCode.Add(left.byteCode);
 									}

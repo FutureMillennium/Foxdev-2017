@@ -43,27 +43,27 @@ namespace Foxlang
 		{
 			new Register
 			{
-				register = ByteCode.Eax
+				registerBC = ByteCode.Eax
 			},
 			new Register
 			{
-				register = ByteCode.Ecx
+				registerBC = ByteCode.Ecx
 			},
 			new Register
 			{
-				register = ByteCode.Edx
+				registerBC = ByteCode.Edx
 			},
 			new Register
 			{
-				register = ByteCode.Ebx
+				registerBC = ByteCode.Ebx
 			},
 			new Register
 			{
-				register = ByteCode.Esi
+				registerBC = ByteCode.Esi
 			},
 			new Register
 			{
-				register = ByteCode.Edi
+				registerBC = ByteCode.Edi
 			},
 		};
 
@@ -258,6 +258,10 @@ namespace Foxlang
 						namespaceStack.Pop();
 						break;
 					case Block.Function:
+						if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
+							curFunction.byteCode.Add(ByteCode.RetNear);
+						break;
+					case Block.While:
 						break;
 					default:
 						AddError("Exiting unknown block."); // @TODO
@@ -411,7 +415,10 @@ namespace Foxlang
 			ByteCode resRightRegister = 0; // @TODO cleanup
 			int resWidthRightRegister = 0; // @TODO cleanup
 			bool resIsImmediateValue = false; // @TODO cleanup
-
+			Stack<ValueEl> valueStack = new Stack<ValueEl>(); // @TODO cleanup
+			ValueEl curElValue = null; // @TODO cleanup
+			SymbolReference curLoopEnd = null; // @TODO cleanup
+			SymbolReference curLoopStart = null; // @TODO cleanup
 
 			void StringLiteralOut(string literal)
 			{
@@ -460,15 +467,38 @@ namespace Foxlang
 						case ParsingState.ValueParsing:
 							switch (token)
 							{
-								case "]":
+								case "(":
+									// @TODO
+									break;
+								case ")":
+									// @TODO resolve nested ( )'s
+
 									parsingStateStack.Pop();
+
+									break;
+								case "[":
+									// @TODO check stack validity
+									curElValue = new ValueEl();
+									valueStack.Push(curElValue);
+
+									curElValue.isMemoryAccess = true;
+									break;
+								case "]":
+									// @TODO check curElValue
+									if (curElValue.isMemoryAccess == false)
+										return AddError("Got closing ']' with no preceding memory access '['.");
+
+									// OK
+
+									//parsingStateStack.Pop(); // @TODO?
 									break;
 								case ";":
 									parsingStateStack.Pop();
 									i -= 1;
 									break;
 								case "+":
-									if (tokens[i + 1].token == "1")
+									return AddError("Not implemented: '+'.");
+									/*if (tokens[i + 1].token == "1")
 									{
 										curFunction.byteCode.Add(ByteCode.IncR);
 										curFunction.byteCode.Add(ByteCode.Eax);
@@ -479,10 +509,14 @@ namespace Foxlang
 										AddError("Trying to add unsupported type or literal.");
 										return false;
 									}
-									break;
+									break;*/
 								/*case "valueof":
 
 									break;*/
+								case "!=":
+									// @TODO check curElValue
+									curElValue.op = Operation.NotEqual;
+									break;
 								default:
 									{
 										Var foundVar;
@@ -503,11 +537,15 @@ namespace Foxlang
 										else if (FindVar(token, out foundVar, curFunction.arguments))
 										{
 											return AddError("Not implemented."); // @TODO
-																				 /*curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
-																				 curFunction.byteCode.Add(ByteCode.Ebx);
-																				 //curFunction.byteCode.Add(ByteCode.MovRMemRB);
-																				 curFunction.byteCode.Add(ByteCode.Eax);
-																				 curFunction.byteCode.Add(ByteCode.Ebx);*/
+											/*curFunction.byteCode.Add(ByteCode.PopRW); // @TODO don't pop if argument used more than once
+											curFunction.byteCode.Add(ByteCode.Ebx);
+											//curFunction.byteCode.Add(ByteCode.MovRMemRB);
+											curFunction.byteCode.Add(ByteCode.Eax);
+											curFunction.byteCode.Add(ByteCode.Ebx);*/
+										}
+										else if (FindVar(token, out foundVar, curFunction.localVars))
+										{
+											curElValue.var = foundVar;
 										}
 										else if (FindVar(nToken, out foundVar, vars))
 										{
@@ -525,6 +563,11 @@ namespace Foxlang
 										{
 											resultVar = foundVar;
 											resIsImmediateValue = true;
+										}
+										else if (ParseLiteral(token, out uint newVal))
+										{
+											// @TODO check curElValue
+											curElValue.val = newVal;
 										}
 										else
 										{
@@ -637,6 +680,7 @@ namespace Foxlang
 									break;*/
 								case "while":
 									parsingStateStack.Push(ParsingState.While);
+									blockStack.Push(Block.While);
 									parsingStateStack.Push(ParsingState.Condition);
 									parsingStateStack.Push(ParsingState.ValueParsing);
 									break;
@@ -652,8 +696,6 @@ namespace Foxlang
 								default:
 									if (ExitingBlock())
 									{
-										if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
-											curFunction.byteCode.Add(ByteCode.RetNear);
 										parsingStateStack.Pop();
 									}
 									else if (token[0] == '#')
@@ -868,7 +910,7 @@ namespace Foxlang
 										var.register = reg;
 										reg.var = var;
 										curFunction.byteCode.Add(ByteCode.MovRImmL); // @TODO size
-										curFunction.byteCode.Add(reg.register);
+										curFunction.byteCode.Add(reg.registerBC);
 										if (var.type == FoxlangType.Pointer && var.pointerType == FoxlangType.Char)
 										{
 											StringLiteralOut(var.value);
@@ -1180,6 +1222,77 @@ namespace Foxlang
 
 								parsingStateStack.Pop();
 							}
+							break;
+
+						case ParsingState.Condition:
+
+							// @TODO check valueStack
+
+							curElValue = valueStack.Pop();
+
+							if (curElValue.isMemoryAccess) // @TODO other ops
+							{
+								curFunction.byteCode.Add(ByteCode.CmpRMemImmB); // @TODO other sizes
+								curFunction.byteCode.Add(curElValue.var.register.registerBC);
+								curFunction.byteCode.Add((ByteCode)curElValue.val);
+							}
+							else
+							{
+								return AddError("Not implemented: non-memory access condition.");
+							}
+
+							curLoopStart = new SymbolReference
+							{
+								pos = curFunction.byteCode.Count,
+							};
+							curFunction.labels.Add(curLoopStart);
+
+							if (curElValue.op == Operation.NotEqual)
+							{
+								curFunction.byteCode.Add(ByteCode.JeRelB); // @TODO will be different for non-"while" loop
+
+								curLoopEnd = new SymbolReference();
+								curFunction.labels.Add(curLoopEnd);
+
+								curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+								{
+									pos = curFunction.byteCode.Count,
+									filename = filePath,
+									isAbsolute = false,
+									reference = curLoopEnd,
+								});
+
+								curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+
+							}
+							else
+							{
+								return AddError("Not implemented: Non-!= operation.");
+							}
+
+							parsingStateStack.Pop();
+							parsingStateStack.Push(ParsingState.FunctionBlock);
+
+							break;
+
+						case ParsingState.While: // at the end of a while ( ) { } block
+
+							curFunction.byteCode.Add(ByteCode.JmpRelB);
+
+							curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+							{
+								pos = curFunction.byteCode.Count,
+								filename = filePath,
+								isAbsolute = false,
+								reference = curLoopStart,
+							});
+
+							curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+
+							curLoopEnd.pos = curFunction.byteCode.Count;
+							parsingStateStack.Pop();
+							i -= 1;
+
 							break;
 
 						default:

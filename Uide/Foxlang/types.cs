@@ -21,8 +21,9 @@ namespace Foxlang
 
 		String
 	}
-	enum Block { Namespace, Function }
+	enum Block { Namespace, Function, While }
 	enum Bits { Bits16, Bits32 }
+	enum Operation { None, NotEqual }
 
 	public class Token
 	{
@@ -118,7 +119,15 @@ namespace Foxlang
 
 	internal class Register
 	{
-		internal ByteCode register;
+		internal ByteCode registerBC;
 		internal Var var = null;
+	}
+
+	internal class ValueEl
+	{
+		internal bool isMemoryAccess = false;
+		internal Var var;
+		internal dynamic val;
+		internal Operation op;
 	}
 }

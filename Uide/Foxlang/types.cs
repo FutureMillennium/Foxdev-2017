@@ -38,6 +38,7 @@ namespace Foxlang
 		public FoxlangType type;
 		public FoxlangType pointerType;
 		public dynamic value;
+		public Register register;
 	}
 
 	class SymbolReference
@@ -113,5 +114,11 @@ namespace Foxlang
 	{
 		internal uint? val = null;
 		internal char op = (char)0;
+	}
+
+	internal class Register
+	{
+		internal ByteCode register;
+		internal Var var = null;
 	}
 }

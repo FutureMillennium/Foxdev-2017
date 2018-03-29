@@ -39,6 +39,33 @@ namespace Foxlang
 
 
 		Dictionary<string, DirectiveFn> directiveDict;
+		Register[] registers = // general purpose registers
+		{
+			new Register
+			{
+				register = ByteCode.Eax
+			},
+			new Register
+			{
+				register = ByteCode.Ecx
+			},
+			new Register
+			{
+				register = ByteCode.Edx
+			},
+			new Register
+			{
+				register = ByteCode.Ebx
+			},
+			new Register
+			{
+				register = ByteCode.Esi
+			},
+			new Register
+			{
+				register = ByteCode.Edi
+			},
+		};
 
 		internal CompileUnit(FoxlangCompiler fc)
 		{
@@ -385,6 +412,18 @@ namespace Foxlang
 			int resWidthRightRegister = 0; // @TODO cleanup
 			bool resIsImmediateValue = false; // @TODO cleanup
 
+
+			void StringLiteralOut(string literal)
+			{
+				curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
+				curFunction.literalReferences.Add(new SymbolReference
+				{
+					pos = curFunction.byteCode.Count - 1,
+					symbol = literal,
+				});
+			}
+
+
 			iMax = tokens.Count;
 			i = 0;
 
@@ -611,7 +650,6 @@ namespace Foxlang
 
 									break;
 								default:
-									Var var;
 									if (ExitingBlock())
 									{
 										if (curFunction.byteCode.Last() != ByteCode.RetNear) // @TODO possible conflicts with literal value of .RetNear?
@@ -783,12 +821,7 @@ namespace Foxlang
 										{
 											string literal = arg1.Substring(1, arg1.Length - 2);
 											curFunction.byteCode.Add(ByteCode.PushL);
-											curFunction.byteCode.Add(ByteCode.StringLiteralFeedMe);
-											curFunction.literalReferences.Add(new SymbolReference
-											{
-												pos = curFunction.byteCode.Count - 1,
-												symbol = literal,
-											});
+											StringLiteralOut(literal);
 
 											curFunction.byteCode.Add(ByteCode.Call);
 											curFunction.byteCode.Add((ByteCode)0xFEED113F);
@@ -817,14 +850,34 @@ namespace Foxlang
 										});
 										i += 1;
 									}
-									else if (ParseVar(out var, false))
+									else if (ParseVar(out Var var, false))
 									{
 										curFunction.localVars.Add(var);
 
-										// @TODO assign to a free register
+										Register reg = null;
+										for (var j = 0; j < registers.Length; j++)
+										{
+											if (registers[j].var == null)
+											{
+												reg = registers[j];
+												break;
+											}
+										}
+										// @TODO all registers are taken
 
-										
-
+										var.register = reg;
+										reg.var = var;
+										curFunction.byteCode.Add(ByteCode.MovRImmL); // @TODO size
+										curFunction.byteCode.Add(reg.register);
+										if (var.type == FoxlangType.Pointer && var.pointerType == FoxlangType.Char)
+										{
+											StringLiteralOut(var.value);
+										}
+										else
+										{
+											// @TODO other types
+											curFunction.byteCode.Add((ByteCode)var.value);
+										}
 									}
 									else
 									{

@@ -162,10 +162,76 @@ namespace Foxlang
 				// @TODO
 			}
 
-			// @TODO compile
-			//GlobalWarningMessage("Binary compilation not implemented yet. Not outputting anything.");
+			var curFunction = functions[0]; // @TODO more functions
+			foreach (var r in curFunction.urLabelsUnresolved) // @TODO @cleanup
+			{
+				bool AddError(string message) // @TODO @cleanup
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = r.token,
+						filename = filePath,
+					});
+					return false;
+				}
 
-			string outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries
+				if (r.reference != null)
+					continue;
+
+				SymbolReference foundSym = null;
+				foreach (var sym in curFunction.labels)
+				{
+					if (sym.symbol == r.symbol)
+					{
+						foundSym = sym;
+						break;
+					}
+				}
+
+				if (foundSym == null)
+					return AddError("Label not found.");
+
+				r.reference = foundSym;
+				if (r.isAbsolute)
+					curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos);
+				else
+					curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
+			}
+
+			foreach (var r in curFunction.urVarsUnresolved) // @TODO @cleanup
+			{
+				bool AddError(string message) // @TODO @cleanup
+				{
+					outputMessages.Add(new OutputMessage
+					{
+						type = OutputMessage.MessageType.Error,
+						message = message,
+						token = r.token,
+						filename = filePath,
+					});
+					return false;
+				}
+
+				Var foundVar;
+				if (FindVar(r.symbol, out foundVar, consts) == false && FindVar(r.symbol, out foundVar, vars) == false) // @TODO actual vars
+					return AddError("Undefined: " + r.symbol);
+
+				curFunction.byteCode[r.pos] = (ByteCode)(foundVar.value);
+			}
+
+
+
+			curUnit = compileUnit.curUnit;
+
+			string outputFile;
+			
+			if (curUnit.extension != null)
+				outputFile = Path.ChangeExtension(filePath, curUnit.extension);
+			else
+				outputFile = Path.ChangeExtension(filePath, ".com"); // @TODO non-.com binaries?
+
 			output = outputFile;
 
 			if (BytecodeCompileToBinary(outputFile) == false)
@@ -305,24 +371,24 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case ByteCode.Di:
 				case ByteCode.Edi:
 				case ByteCode.Bh:
-					return 6;
+					return 7;
 			}
 			return 0xFF;
 		}
 
-		Var FindVar(string symbol)
+		bool FindVar(string symbol, out Var foundVar, List<Var> lookInList)
 		{
-			Var foundVar = null;
-			foreach (var sym in vars)
+			foundVar = null;
+			foreach (Var v in lookInList)
 			{
-				if (sym.symbol == symbol)
+				if (v.symbol == symbol)
 				{
-					foundVar = sym;
-					break;
+					foundVar = v;
+					return true;
 				}
 			}
 
-			return foundVar;
+			return false;
 		}
 
 		static void Swap<T>(ref T left, ref T right)

@@ -350,6 +350,19 @@ namespace Foxlang
 								}*/
 							}
 							break;
+						case ByteCode.CmpRMemImmB:
+							{
+								writer.Write((byte)0x80);
+
+								byte modRegRm = 0b00_111_000;
+								modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 1]));
+								writer.Write((byte)modRegRm);
+
+								writer.Write((byte)curFunction.byteCode[i + 2]);
+
+								i += 2;
+							}
+							break;
 						case ByteCode.Put4BytesHere:
 							i++;
 							UnresolvedLabelAccept(4);

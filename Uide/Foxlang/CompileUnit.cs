@@ -16,7 +16,7 @@ namespace Foxlang
 		List<Function> functions;
 		List<Var> consts;
 		List<Var> vars;
-		UnitInfo curUnit;
+		internal UnitInfo curUnit;
 		Project curProject;
 		// /
 
@@ -529,6 +529,11 @@ namespace Foxlang
 									valueStack.Push(curElValue);
 
 									break;
+								case "++":
+									// @TODO check curElValue
+									curElValue.op = Operation.Add1;
+
+									break;
 								default:
 									{
 										Var foundVar;
@@ -659,7 +664,7 @@ namespace Foxlang
 								case "Jmp":
 									if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";")
 									{
-										curFunction.byteCode.Add(ByteCode.Jmp);
+										curFunction.byteCode.Add(ByteCode.JmpRelB);
 
 										i += 2;
 										AddLabelReference();
@@ -1186,86 +1191,112 @@ namespace Foxlang
 
 						case ParsingState.Assignment:
 							{
-								ValueEl leftEl = valueStack.ElementAt(1);
-								ValueEl rightEl = valueStack.ElementAt(0);
+								ValueEl leftEl = valueStack.Pop();
+								ValueEl rightEl = null;
 
-								if (leftEl.op != Operation.Assignment) // @TODO
-									return AddError("Operation not implemented.");
-
-								if (leftEl.type == typeof(RegisterToken))
+								if (valueStack.Count > 0)
 								{
-									if (rightEl.isConst)
+									rightEl = leftEl;
+									leftEl = valueStack.Pop();
+								}
+
+								if (leftEl.op == Operation.Assignment)
+								{
+
+									if (leftEl.type == typeof(RegisterToken))
 									{
-										var left = (RegisterToken)leftEl.val;
-										int width = left.width;
+										if (rightEl.isConst)
+										{
+											var left = (RegisterToken)leftEl.val;
+											int width = left.width;
 
-										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRImmL);
-										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRImmW);
-										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRImmB);
+											if (width == 4)
+												curFunction.byteCode.Add(ByteCode.MovRImmL);
+											else if (width == 2)
+												curFunction.byteCode.Add(ByteCode.MovRImmW);
+											else if (width == 1)
+												curFunction.byteCode.Add(ByteCode.MovRImmB);
+											else
+												return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+
+											curFunction.byteCode.Add(left.registerBC);
+
+											curFunction.byteCode.Add((ByteCode)((Var)rightEl.val).value);
+										}
 										else
-											return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+										{
+											// @TODO non-register right side
 
-										curFunction.byteCode.Add(left.registerBC);
+											var left = (RegisterToken)leftEl.val;
+											var right = (RegisterToken)rightEl.val;
+											int width = left.width;
 
-										curFunction.byteCode.Add((ByteCode)((Var)rightEl.val).value);
+											if (width != right.width)
+												return AddError("Register sizes don't match. Can't assign.");
+
+											// @TODO cleanup:
+											if (width == 4)
+												curFunction.byteCode.Add(ByteCode.MovRmRL);
+											else if (width == 2)
+												curFunction.byteCode.Add(ByteCode.MovRmRW);
+											else if (width == 1)
+												curFunction.byteCode.Add(ByteCode.MovRmRB);
+											else
+												return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
+
+											curFunction.byteCode.Add(ByteCode.RToR);
+
+											// 89 mov order: to, from
+											curFunction.byteCode.Add(left.registerBC);
+											curFunction.byteCode.Add(right.registerBC);
+										}
+									}
+									else if (leftEl.type == typeof(Var))
+									{
+										var left = (Var)leftEl.val;
+
+										if (rightEl.type == typeof(Var))
+										{
+											var right = (Var)rightEl.val;
+
+											Register reg = FindFreeRegister();
+											// @TODO all registers are taken
+
+											reg.var = right; // @TODO flag memory access
+
+											curFunction.byteCode.Add(ByteCode.MovRRmB); // @TODO size
+											curFunction.byteCode.Add(ByteCode.RRMem);
+											curFunction.byteCode.Add(reg.registerBC);
+											curFunction.byteCode.Add(right.register.registerBC);
+
+											curFunction.byteCode.Add(ByteCode.MovRmRB); // @TODO size
+											curFunction.byteCode.Add(ByteCode.RRMem);
+											curFunction.byteCode.Add(reg.registerBC);
+											curFunction.byteCode.Add(left.register.registerBC);
+										}
+										else
+										{
+											var right = (uint)rightEl.val;
+											curFunction.byteCode.Add(ByteCode.MovRmImmB); // @TODO size
+											curFunction.byteCode.Add(ByteCode.RRMem);
+											curFunction.byteCode.Add(left.register.registerBC);
+											curFunction.byteCode.Add((ByteCode)right);
+										}
 									}
 									else
 									{
-										// @TODO non-register right side
-
-										var left = (RegisterToken)leftEl.val;
-										var right = (RegisterToken)rightEl.val;
-										int width = left.width;
-
-										if (width != right.width)
-											return AddError("Register sizes don't match. Can't assign.");
-
-										// @TODO cleanup:
-										if (width == 4)
-											curFunction.byteCode.Add(ByteCode.MovRmRL);
-										else if (width == 2)
-											curFunction.byteCode.Add(ByteCode.MovRmRW);
-										else if (width == 1)
-											curFunction.byteCode.Add(ByteCode.MovRmRB);
-										else
-											return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
-
-										curFunction.byteCode.Add(ByteCode.RToR);
-
-										// 89 mov order: to, from
-										curFunction.byteCode.Add(left.registerBC);
-										curFunction.byteCode.Add(right.registerBC);
+										return AddError("Assignment not implemented.");
 									}
 								}
-								else if (leftEl.type == typeof(Var))
+								else if (leftEl.op == Operation.Add1)
 								{
-									var left = (Var)leftEl.val;
-									var right = (Var)rightEl.val;
-
-									Register reg = FindFreeRegister();
-									// @TODO all registers are taken
-
-									reg.var = right; // @TODO flag memory access
-
-									curFunction.byteCode.Add(ByteCode.MovRRmB); // @TODO size
-									curFunction.byteCode.Add(ByteCode.RRMem);
-									curFunction.byteCode.Add(reg.registerBC);
-									curFunction.byteCode.Add(right.register.registerBC);
-
-									curFunction.byteCode.Add(ByteCode.MovRmRB); // @TODO size
-									curFunction.byteCode.Add(ByteCode.RRMem);
-									curFunction.byteCode.Add(reg.registerBC);
-									curFunction.byteCode.Add(left.register.registerBC);
+									curFunction.byteCode.Add(ByteCode.IncR);
+									curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
 								}
 								else
 								{
-									return AddError("Assignment not implemented.");
+									return AddError("Operation not implemented.");
 								}
-
-								valueStack.Clear();
 
 								parsingStateStack.Pop();
 							}
@@ -1277,6 +1308,12 @@ namespace Foxlang
 
 								ValueEl leftEl = valueStack.ElementAt(1);
 								ValueEl rightEl = valueStack.ElementAt(0);
+
+								curLoopStart = new SymbolReference
+								{
+									pos = curFunction.byteCode.Count,
+								};
+								curFunction.labels.Add(curLoopStart);
 
 								if (leftEl.isMemoryAccess) // @TODO other ops
 								{
@@ -1291,12 +1328,6 @@ namespace Foxlang
 								{
 									return AddError("Not implemented: non-memory access condition.");
 								}
-
-								curLoopStart = new SymbolReference
-								{
-									pos = curFunction.byteCode.Count,
-								};
-								curFunction.labels.Add(curLoopStart);
 
 								if (leftEl.op == Operation.NotEqual)
 								{

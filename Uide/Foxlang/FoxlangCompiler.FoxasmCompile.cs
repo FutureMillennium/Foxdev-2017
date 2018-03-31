@@ -825,7 +825,9 @@ namespace Foxlang
 									}
 									else
 									{
-										Var foundVar = FindVar(tokens[i].token);
+										Var foundVar;
+										FindVar(tokens[i].token, out foundVar, vars);
+
 										if (foundVar == null)
 											return AddError("Can't parse this literal, or undefined constant: " + tokens[i].token);
 
@@ -858,7 +860,7 @@ namespace Foxlang
 			}
 			#endregion
 
-			foreach (var r in curFunction.urLabelsUnresolved)
+			foreach (var r in curFunction.urLabelsUnresolved) // @TODO @cleanup
 			{
 				bool AddError(string message) // @TODO @cleanup
 				{
@@ -892,7 +894,7 @@ namespace Foxlang
 					curFunction.byteCode[r.pos] = (ByteCode)(foundSym.pos - (r.pos + 1));
 			}
 
-			foreach (var r in curFunction.urVarsUnresolved)
+			foreach (var r in curFunction.urVarsUnresolved) // @TODO @cleanup
 			{
 				bool AddError(string message) // @TODO @cleanup
 				{
@@ -906,7 +908,8 @@ namespace Foxlang
 					return false;
 				}
 
-				Var foundVar = FindVar(r.symbol);
+				Var foundVar;
+				FindVar(r.symbol, out foundVar, vars);
 
 				if (foundVar == null)
 					return AddError("Undefined: " + r.symbol);

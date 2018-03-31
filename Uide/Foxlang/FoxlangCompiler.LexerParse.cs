@@ -123,6 +123,11 @@ namespace Foxlang
 								case '\'':
 									readingState = LexingState.ReadingString;
 									goto BreakingSymbol;
+								case '+':
+									if (currentToken != null && currentToken.token == "+")
+										goto default;
+									else
+										goto BreakingSymbol;
 								case ';':
 								case '(':
 								case ')':

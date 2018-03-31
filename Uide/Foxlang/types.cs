@@ -23,7 +23,7 @@ namespace Foxlang
 	}
 	enum Block { Namespace, Function, While }
 	enum Bits { Bits16, Bits32 }
-	enum Operation { None, NotEqual, Assignment }
+	enum Operation { None, NotEqual, Assignment, Add1 }
 
 	public class Token
 	{

@@ -409,12 +409,6 @@ namespace Foxlang
 
 			curFunction = null; // @TODO cleanup?
 			string composedString = ""; // @TODO cleanup
-			Var resultVar = null; // @TODO cleanup
-			ByteCode resRegister = 0; // @TODO cleanup
-			int registerWidth = 0; // @TODO cleanup
-			ByteCode resRightRegister = 0; // @TODO cleanup
-			int resWidthRightRegister = 0; // @TODO cleanup
-			bool resIsImmediateValue = false; // @TODO cleanup
 			Stack<ValueEl> valueStack = new Stack<ValueEl>(); // @TODO cleanup
 			ValueEl curElValue = null; // @TODO cleanup
 			SymbolReference curLoopEnd = null; // @TODO cleanup
@@ -478,8 +472,12 @@ namespace Foxlang
 									break;
 								case "[":
 									// @TODO check stack validity
-									curElValue = new ValueEl();
-									valueStack.Push(curElValue);
+
+									if (curElValue.op != Operation.None)
+									{
+										curElValue = new ValueEl();
+										valueStack.Push(curElValue);
+									}
 
 									curElValue.isMemoryAccess = true;
 									break;
@@ -516,6 +514,20 @@ namespace Foxlang
 								case "!=":
 									// @TODO check curElValue
 									curElValue.op = Operation.NotEqual;
+
+									// @TODO cleanup?
+									curElValue = new ValueEl();
+									valueStack.Push(curElValue);
+
+									break;
+								case "=":
+									// @TODO check curElValue
+									curElValue.op = Operation.Assignment;
+
+									// @TODO cleanup?
+									curElValue = new ValueEl();
+									valueStack.Push(curElValue);
+
 									break;
 								default:
 									{
@@ -529,9 +541,12 @@ namespace Foxlang
 											if (RegisterTryParse(token, out register, out width) == false)
 												return AddError("Can't parse this register."); // @TODO
 
-											resRightRegister = register;
-											resWidthRightRegister = width;
-											resIsImmediateValue = false;
+											curElValue.type = typeof(RegisterToken);
+											curElValue.val = new RegisterToken
+											{
+												registerBC = register,
+												width = width,
+											};
 
 										}
 										else if (FindVar(token, out foundVar, curFunction.arguments))
@@ -545,7 +560,8 @@ namespace Foxlang
 										}
 										else if (FindVar(token, out foundVar, curFunction.localVars))
 										{
-											curElValue.var = foundVar;
+											curElValue.type = typeof(Var);
+											curElValue.val = foundVar;
 										}
 										else if (FindVar(nToken, out foundVar, vars))
 										{
@@ -561,8 +577,9 @@ namespace Foxlang
 										}
 										else if (FindVar(nToken, out foundVar, consts))
 										{
-											resultVar = foundVar;
-											resIsImmediateValue = true;
+											curElValue.isConst = true;
+											curElValue.type = typeof(Var);
+											curElValue.val = foundVar;
 										}
 										else if (ParseLiteral(token, out uint newVal))
 										{
@@ -682,7 +699,11 @@ namespace Foxlang
 									parsingStateStack.Push(ParsingState.While);
 									blockStack.Push(Block.While);
 									parsingStateStack.Push(ParsingState.Condition);
+
+									curElValue = new ValueEl();
+									valueStack.Push(curElValue);
 									parsingStateStack.Push(ParsingState.ValueParsing);
+
 									break;
 								case "return":
 									if (tokens[i + 1].token != ";") // @TODO
@@ -706,21 +727,8 @@ namespace Foxlang
 										if (directiveDict[token]() == false)
 											return false;
 									}
-									else if (token[0] == '%' && tokens[i + 1].token == "=") // @TODO cleanup
+									/*else if (token[0] == '%' && tokens[i + 1].token == "=") // @TODO cleanup
 									{
-										ByteCode register;
-										int width;
-										if (RegisterTryParse(token, out register, out width) == false)
-											return AddError("Can't parse this register."); // @TODO
-
-										resRegister = register;
-										registerWidth = width;
-
-										i++; // @TODO cleanup
-
-										parsingStateStack.Push(ParsingState.Assignment);
-										parsingStateStack.Push(ParsingState.ValueParsing);
-
 										/*
 										i += 2;
 										string literal;
@@ -744,8 +752,8 @@ namespace Foxlang
 
 										i--;
 										Require(";");*/
-									}
-									else if (tokens[i + 1].token == "[")
+									/*}*/
+									/*else if (tokens[i + 1].token == "[")
 									{
 										Var foundConst;
 										if (FindVar(MakeNamespace(token), out foundConst, consts))
@@ -764,7 +772,7 @@ namespace Foxlang
 										parsingStateStack.Push(ParsingState.ArrayAccess);
 										parsingStateStack.Push(ParsingState.ValueParsing);
 										i += 1;
-									}
+									}*/
 									/*else if (tokens[i + 1].token == "=")
 									{
 										Var foundVar;
@@ -791,7 +799,7 @@ namespace Foxlang
 
 										// @TODO
 									}*/
-									else if (tokens[i + 1].token == "+=" && tokens[i + 3].token == ";")
+									/*else if (tokens[i + 1].token == "+=" && tokens[i + 3].token == ";")
 									{
 										Var foundVar;
 										string nToken = MakeNamespace(token);
@@ -832,7 +840,7 @@ namespace Foxlang
 											AddError("Trying to add unsupported symbol or literal to variable.");
 											return false;
 										}
-									}
+									}*/
 									else if (tokens[i + 1].token == "(" && tokens[i + 3].token == ")" && tokens[i + 4].token == ";") // foo(bar);
 									{
 										ByteCode instruction;
@@ -896,15 +904,7 @@ namespace Foxlang
 									{
 										curFunction.localVars.Add(var);
 
-										Register reg = null;
-										for (var j = 0; j < registers.Length; j++)
-										{
-											if (registers[j].var == null)
-											{
-												reg = registers[j];
-												break;
-											}
-										}
+										Register reg = FindFreeRegister();
 										// @TODO all registers are taken
 
 										var.register = reg;
@@ -923,8 +923,15 @@ namespace Foxlang
 									}
 									else
 									{
-										AddError("Can't parse this."); // @TODO
-										return false;
+										parsingStateStack.Push(ParsingState.Assignment);
+
+										// @TODO cleanup: should be in a function?
+
+										curElValue = new ValueEl();
+										valueStack.Push(curElValue);
+
+										parsingStateStack.Push(ParsingState.ValueParsing);
+										i -= 1;
 									}
 									break;
 							}
@@ -1179,100 +1186,146 @@ namespace Foxlang
 
 						case ParsingState.Assignment:
 							{
-								if (resIsImmediateValue)
+								ValueEl leftEl = valueStack.ElementAt(1);
+								ValueEl rightEl = valueStack.ElementAt(0);
+
+								if (leftEl.op != Operation.Assignment) // @TODO
+									return AddError("Operation not implemented.");
+
+								if (leftEl.type == typeof(RegisterToken))
 								{
-									int width = registerWidth;
+									if (rightEl.isConst)
+									{
+										var left = (RegisterToken)leftEl.val;
+										int width = left.width;
 
-									if (width == 4)
-										curFunction.byteCode.Add(ByteCode.MovRImmL);
-									else if (width == 2)
-										curFunction.byteCode.Add(ByteCode.MovRImmW);
-									else if (width == 1)
-										curFunction.byteCode.Add(ByteCode.MovRImmB);
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRImmL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRImmW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRImmB);
+										else
+											return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+
+										curFunction.byteCode.Add(left.registerBC);
+
+										curFunction.byteCode.Add((ByteCode)((Var)rightEl.val).value);
+									}
 									else
-										return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+									{
+										// @TODO non-register right side
 
-									curFunction.byteCode.Add(resRegister);
+										var left = (RegisterToken)leftEl.val;
+										var right = (RegisterToken)rightEl.val;
+										int width = left.width;
 
-									curFunction.byteCode.Add((ByteCode)resultVar.value);
+										if (width != right.width)
+											return AddError("Register sizes don't match. Can't assign.");
+
+										// @TODO cleanup:
+										if (width == 4)
+											curFunction.byteCode.Add(ByteCode.MovRmRL);
+										else if (width == 2)
+											curFunction.byteCode.Add(ByteCode.MovRmRW);
+										else if (width == 1)
+											curFunction.byteCode.Add(ByteCode.MovRmRB);
+										else
+											return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
+
+										curFunction.byteCode.Add(ByteCode.RToR);
+
+										// 89 mov order: to, from
+										curFunction.byteCode.Add(left.registerBC);
+										curFunction.byteCode.Add(right.registerBC);
+									}
+								}
+								else if (leftEl.type == typeof(Var))
+								{
+									var left = (Var)leftEl.val;
+									var right = (Var)rightEl.val;
+
+									Register reg = FindFreeRegister();
+									// @TODO all registers are taken
+
+									reg.var = right; // @TODO flag memory access
+
+									curFunction.byteCode.Add(ByteCode.MovRRmB); // @TODO size
+									curFunction.byteCode.Add(ByteCode.RRMem);
+									curFunction.byteCode.Add(reg.registerBC);
+									curFunction.byteCode.Add(right.register.registerBC);
+
+									curFunction.byteCode.Add(ByteCode.MovRmRB); // @TODO size
+									curFunction.byteCode.Add(ByteCode.RRMem);
+									curFunction.byteCode.Add(reg.registerBC);
+									curFunction.byteCode.Add(left.register.registerBC);
 								}
 								else
 								{
-									// result is register
-
-									if (registerWidth != resWidthRightRegister)
-										return AddError("Register sizes don't match. Can't assign.");
-
-									// @TODO cleanup:
-									if (registerWidth == 4)
-										curFunction.byteCode.Add(ByteCode.MovRmRL);
-									else if (registerWidth == 2)
-										curFunction.byteCode.Add(ByteCode.MovRmRW);
-									else if (registerWidth == 1)
-										curFunction.byteCode.Add(ByteCode.MovRmRB);
-									else
-										return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
-
-									curFunction.byteCode.Add(ByteCode.RToR);
-
-									// 89 mov order: to, from
-									curFunction.byteCode.Add(resRegister);
-									curFunction.byteCode.Add(resRightRegister);
+									return AddError("Assignment not implemented.");
 								}
+
+								valueStack.Clear();
 
 								parsingStateStack.Pop();
 							}
 							break;
 
 						case ParsingState.Condition:
-
-							// @TODO check valueStack
-
-							curElValue = valueStack.Pop();
-
-							if (curElValue.isMemoryAccess) // @TODO other ops
 							{
-								curFunction.byteCode.Add(ByteCode.CmpRMemImmB); // @TODO other sizes
-								curFunction.byteCode.Add(curElValue.var.register.registerBC);
-								curFunction.byteCode.Add((ByteCode)curElValue.val);
-							}
-							else
-							{
-								return AddError("Not implemented: non-memory access condition.");
-							}
+								// @TODO check valueStack
 
-							curLoopStart = new SymbolReference
-							{
-								pos = curFunction.byteCode.Count,
-							};
-							curFunction.labels.Add(curLoopStart);
+								ValueEl leftEl = valueStack.ElementAt(1);
+								ValueEl rightEl = valueStack.ElementAt(0);
 
-							if (curElValue.op == Operation.NotEqual)
-							{
-								curFunction.byteCode.Add(ByteCode.JeRelB); // @TODO will be different for non-"while" loop
+								if (leftEl.isMemoryAccess) // @TODO other ops
+								{
+									curFunction.byteCode.Add(ByteCode.CmpRMemImmB); // @TODO other sizes
 
-								curLoopEnd = new SymbolReference();
-								curFunction.labels.Add(curLoopEnd);
+									// @TODO cleanup
 
-								curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+									curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
+									curFunction.byteCode.Add((ByteCode)((uint)rightEl.val)); // @TODO other types
+								}
+								else
+								{
+									return AddError("Not implemented: non-memory access condition.");
+								}
+
+								curLoopStart = new SymbolReference
 								{
 									pos = curFunction.byteCode.Count,
-									filename = filePath,
-									isAbsolute = false,
-									reference = curLoopEnd,
-								});
+								};
+								curFunction.labels.Add(curLoopStart);
 
-								curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+								if (leftEl.op == Operation.NotEqual)
+								{
+									curFunction.byteCode.Add(ByteCode.JeRelB); // @TODO will be different for non-"while" loop
 
+									curLoopEnd = new SymbolReference();
+									curFunction.labels.Add(curLoopEnd);
+
+									curFunction.urLabelsUnresolved.Add(new UnresolvedReference()
+									{
+										pos = curFunction.byteCode.Count,
+										filename = filePath,
+										isAbsolute = false,
+										reference = curLoopEnd,
+									});
+
+									curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+
+								}
+								else
+								{
+									return AddError("Not implemented: Non-!= operation.");
+								}
+
+								valueStack.Clear();
+
+								parsingStateStack.Pop();
+								parsingStateStack.Push(ParsingState.FunctionBlock);
 							}
-							else
-							{
-								return AddError("Not implemented: Non-!= operation.");
-							}
-
-							parsingStateStack.Pop();
-							parsingStateStack.Push(ParsingState.FunctionBlock);
-
 							break;
 
 						case ParsingState.While: // at the end of a while ( ) { } block
@@ -1390,6 +1443,21 @@ namespace Foxlang
 			});
 
 			curFunction.byteCode.Add(ByteCode.LabelFeedMe);
+		}
+
+		Register FindFreeRegister()
+		{
+			Register reg = null;
+			for (var j = 0; j < registers.Length; j++)
+			{
+				if (registers[j].var == null)
+				{
+					reg = registers[j];
+					break;
+				}
+			}
+
+			return reg;
 		}
 	}
 }

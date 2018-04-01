@@ -116,14 +116,20 @@ namespace Foxlang
 				{
 					ByteCode b = curFunction.byteCode[i];
 
-					if (nextLabelI != -1 && i == curFunction.labels[nextLabelI].pos)
-					{
-						curFunction.labels[nextLabelI].bytePos = writer.BaseStream.Position;
-						if (curFunction.labels.Count > nextLabelI + 1)
-							nextLabelI++;
-						else
-							nextLabelI = -1;
-					}
+					if (nextLabelI != -1)
+						while (i == curFunction.labels[nextLabelI].pos)
+						{
+							curFunction.labels[nextLabelI].bytePos = writer.BaseStream.Position;
+							if (curFunction.labels.Count > nextLabelI + 1)
+							{
+								nextLabelI++;
+							}
+							else
+							{
+								nextLabelI = -1;
+								break;
+							}
+						}
 
 					switch (b)
 					{

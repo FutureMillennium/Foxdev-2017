@@ -1,6 +1,8 @@
 #address = 0x100;
+#extension = '.com';
 
 function EntryPoint() {
+	#bits = 16;
 	%ah = 0x9;
 	%dx = "Hello DOS!$";
 	Int(0x21);

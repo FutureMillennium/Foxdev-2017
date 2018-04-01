@@ -1,4 +1,5 @@
 #address 0x100
+#bits 16
 #extension '.com'
 
 Mov %ah = 0x9

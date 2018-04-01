@@ -1,0 +1,31 @@
+#format = Flat;
+#extension = '.bin';
+//#bits = 16; // @TODO document scope
+#address = 0x7c00;
+
+const Byte Pointer SCREEN_BUFFER = 0xB8000; // VGA text mode 3 video buffer address
+
+function EntryPoint() {
+	
+		#bits = 16;
+	
+		Byte Pointer curPos = SCREEN_BUFFER;
+		Char Pointer message = "boot2 says hello! Booted from Foxlang!"; // @TODO casting? // @TODO CString
+		
+		while ([message] != 0) {
+			[curPos] = [message];
+			curPos++;
+			[curPos] = 0x87; // @TODO casting? //(Char 0x87)
+			curPos++;
+			message++;
+		}
+
+	.Hang:
+		Cli();
+		Hlt();
+		Jmp(.Hang);
+
+		#WriteData();
+		#Align(512 - 2);
+		#Put2(0xaa55);
+}

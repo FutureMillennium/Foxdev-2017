@@ -1,0 +1,28 @@
+#format = Flat;
+#extension = '.bin';
+//#bits = 16; // @TODO document scope
+#address = 0x7c00;
+
+function EntryPoint() {
+	
+		#bits = 16;
+	
+		%ah = 0x0e;
+		
+		Char Pointer message = "boot2 says hello! Booted from Foxlang!"; // @TODO casting? // @TODO CString
+		
+		while ([message] != 0) {
+			%al = [message];
+			Int(0x10);
+			message++;
+		}
+
+	.Hang:
+		Cli();
+		Hlt();
+		Jmp(.Hang);
+
+		#WriteData();
+		#Align(512 - 2);
+		#Put2(0xaa55);
+}

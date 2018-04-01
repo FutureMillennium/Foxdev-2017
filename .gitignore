@@ -3,7 +3,5 @@
 Debug
 obj
 /.vs
-*.bin
-*.com
 /code examples/vars.cmd
 *.user

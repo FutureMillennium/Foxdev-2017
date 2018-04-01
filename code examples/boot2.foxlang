@@ -22,7 +22,6 @@ function EntryPoint() {
 		Jmp(.Hang);
 
 		#WriteData();
-		//#Align(512 - 2); // @TODO
-		#Align(510);
-		#Put2(0xaa55); // @TODO
+		#Align(512 - 2);
+		#Put2(0xaa55);
 }

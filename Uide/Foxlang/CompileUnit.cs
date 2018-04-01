@@ -165,14 +165,19 @@ namespace Foxlang
 
 					Require("(");
 
-					uint val;
-
 					i++;
-					if (ParseLiteral(tokens[i].token, out val) == false)
-						return AddError("#Align needs a numeric literal.");
 
-					curFunction.byteCode.Add(ByteCode.Align);
-					curFunction.byteCode.Add((ByteCode)val);
+					MathEl curEl = new MathEl();
+
+					if (ConstMathParse(curEl)) {
+						curFunction.byteCode.Add(ByteCode.Align);
+						curFunction.byteCode.Add((ByteCode)curEl.val);
+					}
+					else
+					{
+						return AddError("#Align needs a numeric value.");
+					}
+					i--;
 
 					Require(")");
 					Require(";");

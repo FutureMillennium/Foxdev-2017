@@ -86,6 +86,10 @@ namespace Foxlang
 							if (stack.Count == 1)
 								canEnd = true;
 						}
+						else if (canEnd)
+						{
+							return true;
+						}
 						else
 							return AddError("Unexpected ')'.");
 						break;

@@ -127,8 +127,9 @@ namespace Foxlang
 		LodsB,
 
 		// compiler/preprocessor only:
+		Put1ByteHere, // db
+		Put2BytesHere, // dw
 		Put4BytesHere, // dd
-		// @TODO db, dw
 		Align,
 		WriteDataHere,
 

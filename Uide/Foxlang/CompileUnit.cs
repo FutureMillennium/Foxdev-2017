@@ -79,7 +79,48 @@ namespace Foxlang
 
 			directiveDict = new Dictionary<string, DirectiveFn>()
 			{
-				{ "#Put4", () => {
+				{ "#Put2", () => { // @TODO cleanup
+
+					Require("(");
+
+					i++;
+					curFunction.byteCode.Add(ByteCode.Put2BytesHere);
+
+					uint ii;
+
+					if (tokens[i].token == "#address") // @TODO cleanup
+					{
+						curFunction.byteCode.Add((ByteCode)curUnit.relativeAddress);
+					}
+					else if (ParseLiteral(tokens[i].token, out ii)) {
+						curFunction.byteCode.Add((ByteCode)ii);
+					}
+					else if (tokens[i].token == "addressOf") // @TODO @hack
+					{
+						i++;
+						AddLabelReference(true);
+					}
+					else
+					{
+						// @TODO cleanup
+						curFunction.urVarsUnresolved.Add(new UnresolvedReference
+						{
+							symbol = tokens[i].token,
+							pos = curFunction.byteCode.Count,
+							token = tok,
+							filename = filePath,
+						});
+
+						curFunction.byteCode.Add(ByteCode.VarFeedMe);
+					}
+
+					Require(")");
+					Require(";");
+
+					return true;
+				} },
+
+				{ "#Put4", () => { // @TODO cleanup
 
 					Require("(");
 

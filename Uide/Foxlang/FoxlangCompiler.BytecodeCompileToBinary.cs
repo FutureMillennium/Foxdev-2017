@@ -377,6 +377,11 @@ namespace Foxlang
 								i += 2;
 							}
 							break;
+						case ByteCode.Put2BytesHere:
+							i++;
+							UnresolvedLabelAccept(2);
+							writer.Write((UInt16)curFunction.byteCode[i]);
+							break;
 						case ByteCode.Put4BytesHere:
 							i++;
 							UnresolvedLabelAccept(4);

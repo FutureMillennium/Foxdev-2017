@@ -49,11 +49,11 @@ namespace Foxlang
 		public string symbol;
 	}
 
-	class VarReference
+	/*class VarReference
 	{
 		public int pos;
 		public Var var;
-	}
+	}*/
 
 	class UnresolvedReference
 	{
@@ -77,7 +77,7 @@ namespace Foxlang
 		public List<UnresolvedReference> unresolvedReferences = new List<UnresolvedReference>();
 		public List<UnresolvedReference> urLabelsUnresolved = new List<UnresolvedReference>();
 		public List<UnresolvedReference> urVarsUnresolved = new List<UnresolvedReference>();
-		public List<VarReference> varReferences = new List<VarReference>();
+		//public List<VarReference> varReferences = new List<VarReference>();
 		public List<SymbolReference> literalReferences = new List<SymbolReference>();
 		public List<SymbolReference> labels = new List<SymbolReference>();
 	}

@@ -205,6 +205,45 @@ namespace Foxlang
 					return true;
 
 				} },
+
+				{ "#bits", () => {
+
+					Require("=");
+
+					i++;
+					if (ParseLiteral(tokens[i].token, out uint bitNum))
+					{
+						if (bitNum == 32)
+						{
+							curFunction.bits = Bits.Bits32;
+						}
+						else if (bitNum == 16)
+						{
+							curFunction.bits = Bits.Bits16;
+						}
+						else
+						{
+							return AddError("Unsupported #bits value.");
+						}
+					}
+					else
+					{
+						AddError("Can't parse this literal."); // @TODO
+						return false;
+					}
+
+					Require(";");
+
+					return true;
+				} },
+
+				{ "#WriteData", () => {
+					Require("(");
+					Require(")");
+					Require(";");
+					curFunction.byteCode.Add(ByteCode.WriteDataHere);
+					return true;
+				} },
 			};
 		}
 
@@ -554,6 +593,11 @@ namespace Foxlang
 											};
 
 										}
+										else if (StringLiteralTryParse(token, out string strVal))
+										{
+											curElValue.type = typeof(string);
+											curElValue.val = strVal;
+										}
 										else if (FindVar(token, out foundVar, curFunction.arguments))
 										{
 											return AddError("Not implemented."); // @TODO
@@ -589,6 +633,7 @@ namespace Foxlang
 										else if (ParseLiteral(token, out uint newVal))
 										{
 											// @TODO check curElValue
+											curElValue.type = typeof(uint);
 											curElValue.val = newVal;
 										}
 										else
@@ -1205,9 +1250,10 @@ namespace Foxlang
 
 									if (leftEl.type == typeof(RegisterToken))
 									{
+										var left = (RegisterToken)leftEl.val;
+
 										if (rightEl.isConst)
 										{
-											var left = (RegisterToken)leftEl.val;
 											int width = left.width;
 
 											if (width == 4)
@@ -1225,30 +1271,89 @@ namespace Foxlang
 										}
 										else
 										{
-											// @TODO non-register right side
+											if (rightEl.type == typeof(RegisterToken))
+											{
+												var right = (RegisterToken)rightEl.val;
+												int width = left.width;
 
-											var left = (RegisterToken)leftEl.val;
-											var right = (RegisterToken)rightEl.val;
-											int width = left.width;
+												if (rightEl.isMemoryAccess)
+												{
+													// @TODO cleanup:
+													if (width == 4)
+														curFunction.byteCode.Add(ByteCode.MovRRmL);
+													else if (width == 2)
+														curFunction.byteCode.Add(ByteCode.MovRRmW);
+													else if (width == 1)
+														curFunction.byteCode.Add(ByteCode.MovRRmB);
+													else
+														return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
 
-											if (width != right.width)
-												return AddError("Register sizes don't match. Can't assign.");
+													curFunction.byteCode.Add(ByteCode.RRMem);
 
-											// @TODO cleanup:
-											if (width == 4)
-												curFunction.byteCode.Add(ByteCode.MovRmRL);
-											else if (width == 2)
-												curFunction.byteCode.Add(ByteCode.MovRmRW);
-											else if (width == 1)
-												curFunction.byteCode.Add(ByteCode.MovRmRB);
+													// 8B /r	MOV r32,r/m32	RM	Valid	Valid	Move r/m32 to r32.
+													curFunction.byteCode.Add(left.registerBC);
+													curFunction.byteCode.Add(right.registerBC);
+												}
+												else
+												{
+													if (width != right.width)
+														return AddError("Register sizes don't match. Can't assign.");
+
+													// @TODO cleanup:
+													if (width == 4)
+														curFunction.byteCode.Add(ByteCode.MovRmRL);
+													else if (width == 2)
+														curFunction.byteCode.Add(ByteCode.MovRmRW);
+													else if (width == 1)
+														curFunction.byteCode.Add(ByteCode.MovRmRB);
+													else
+														return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
+
+													curFunction.byteCode.Add(ByteCode.RToR);
+
+													// 89 mov order: to, from
+													curFunction.byteCode.Add(left.registerBC);
+													curFunction.byteCode.Add(right.registerBC);
+												}
+											}
+											else if (rightEl.type == typeof(string))
+											{
+												int width = left.width;
+
+												// @TODO cleanup:
+												if (width == 4)
+													curFunction.byteCode.Add(ByteCode.MovRImmL);
+												else if (width == 2)
+													curFunction.byteCode.Add(ByteCode.MovRImmW);
+												else if (width == 1)
+													curFunction.byteCode.Add(ByteCode.MovRImmB);
+												else
+													return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+
+												curFunction.byteCode.Add(left.registerBC);
+												StringLiteralOut((string)rightEl.val);
+											}
+											else if (rightEl.type == typeof(uint))
+											{
+												int width = left.width;
+
+												// @TODO cleanup:
+												if (width == 4)
+													curFunction.byteCode.Add(ByteCode.MovRImmL);
+												else if (width == 2)
+													curFunction.byteCode.Add(ByteCode.MovRImmW);
+												else if (width == 1)
+													curFunction.byteCode.Add(ByteCode.MovRImmB);
+												else
+													return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen.");
+
+												curFunction.byteCode.Add(left.registerBC);
+												curFunction.byteCode.Add((ByteCode)(uint)rightEl.val);
+											}
 											else
-												return AddError("Unknown register width. This is likely a compiler bug, as this shouldn't happen."); // @TODO cleanup numbers
-
-											curFunction.byteCode.Add(ByteCode.RToR);
-
-											// 89 mov order: to, from
-											curFunction.byteCode.Add(left.registerBC);
-											curFunction.byteCode.Add(right.registerBC);
+											{
+												return AddError("Right side type not implemented: " + rightEl.type);
+											}
 										}
 									}
 									else if (leftEl.type == typeof(Var))
@@ -1291,7 +1396,12 @@ namespace Foxlang
 								else if (leftEl.op == Operation.Add1)
 								{
 									curFunction.byteCode.Add(ByteCode.IncR);
-									curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
+									if (leftEl.type == typeof(RegisterToken))
+										curFunction.byteCode.Add(((RegisterToken)leftEl.val).registerBC);
+									else if (leftEl.type == typeof(Var))
+										curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
+									else
+										return AddError("Type not implemented: " + leftEl.type);
 								}
 								else
 								{
@@ -1321,7 +1431,19 @@ namespace Foxlang
 
 									// @TODO cleanup
 
-									curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
+									if (leftEl.type == typeof(Var))
+									{
+										curFunction.byteCode.Add(((Var)leftEl.val).register.registerBC);
+									}
+									else if (leftEl.type == typeof(RegisterToken))
+									{
+										curFunction.byteCode.Add(((RegisterToken)leftEl.val).registerBC);
+									}
+									else
+									{
+										return AddError("Left side type not implemented: " + leftEl.type);
+									}
+
 									curFunction.byteCode.Add((ByteCode)((uint)rightEl.val)); // @TODO other types
 								}
 								else

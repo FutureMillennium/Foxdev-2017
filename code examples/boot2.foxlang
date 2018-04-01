@@ -1,0 +1,29 @@
+#format = Flat;
+#extension = '.bin';
+//#bits = 16; // @TODO document scope
+#address = 0x7c00;
+
+function EntryPoint() {
+	
+		#bits = 16;
+	
+		%si = "boot2 says hello! Booted from Foxlang!";
+		%ah = 0x0e;
+		
+		while ([%si] != 0) {
+			%al = [%si];
+			%si++;
+			Int(0x10);
+		}
+
+	.Hang:
+		Cli();
+		Hlt();
+		Jmp(.Hang);
+
+	#WriteData();
+	//#Align(512 - 2); // @TODO
+	#Align(508);
+	//#Put2(0xaa55); // @TODO
+	#Put4(0xaa550000);
+}

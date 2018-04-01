@@ -257,7 +257,10 @@ namespace Foxlang
 
 										modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 2]) << 3);
 
-										modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 3]));
+										if (curFunction.bits == Bits.Bits16)
+											modRegRm |= (byte)(RealModeRegisterNumber(curFunction.byteCode[i + 3]));
+										else
+											modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 3]));
 
 										writer.Write((byte)modRegRm);
 										
@@ -361,7 +364,12 @@ namespace Foxlang
 								writer.Write((byte)0x80);
 
 								byte modRegRm = 0b00_111_000;
-								modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 1]));
+
+								if (curFunction.bits == Bits.Bits16)
+									modRegRm |= (byte)(RealModeRegisterNumber(curFunction.byteCode[i + 1]));
+								else
+									modRegRm |= (byte)(RegisterNumber(curFunction.byteCode[i + 1]));
+
 								writer.Write((byte)modRegRm);
 
 								writer.Write((byte)curFunction.byteCode[i + 2]);

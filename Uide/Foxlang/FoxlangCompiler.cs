@@ -315,6 +315,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case ByteCode.Cx:
 				case ByteCode.Dx:
 				case ByteCode.Bx:
+				case ByteCode.Sp:
+				case ByteCode.Bp:
 				case ByteCode.Si:
 				case ByteCode.Di:
 					width = 2;
@@ -371,6 +373,30 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case ByteCode.Di:
 				case ByteCode.Edi:
 				case ByteCode.Bh:
+					return 7;
+			}
+			return 0xFF;
+		}
+
+		byte RealModeRegisterNumber(ByteCode register)
+		{
+			/*
+			67 8a 00                mov    al,BYTE PTR [bx+si]
+			67 8a 01                mov    al,BYTE PTR [bx+di]
+			67 8a 02                mov    al,BYTE PTR [bp+si]
+			67 8a 03                mov    al,BYTE PTR [bp+di]
+			67 8a 04                mov    al,BYTE PTR [si]
+			67 8a 05                mov    al,BYTE PTR [di]
+			67 8a 06 90 90          mov    al,BYTE PTR ds:0x9090
+			67 8a 07                mov    al,BYTE PTR [bx]
+			*/
+			switch (register)
+			{
+				case ByteCode.Si:
+					return 4;
+				case ByteCode.Di:
+					return 5;
+				case ByteCode.Bx:
 					return 7;
 			}
 			return 0xFF;

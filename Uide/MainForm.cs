@@ -433,12 +433,12 @@ Mp */
 		{
 			//Size sizeFont = TextRenderer.MeasureText("M", font);
 
-			maxLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight());
+			maxLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight()) - 1;
 
-			if (isFileLoaded && fileLines > maxLines)
+			if (isFileLoaded && fileLines >= maxLines)
 			{
 				scrollBarV.Maximum = fileLines - 1;
-				scrollBarV.LargeChange = maxLines - 1; // @TODO shouldn't scroll past semi-visible lines
+				scrollBarV.LargeChange = maxLines - 1;
 				scrollBarV.Enabled = true;
 			} else
 			{
@@ -492,29 +492,45 @@ Mp */
 				max = fileLines;
 			}
 
+			{
+				i = 0;
+				string line = "000102030405060708090A0B0C0D0E0F";
+				int jMax = line.Length / 2;
+
+				for (var j = 0; j < jMax; j++)
+				{
+					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Gray, 100 + j * 30, 0);
+				}
+			}
 
 
 			for (i = 0; i < max; i++)
 			{
+				float top = (i + 1) * lineHeight;
 				int ii = start + i;
-				e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, i * lineHeight);
+				e.Graphics.DrawString((ii * 16).ToString("x8"), font, Brushes.Gray, 0, top);
 
-				if (ii == fileLines - 1) // last line
-				{
-					e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16)), font, Brushes.Black, 100, // @TODO non-fixed offset
-						i * lineHeight);
+				int length;
 
-					e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16)), font, Brushes.Black, 500, // @TODO non-fixed offset
-						i * lineHeight);
-				}
+				if (ii == fileLines - 1)
+					length = 0;
 				else
-				{
-					e.Graphics.DrawString(ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), 16), font, Brushes.Black, 100, // @TODO non-fixed offset
-						i * lineHeight);
+					length = 16;
 
-					e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), 16), font, Brushes.Black, 500, // @TODO non-fixed offset
-						i * lineHeight);
+				string line = ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), length);
+				int jMax = line.Length / 2;
+
+				for (var j = 0; j < jMax; j++)
+				{
+					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Black, 100 + j * 30, // @TODO non-fixed offset
+						top);
 				}
+
+				/*e.Graphics.DrawString(line, font, Brushes.Black, 100, // @TODO non-fixed offset
+					i * lineHeight);*/
+
+				e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), length), font, Brushes.Black, (16 * 30) + 120, // @TODO non-fixed offset
+					top);
 			}
 		}
 

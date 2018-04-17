@@ -435,6 +435,9 @@ Mp */
 
 			maxLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight()) - 1;
 
+			if (maxLines <= 0)
+				return;
+
 			if (isFileLoaded && fileLines >= maxLines)
 			{
 				scrollBarV.Maximum = fileLines - 1;
@@ -442,6 +445,7 @@ Mp */
 				scrollBarV.Enabled = true;
 			} else
 			{
+				scrollBarV.Value = 0;
 				scrollBarV.Enabled = false;
 			}
 		}

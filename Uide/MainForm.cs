@@ -1,6 +1,7 @@
 ﻿using Foxlang;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -24,6 +25,9 @@ namespace Uide
 			fileLines = 0;
 		bool isMultiboot = false;
 
+		int deltaScrollWheel,
+			linesScrollWheel;
+
 		Font font = new Font(FontFamily.GenericMonospace, 13);
 
 
@@ -33,6 +37,11 @@ namespace Uide
 		{
 			InitializeComponent();
 
+			deltaScrollWheel = SystemInformation.MouseWheelScrollDelta;
+			linesScrollWheel = SystemInformation.MouseWheelScrollLines;
+
+			mainBox.MouseWheel += MainBox_MouseWheel;
+
 			this.Text = PRODUCT_NAME;
 			this.Icon = Uide.Properties.Resources.Foxdev;
 
@@ -40,6 +49,23 @@ namespace Uide
 
 			if (args.Length > 0)
 				OpenFile(args[0]);
+		}
+
+		private void MainBox_MouseWheel(object sender, MouseEventArgs e)
+		{
+			int delta = e.Delta / deltaScrollWheel * linesScrollWheel * -1;
+			if (delta < 0 && scrollBarV.Value + delta < 0)
+			{
+				scrollBarV.Value = 0;
+			}
+			else if (delta > 0 && scrollBarV.Value + delta > scrollBarV.Maximum - scrollBarV.LargeChange + 1)
+			{
+				scrollBarV.Value = scrollBarV.Maximum - scrollBarV.LargeChange + 1;
+			}
+			else
+			{
+				scrollBarV.Value += delta;
+			}
 		}
 
 		private void MainForm_DragEnter(object sender, DragEventArgs e)
@@ -411,8 +437,8 @@ Mp */
 
 			if (isFileLoaded && fileLines > maxLines)
 			{
-				scrollBarV.Maximum = fileLines;
-				scrollBarV.LargeChange = maxLines; // @TODO shouldn't scroll past semi-visible lines
+				scrollBarV.Maximum = fileLines - 1;
+				scrollBarV.LargeChange = maxLines - 1; // @TODO shouldn't scroll past semi-visible lines
 				scrollBarV.Enabled = true;
 			} else
 			{

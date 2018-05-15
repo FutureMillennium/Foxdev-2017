@@ -1,0 +1,47 @@
+Init();
+while (foo != 0) {
+	Bar();
+	Init();
+}
+
+//
+init {
+	Init();
+} while (foo != 0) {
+	Bar();
+}
+// Doesn't look like a single block
+
+
+loop {
+	Init();
+	if (foo == 0) { break; }
+	
+	Bar();
+}
+
+//
+loop {
+	Init();
+	while (foo != 0) // ?? Looks like something should go here
+	
+	Bar();
+}
+//
+
+for (int i = 0 .. 9) {
+
+}
+
+for (int i = 0 ..< 10) {
+
+}
+
+for (int i = 9 >.. 0) {
+
+}
+
+// Repeat 10 times
+repeat (10) {
+	
+}

@@ -20,3 +20,12 @@ text += "[Multiboot]" + Environment.NewLine;
 iterate (magic, flags, checksum) as it : itName {
 	text += itName + ":\t" + it + "\t(0x" + it.ToString("x8") + ")" + Environment.NewLine;
 }
+
+
+iterate [magic, flags, checksum] as it {
+	text += nameOf(it) + ":\t" + it + "\t(0x" + it.ToString("x8") + ")" + Environment.NewLine;
+}
+
+foreach [magic, flags, checksum] as it {
+	text += nameOf(it) + ":\t" + it + "\t(0x" + it.ToString("x8") + ")" + Environment.NewLine;
+}

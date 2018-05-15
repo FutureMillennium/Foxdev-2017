@@ -8,3 +8,17 @@ string daysText = switch (days) {
 	default:
 		"dnù";
 }
+
+string daysText = switch (days) {
+	case 1 {
+		"den";
+	}
+	case 2:
+	case 3:
+	case 4 {
+		"dny";
+	}
+	default {
+		"dnù";
+	}
+}

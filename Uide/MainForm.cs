@@ -44,6 +44,7 @@ namespace Uide
 		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
 		SolidBrush outsideDocumentBrush = new SolidBrush(Color.FromArgb(0xf8, 0xf8, 0xf8));
 		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
+		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
 		int lineHeight;
 
 		int Measure(string text)
@@ -832,6 +833,8 @@ Mp */
 			}
 
 			int i = 0;
+			int iAdj = 0;
+
 			if (start == 0)
 			{
 				e.Graphics.FillRectangle(outsideDocumentBrush, 0, 0, mainBox.Width, paddingWidth);
@@ -839,10 +842,10 @@ Mp */
 			else
 			{
 				i = -1;
+				iAdj = -1;
 			}
 
 			int prevTabC = 0;
-			int iAdj = 0;
 			int adjBy = 0;
 
 			for (; i < max; i++)
@@ -885,10 +888,17 @@ Mp */
 
 					if (offset >= maxCharsPerLine)
 					{
+						float l = offset * charWidth + leftMargin;
+						e.Graphics.FillRectangle(wrapBrush, l, top,
+							mainBox.Width - l, lineHeight); // end of line wrap grey
+
 						offset = oTabOffset + 2;
 						top += lineHeight;
 						iAdj++;
 						adjBy++;
+
+						e.Graphics.FillRectangle(wrapBrush, 0, top,
+							offset * charWidth + leftMargin, lineHeight); // beginning of line wrap grey
 					}
 
 					e.Graphics.DrawString(c.ToString(), font, Brushes.Black, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
@@ -923,8 +933,10 @@ Mp */
 
 			int newMax = lines.Length + adjBy;
 			if (scrollBarV.Value + scrollBarV.LargeChange < newMax)
+			{
 				scrollBarV.Maximum = newMax;
-			UpdateScrollbar();
+				UpdateScrollbar();
+			}
 		}
 	}
 }

@@ -13,24 +13,29 @@ namespace Uide
 	public partial class MainForm : Form
 	{
 		const string PRODUCT_NAME = "Foxdev by Zdeněk Gromnica";
+		const int DEFAULT_MARGIN = 30;
+
+		const int paddingWidth = 5;
 
 		bool isFileLoaded = false,
 			isELFfile,
 			isCompilable = false;
 		string filePath,
-			fileName;
+			fileName,
+			fileText;
+		string[] lines;
 		byte[] file;
 		ELFheader32 elfHeader;
-		int maxLines = 0, 
-			fileLines = 0;
+		int maxVisibleLines = 0,
+			hexLines = 0;
 		bool isMultiboot = false;
 
 		int deltaScrollWheel,
 			linesScrollWheel;
 
-		Font font = new Font(FontFamily.GenericMonospace, 13);
+		int leftMargin = 0;
 
-
+		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
 
 
 		public MainForm(string[] args)
@@ -49,6 +54,15 @@ namespace Uide
 
 			if (args.Length > 0)
 				OpenFile(args[0]);
+		}
+
+		void UpdateDisplay()
+		{
+			if (viewTextRadio.Checked || viewHexRadio.Checked)
+			{
+				mainBox.Refresh();
+				MainForm_Resize(null, null);
+			}
 		}
 
 		private void MainBox_MouseWheel(object sender, MouseEventArgs e)
@@ -80,177 +94,178 @@ namespace Uide
 		{
 			filePath = path; // @TODO more than 1 file
 
-			/*try
-			{*/
-				file = File.ReadAllBytes(filePath);
+			file = File.ReadAllBytes(filePath);
 
-				isFileLoaded = true;
-				fileName = Path.GetFileName(filePath);
-				fileLines = (int)Math.Ceiling((decimal)file.Length / 16);
+			isFileLoaded = true;
+			fileName = Path.GetFileName(filePath);
+			hexLines = (int)Math.Ceiling((decimal)file.Length / 16);
 
-				
-				if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
-					&& file[0] == 0x7F
-					&& file[1] == 'E'
-					&& file[2] == 'L'
-					&& file[3] == 'F')
+
+			fileText = System.Text.Encoding.Default.GetString(file);
+			lines = fileText.Split('\n');
+
+			leftMargin = 0;
+
+			if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
+				&& file[0] == 0x7F
+				&& file[1] == 'E'
+				&& file[2] == 'L'
+				&& file[3] == 'F')
+			{
+				#region ELF file parsing
+				if (file[4] == 1)
 				{
-					#region ELF file parsing
-					if (file[4] == 1)
-					{
-						byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
-						Array.Copy(file, 0,
-							buffer, 0, 52);
+					byte[] buffer = new byte[52]; // @TODO sizeof Elf32_Ehdr
+					Array.Copy(file, 0,
+						buffer, 0, 52);
 
-						GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-						elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
+					GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+					elfHeader = (ELFheader32)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(ELFheader32));
+					handle.Free();
+
+					// @TODO check if elfHeader.sizeProgramHeaderTableEntry == 32?
+					// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
+
+					Elf32_Phdr[] programHeaders;
+					programHeaders = new Elf32_Phdr[elfHeader.numProgramTableEntries];
+
+					for (int i = 0; i < elfHeader.numProgramTableEntries; i++)
+					{
+						buffer = new byte[elfHeader.sizeProgramTableEntry]; // @TODO sizeof Elf32_Ehdr
+						Array.Copy(file, elfHeader.programTableOffset + (i * elfHeader.sizeProgramTableEntry),
+							buffer, 0, elfHeader.sizeProgramTableEntry);
+
+						handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+						programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
 						handle.Free();
-
-						// @TODO check if elfHeader.sizeProgramHeaderTableEntry == 32?
-						// @TODO check if elfHeader.sizeSectionHeaderTableEntry == 40?
-
-						Elf32_Phdr[] programHeaders;
-						programHeaders = new Elf32_Phdr[elfHeader.numProgramTableEntries];
-
-						for (int i = 0; i < elfHeader.numProgramTableEntries; i++)
-						{
-							buffer = new byte[elfHeader.sizeProgramTableEntry]; // @TODO sizeof Elf32_Ehdr
-							Array.Copy(file, elfHeader.programTableOffset + (i * elfHeader.sizeProgramTableEntry),
-								buffer, 0, elfHeader.sizeProgramTableEntry);
-
-							handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-							programHeaders[i] = (Elf32_Phdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Phdr));
-							handle.Free();
-						}
-
-						Elf32_Shdr[] sectionHeaders;
-						sectionHeaders = new Elf32_Shdr[elfHeader.numSectionTableEntries];
-
-						for (int i = 0; i < elfHeader.numSectionTableEntries; i++)
-						{
-							buffer = new byte[elfHeader.sizeSectionTableEntry]; // @TODO sizeof Elf32_Ehdr
-							Array.Copy(file, elfHeader.sectionTableOffset + (i * elfHeader.sizeSectionTableEntry),
-								buffer, 0, elfHeader.sizeSectionTableEntry);
-
-							handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-							sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
-							handle.Free();
-						}
-
-						StringBuilder s = new StringBuilder();
-
-						s.Append(PrintFields(elfHeader));
-						s.Append(Environment.NewLine);
-						for (int i = 0; i < programHeaders.Length; i++)
-						{
-							var o = programHeaders[i];
-							s.Append("[Program " + i.ToString() + "]" + Environment.NewLine);
-							s.Append(PrintFields(o));
-							s.Append(Environment.NewLine);
-						}
-						s.Append(Environment.NewLine);
-						for (int i = 0; i < sectionHeaders.Length; i++)
-						{
-							var o = sectionHeaders[i];
-							s.Append("[Section " + i.ToString() + "]" + Environment.NewLine);
-							s.Append(PrintFields(o));
-							s.Append(Environment.NewLine);
-						}
-
-						if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
-						{
-							int magic, flags, checksum;
-
-							magic = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset);
-							flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
-							checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
-
-							if (magic == 0x1BADB002 && checksum == -(magic + flags))
-							{
-								isMultiboot = true;
-
-								s.Append("[Multiboot]" + Environment.NewLine
-									+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
-									+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
-									+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine);
-							}
-						}
-
-						dataTextBox.Text = s.ToString();
-
-						#region disassembly
-						if (programHeaders.Length > 0)
-						{
-							assemblyTextBox.Text = Disassemble(programHeaders[0].p_offset, 8 * 8);
-						}
-						#endregion
-
-						isELFfile = true;
-						viewDataRadio.Checked = true;
 					}
-					else
+
+					Elf32_Shdr[] sectionHeaders;
+					sectionHeaders = new Elf32_Shdr[elfHeader.numSectionTableEntries];
+
+					for (int i = 0; i < elfHeader.numSectionTableEntries; i++)
 					{
-						// @TODO 64bit ELF
-						MessageBox.Show("64bit ELF not implemented yet.");
+						buffer = new byte[elfHeader.sizeSectionTableEntry]; // @TODO sizeof Elf32_Ehdr
+						Array.Copy(file, elfHeader.sectionTableOffset + (i * elfHeader.sizeSectionTableEntry),
+							buffer, 0, elfHeader.sizeSectionTableEntry);
+
+						handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+						sectionHeaders[i] = (Elf32_Shdr)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(Elf32_Shdr));
+						handle.Free();
+					}
+
+					StringBuilder s = new StringBuilder();
+
+					s.Append(PrintFields(elfHeader));
+					s.Append(Environment.NewLine);
+					for (int i = 0; i < programHeaders.Length; i++)
+					{
+						var o = programHeaders[i];
+						s.Append("[Program " + i.ToString() + "]" + Environment.NewLine);
+						s.Append(PrintFields(o));
+						s.Append(Environment.NewLine);
+					}
+					s.Append(Environment.NewLine);
+					for (int i = 0; i < sectionHeaders.Length; i++)
+					{
+						var o = sectionHeaders[i];
+						s.Append("[Section " + i.ToString() + "]" + Environment.NewLine);
+						s.Append(PrintFields(o));
+						s.Append(Environment.NewLine);
+					}
+
+					if (programHeaders.Length > 0 && programHeaders[0].p_filesz > 12) // @TODO Can it be in a different entry?
+					{
+						int magic, flags, checksum;
+
+						magic = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset);
+						flags = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 4);
+						checksum = BitConverter.ToInt32(file, (int)programHeaders[0].p_offset + 8);
+
+						if (magic == 0x1BADB002 && checksum == -(magic + flags))
+						{
+							isMultiboot = true;
+
+							s.Append("[Multiboot]" + Environment.NewLine
+								+ "magic:\t" + magic + "\t(0x" + magic.ToString("x8") + ")" + Environment.NewLine
+								+ "flags:\t" + flags + "\t(0x" + flags.ToString("x8") + ")" + Environment.NewLine
+								+ "checksum:\t" + checksum + "\t(0x" + checksum.ToString("x8") + ")" + Environment.NewLine);
+						}
+					}
+
+					dataTextBox.Text = s.ToString();
+
+					#region disassembly
+					if (programHeaders.Length > 0)
+					{
+						assemblyTextBox.Text = Disassemble(programHeaders[0].p_offset, 8 * 8);
 					}
 					#endregion
 
+					isELFfile = true;
+					viewDataRadio.Checked = true;
+				}
+				else
+				{
+					// @TODO 64bit ELF
+					MessageBox.Show("64bit ELF not implemented yet.");
+				}
+				#endregion
+
+				viewAssemblyRadio.Visible = true;
+			}
+			else
+			{
+				isELFfile = false;
+
+				if (fileName.EndsWith(".com"))
+				{
+					assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
+					viewAssemblyRadio.Checked = true;
 					viewAssemblyRadio.Visible = true;
 				}
 				else
 				{
-					isELFfile = false;
-
-					if (fileName.EndsWith(".com"))
-					{
-						assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
-						viewAssemblyRadio.Checked = true;
-						viewAssemblyRadio.Visible = true;
-					}
-					else
-					{
-						viewTextRadio.Checked = true;
-						viewAssemblyRadio.Visible = false;
-					}
-					
+					viewTextRadio.Checked = true;
+					viewAssemblyRadio.Visible = false;
 				}
 
-				textBox.Text = System.Text.Encoding.Default.GetString(file);
+			}
 
-				dragFileHereLabel.Visible = false;
+			noDocPanel.Visible = false;
 
-				viewSwitchPanel.Visible = true;
+			viewSwitchPanel.Visible = true;
 
-				MainForm_Resize(null, null);
-				scrollBarV.Value = 0;
+			scrollBarV.Value = 0;
+			UpdateDisplay();
 
-				if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc"))
-				{
-					isCompilable = true;
-				}
-				else
-					isCompilable = false;
+			if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc"))
+			{
+				isCompilable = true;
+			}
+			else
+				isCompilable = false;
 
-				if (isCompilable)
-				{
-					compileButton.Visible = true;
+			if (isCompilable)
+			{
+				compileButton.Visible = true;
 #if DEBUG
-					compileButton_Click(null, null);
+				//compileButton_Click(null, null);
 #endif
-				}
-				else
-				{
-					compileButton.Visible = false;
-				}
+			}
+			else
+			{
+				compileButton.Visible = false;
+			}
 
-				if (isCompilable || isELFfile)
-				{
-					viewDataRadio.Visible = true;
-				}
-				else
-					viewDataRadio.Visible = false;
+			if (isCompilable || isELFfile)
+			{
+				viewDataRadio.Visible = true;
+			}
+			else
+				viewDataRadio.Visible = false;
 
-				this.Text = fileName + " – " + PRODUCT_NAME;
+			this.Text = fileName + " – " + PRODUCT_NAME + " – " + filePath;
 			/*}
 			catch (Exception ex)
 			{
@@ -433,17 +448,30 @@ Mp */
 		{
 			//Size sizeFont = TextRenderer.MeasureText("M", font);
 
-			maxLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight()) - 1;
+			maxVisibleLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight()) - 1;
 
-			if (maxLines <= 0)
+			if (maxVisibleLines <= 0)
 				return;
 
-			if (isFileLoaded && fileLines >= maxLines)
+			if (isFileLoaded)
 			{
-				scrollBarV.Maximum = fileLines - 1;
-				scrollBarV.LargeChange = maxLines - 1;
-				scrollBarV.Enabled = true;
-			} else
+				if (viewTextRadio.Checked)
+				{
+					scrollBarV.Maximum = lines.Length;
+					scrollBarV.LargeChange = maxVisibleLines;
+				}
+				else
+				{
+					scrollBarV.Maximum = hexLines - 1;
+					scrollBarV.LargeChange = maxVisibleLines - 1;
+				}
+
+				if (scrollBarV.Maximum > maxVisibleLines)
+					scrollBarV.Enabled = true;
+				else
+					scrollBarV.Enabled = false;
+			}
+			else
 			{
 				scrollBarV.Value = 0;
 				scrollBarV.Enabled = false;
@@ -461,15 +489,28 @@ Mp */
 			{
 				if (viewHexRadio.Checked)
 					DrawHex(e);
+				else if (viewTextRadio.Checked)
+					DrawCode(e);
 			}
+		}
+
+		private void viewAssemblyRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			assemblyTextBox.Visible = viewAssemblyRadio.Checked;
+		}
+
+		private void viewTextRadio_CheckedChanged(object sender, EventArgs e)
+		{
+			mainBox.Visible = (viewHexRadio.Checked || viewTextRadio.Checked);
+			scrollBarV.Visible = (viewHexRadio.Checked || viewTextRadio.Checked);
+			UpdateDisplay();
 		}
 
 		private void viewHexRadio_CheckedChanged(object sender, EventArgs e)
 		{
-			mainBox.Visible = viewHexRadio.Checked;
-			scrollBarV.Visible = viewHexRadio.Checked;
-			if (viewHexRadio.Checked)
-				mainBox.Refresh();
+			mainBox.Visible = (viewHexRadio.Checked || viewTextRadio.Checked);
+			scrollBarV.Visible = (viewHexRadio.Checked || viewTextRadio.Checked);
+			UpdateDisplay();
 		}
 
 		private void viewDataRadio_CheckedChanged(object sender, EventArgs e)
@@ -486,14 +527,14 @@ Mp */
 			if (scrollBarV.Enabled)
 			{
 				start = scrollBarV.Value;
-				max = fileLines - start;
-				if (max > maxLines)
-					max = maxLines;
+				max = hexLines - start;
+				if (max > maxVisibleLines)
+					max = maxVisibleLines;
 			}
 			else
 			{
 				start = 0;
-				max = fileLines;
+				max = hexLines;
 			}
 
 			{
@@ -503,7 +544,7 @@ Mp */
 
 				for (var j = 0; j < jMax; j++)
 				{
-					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Gray, 100 + j * 30, 0);
+					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Gray, 72 + j * 21, 0);
 				}
 			}
 
@@ -516,7 +557,7 @@ Mp */
 
 				int length;
 
-				if (ii == fileLines - 1)
+				if (ii == hexLines - 1)
 					length = 0;
 				else
 					length = 16;
@@ -526,34 +567,50 @@ Mp */
 
 				for (var j = 0; j < jMax; j++)
 				{
-					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Black, 100 + j * 30, // @TODO non-fixed offset
+					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Black, 72 + j * 21, // @TODO non-fixed offset
 						top);
 				}
 
 				/*e.Graphics.DrawString(line, font, Brushes.Black, 100, // @TODO non-fixed offset
 					i * lineHeight);*/
 
-				e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), length), font, Brushes.Black, (16 * 30) + 120, // @TODO non-fixed offset
+				e.Graphics.DrawString(ByteArrayToASCIIString(file, (ii * 16), length), font, Brushes.Black, (16 * 21) + 77, // @TODO non-fixed offset
 					top);
 			}
 		}
 
-		private void viewAssemblyRadio_CheckedChanged(object sender, EventArgs e)
+		private void newFileButton_Click(object sender, EventArgs e)
 		{
-			assemblyTextBox.Visible = viewAssemblyRadio.Checked;
-		}
+			fileText = "";
+			viewTextRadio.Checked = true;
+			viewTextRadio.Visible = true;
 
-		private void viewTextRadio_CheckedChanged(object sender, EventArgs e)
-		{
-			textBox.Visible = viewTextRadio.Checked;
+			viewHexRadio.Visible = false;
+			viewDataRadio.Visible = false;
+			viewAssemblyRadio.Visible = false;
+			compileButton.Visible = false;
+
+			noDocPanel.Visible = false;
+
+			mainBox.Focus();
+
+			viewSwitchPanel.Visible = true;
 		}
 
 		private void MainForm_KeyDown(object sender, KeyEventArgs e)
 		{
-			if (e.KeyCode == Keys.F5 && compileButton.Visible)
+			if (e.KeyCode == Keys.F1)
+			{
+				commandLineTextBox.Focus();
+			}
+			else if (e.KeyCode == Keys.F5 && compileButton.Visible)
 			{
 				compileButton_Click(null, null);
 				e.Handled = true;
+			}
+			else if (e.KeyCode == Keys.W && e.Control == true)
+			{
+				this.Close();
 			}
 		}
 
@@ -700,6 +757,44 @@ Mp */
 			}
 
 			return str;
+		}
+
+		void DrawCode(PaintEventArgs e)
+		{
+			if (leftMargin == 0)
+			{
+				leftMargin = (int)e.Graphics.MeasureString(lines.Length.ToString(), font).Width + 10;
+				if (leftMargin < DEFAULT_MARGIN)
+					leftMargin = DEFAULT_MARGIN;
+			}
+
+			float lineHeight = font.GetHeight();
+
+			int max, start = scrollBarV.Value;
+
+			e.Graphics.FillRectangle(Brushes.LightGray, 0, 0, leftMargin, mainBox.Height);
+
+			max = maxVisibleLines + 1;
+			if (max + start > lines.Length)
+			{
+				max = lines.Length - start;
+
+				// end of file grey:
+				e.Graphics.FillRectangle(Brushes.LightGray, 0, max * lineHeight + paddingWidth * 2, mainBox.Width, mainBox.Height);
+			}
+
+			for (int i = -1; i < max; i++)
+			{
+				float top = i * lineHeight + paddingWidth;
+
+				if (i + start >= 0)
+				{
+					string lineNum = (i + start).ToString();
+
+					e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
+					e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
+				}
+			}
 		}
 	}
 }

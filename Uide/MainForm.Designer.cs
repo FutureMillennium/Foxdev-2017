@@ -30,18 +30,23 @@
 		{
 			this.mainBox = new System.Windows.Forms.PictureBox();
 			this.scrollBarV = new System.Windows.Forms.VScrollBar();
-			this.viewSwitchPanel = new System.Windows.Forms.Panel();
+			this.viewSwitchPanel = new System.Windows.Forms.FlowLayoutPanel();
 			this.compileButton = new System.Windows.Forms.Button();
-			this.viewTextRadio = new System.Windows.Forms.RadioButton();
 			this.viewDataRadio = new System.Windows.Forms.RadioButton();
 			this.viewAssemblyRadio = new System.Windows.Forms.RadioButton();
 			this.viewHexRadio = new System.Windows.Forms.RadioButton();
+			this.viewTextRadio = new System.Windows.Forms.RadioButton();
 			this.dataTextBox = new System.Windows.Forms.TextBox();
-			this.dragFileHereLabel = new System.Windows.Forms.Label();
 			this.assemblyTextBox = new System.Windows.Forms.TextBox();
-			this.textBox = new System.Windows.Forms.TextBox();
+			this.noDocPanel = new System.Windows.Forms.Panel();
+			this.newFileButton = new System.Windows.Forms.Button();
+			this.dragFileHereLabel = new System.Windows.Forms.Label();
+			this.bottomPanel = new System.Windows.Forms.TableLayoutPanel();
+			this.commandLineTextBox = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
+			this.noDocPanel.SuspendLayout();
+			this.bottomPanel.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// mainBox
@@ -53,7 +58,7 @@
 			this.mainBox.Location = new System.Drawing.Point(0, 0);
 			this.mainBox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.mainBox.Name = "mainBox";
-			this.mainBox.Size = new System.Drawing.Size(1103, 635);
+			this.mainBox.Size = new System.Drawing.Size(1103, 634);
 			this.mainBox.TabIndex = 0;
 			this.mainBox.TabStop = false;
 			this.mainBox.Visible = false;
@@ -73,53 +78,45 @@
 			// 
 			// viewSwitchPanel
 			// 
-			this.viewSwitchPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.viewSwitchPanel.AutoSize = true;
 			this.viewSwitchPanel.Controls.Add(this.compileButton);
-			this.viewSwitchPanel.Controls.Add(this.viewTextRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewDataRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewAssemblyRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewHexRadio);
-			this.viewSwitchPanel.Location = new System.Drawing.Point(0, 634);
-			this.viewSwitchPanel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewSwitchPanel.Controls.Add(this.viewTextRadio);
+			this.viewSwitchPanel.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+			this.viewSwitchPanel.Location = new System.Drawing.Point(721, 0);
+			this.viewSwitchPanel.Margin = new System.Windows.Forms.Padding(0);
 			this.viewSwitchPanel.Name = "viewSwitchPanel";
-			this.viewSwitchPanel.Size = new System.Drawing.Size(404, 36);
+			this.viewSwitchPanel.Size = new System.Drawing.Size(402, 35);
 			this.viewSwitchPanel.TabIndex = 4;
 			this.viewSwitchPanel.Visible = false;
+			this.viewSwitchPanel.WrapContents = false;
 			// 
 			// compileButton
 			// 
 			this.compileButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.compileButton.Location = new System.Drawing.Point(274, 0);
+			this.compileButton.Location = new System.Drawing.Point(280, 0);
+			this.compileButton.Margin = new System.Windows.Forms.Padding(15, 0, 0, 0);
 			this.compileButton.Name = "compileButton";
-			this.compileButton.Size = new System.Drawing.Size(122, 31);
+			this.compileButton.Size = new System.Drawing.Size(122, 35);
 			this.compileButton.TabIndex = 10;
 			this.compileButton.Text = "Compile";
 			this.compileButton.UseVisualStyleBackColor = true;
 			this.compileButton.Click += new System.EventHandler(this.compileButton_Click);
 			// 
-			// viewTextRadio
-			// 
-			this.viewTextRadio.Appearance = System.Windows.Forms.Appearance.Button;
-			this.viewTextRadio.AutoSize = true;
-			this.viewTextRadio.Location = new System.Drawing.Point(0, 0);
-			this.viewTextRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.viewTextRadio.Name = "viewTextRadio";
-			this.viewTextRadio.Size = new System.Drawing.Size(45, 31);
-			this.viewTextRadio.TabIndex = 7;
-			this.viewTextRadio.Text = "text";
-			this.viewTextRadio.UseVisualStyleBackColor = true;
-			this.viewTextRadio.CheckedChanged += new System.EventHandler(this.viewTextRadio_CheckedChanged);
-			// 
 			// viewDataRadio
 			// 
 			this.viewDataRadio.Appearance = System.Windows.Forms.Appearance.Button;
 			this.viewDataRadio.AutoSize = true;
-			this.viewDataRadio.Location = new System.Drawing.Point(197, 0);
-			this.viewDataRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewDataRadio.Location = new System.Drawing.Point(205, 0);
+			this.viewDataRadio.Margin = new System.Windows.Forms.Padding(0);
+			this.viewDataRadio.MinimumSize = new System.Drawing.Size(60, 35);
 			this.viewDataRadio.Name = "viewDataRadio";
-			this.viewDataRadio.Size = new System.Drawing.Size(50, 31);
+			this.viewDataRadio.Size = new System.Drawing.Size(60, 35);
 			this.viewDataRadio.TabIndex = 6;
 			this.viewDataRadio.Text = "data";
+			this.viewDataRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			this.viewDataRadio.UseVisualStyleBackColor = true;
 			this.viewDataRadio.CheckedChanged += new System.EventHandler(this.viewDataRadio_CheckedChanged);
 			// 
@@ -127,12 +124,14 @@
 			// 
 			this.viewAssemblyRadio.Appearance = System.Windows.Forms.Appearance.Button;
 			this.viewAssemblyRadio.AutoSize = true;
-			this.viewAssemblyRadio.Location = new System.Drawing.Point(104, 0);
-			this.viewAssemblyRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewAssemblyRadio.Location = new System.Drawing.Point(120, 0);
+			this.viewAssemblyRadio.Margin = new System.Windows.Forms.Padding(0);
+			this.viewAssemblyRadio.MinimumSize = new System.Drawing.Size(60, 35);
 			this.viewAssemblyRadio.Name = "viewAssemblyRadio";
-			this.viewAssemblyRadio.Size = new System.Drawing.Size(85, 31);
+			this.viewAssemblyRadio.Size = new System.Drawing.Size(85, 35);
 			this.viewAssemblyRadio.TabIndex = 5;
 			this.viewAssemblyRadio.Text = "assembly";
+			this.viewAssemblyRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			this.viewAssemblyRadio.UseVisualStyleBackColor = true;
 			this.viewAssemblyRadio.CheckedChanged += new System.EventHandler(this.viewAssemblyRadio_CheckedChanged);
 			// 
@@ -140,40 +139,47 @@
 			// 
 			this.viewHexRadio.Appearance = System.Windows.Forms.Appearance.Button;
 			this.viewHexRadio.AutoSize = true;
-			this.viewHexRadio.Location = new System.Drawing.Point(52, 0);
-			this.viewHexRadio.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+			this.viewHexRadio.Location = new System.Drawing.Point(60, 0);
+			this.viewHexRadio.Margin = new System.Windows.Forms.Padding(0);
+			this.viewHexRadio.MinimumSize = new System.Drawing.Size(60, 35);
 			this.viewHexRadio.Name = "viewHexRadio";
-			this.viewHexRadio.Size = new System.Drawing.Size(44, 31);
+			this.viewHexRadio.Size = new System.Drawing.Size(60, 35);
 			this.viewHexRadio.TabIndex = 4;
 			this.viewHexRadio.Text = "hex";
+			this.viewHexRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			this.viewHexRadio.UseVisualStyleBackColor = true;
 			this.viewHexRadio.CheckedChanged += new System.EventHandler(this.viewHexRadio_CheckedChanged);
+			// 
+			// viewTextRadio
+			// 
+			this.viewTextRadio.Appearance = System.Windows.Forms.Appearance.Button;
+			this.viewTextRadio.AutoSize = true;
+			this.viewTextRadio.Location = new System.Drawing.Point(0, 0);
+			this.viewTextRadio.Margin = new System.Windows.Forms.Padding(0);
+			this.viewTextRadio.MinimumSize = new System.Drawing.Size(60, 35);
+			this.viewTextRadio.Name = "viewTextRadio";
+			this.viewTextRadio.Size = new System.Drawing.Size(60, 35);
+			this.viewTextRadio.TabIndex = 7;
+			this.viewTextRadio.Text = "text";
+			this.viewTextRadio.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+			this.viewTextRadio.UseVisualStyleBackColor = true;
+			this.viewTextRadio.CheckedChanged += new System.EventHandler(this.viewTextRadio_CheckedChanged);
 			// 
 			// dataTextBox
 			// 
 			this.dataTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.dataTextBox.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+			this.dataTextBox.Font = new System.Drawing.Font("Consolas", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
 			this.dataTextBox.Location = new System.Drawing.Point(0, 0);
 			this.dataTextBox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
 			this.dataTextBox.Multiline = true;
 			this.dataTextBox.Name = "dataTextBox";
 			this.dataTextBox.ReadOnly = true;
 			this.dataTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.dataTextBox.Size = new System.Drawing.Size(1139, 635);
+			this.dataTextBox.Size = new System.Drawing.Size(1139, 634);
 			this.dataTextBox.TabIndex = 5;
 			this.dataTextBox.Visible = false;
-			// 
-			// dragFileHereLabel
-			// 
-			this.dragFileHereLabel.Anchor = System.Windows.Forms.AnchorStyles.None;
-			this.dragFileHereLabel.AutoSize = true;
-			this.dragFileHereLabel.Location = new System.Drawing.Point(512, 324);
-			this.dragFileHereLabel.Name = "dragFileHereLabel";
-			this.dragFileHereLabel.Size = new System.Drawing.Size(116, 21);
-			this.dragFileHereLabel.TabIndex = 6;
-			this.dragFileHereLabel.Text = "Drag a file here";
 			// 
 			// assemblyTextBox
 			// 
@@ -191,21 +197,60 @@
 			this.assemblyTextBox.TabIndex = 7;
 			this.assemblyTextBox.Visible = false;
 			// 
-			// textBox
+			// noDocPanel
 			// 
-			this.textBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+			this.noDocPanel.Anchor = System.Windows.Forms.AnchorStyles.None;
+			this.noDocPanel.Controls.Add(this.newFileButton);
+			this.noDocPanel.Controls.Add(this.dragFileHereLabel);
+			this.noDocPanel.Location = new System.Drawing.Point(459, 265);
+			this.noDocPanel.Name = "noDocPanel";
+			this.noDocPanel.Size = new System.Drawing.Size(222, 141);
+			this.noDocPanel.TabIndex = 10;
+			// 
+			// newFileButton
+			// 
+			this.newFileButton.Location = new System.Drawing.Point(4, 87);
+			this.newFileButton.Name = "newFileButton";
+			this.newFileButton.Size = new System.Drawing.Size(214, 50);
+			this.newFileButton.TabIndex = 8;
+			this.newFileButton.Text = "Create new file [Ctrl+N]";
+			this.newFileButton.UseVisualStyleBackColor = true;
+			this.newFileButton.Click += new System.EventHandler(this.newFileButton_Click);
+			// 
+			// dragFileHereLabel
+			// 
+			this.dragFileHereLabel.Location = new System.Drawing.Point(3, 0);
+			this.dragFileHereLabel.Name = "dragFileHereLabel";
+			this.dragFileHereLabel.Size = new System.Drawing.Size(215, 84);
+			this.dragFileHereLabel.TabIndex = 7;
+			this.dragFileHereLabel.Text = "Drag a file here\r\n\r\nor\r\n\r\n";
+			this.dragFileHereLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+			// 
+			// bottomPanel
+			// 
+			this.bottomPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.textBox.BackColor = System.Drawing.SystemColors.Window;
-			this.textBox.Font = new System.Drawing.Font("Consolas", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-			this.textBox.Location = new System.Drawing.Point(0, 0);
-			this.textBox.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-			this.textBox.Multiline = true;
-			this.textBox.Name = "textBox";
-			this.textBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.textBox.Size = new System.Drawing.Size(1139, 635);
-			this.textBox.TabIndex = 8;
-			this.textBox.Visible = false;
+			this.bottomPanel.ColumnCount = 2;
+			this.bottomPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+			this.bottomPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+			this.bottomPanel.Controls.Add(this.commandLineTextBox, 0, 0);
+			this.bottomPanel.Controls.Add(this.viewSwitchPanel, 1, 0);
+			this.bottomPanel.Location = new System.Drawing.Point(0, 635);
+			this.bottomPanel.Name = "bottomPanel";
+			this.bottomPanel.RowCount = 1;
+			this.bottomPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+			this.bottomPanel.Size = new System.Drawing.Size(1123, 35);
+			this.bottomPanel.TabIndex = 11;
+			// 
+			// commandLineTextBox
+			// 
+			this.commandLineTextBox.AcceptsReturn = true;
+			this.commandLineTextBox.AcceptsTab = true;
+			this.commandLineTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.commandLineTextBox.Location = new System.Drawing.Point(3, 3);
+			this.commandLineTextBox.Name = "commandLineTextBox";
+			this.commandLineTextBox.Size = new System.Drawing.Size(715, 29);
+			this.commandLineTextBox.TabIndex = 13;
 			// 
 			// MainForm
 			// 
@@ -213,13 +258,12 @@
 			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1140, 670);
-			this.Controls.Add(this.textBox);
-			this.Controls.Add(this.assemblyTextBox);
-			this.Controls.Add(this.dragFileHereLabel);
-			this.Controls.Add(this.dataTextBox);
-			this.Controls.Add(this.viewSwitchPanel);
-			this.Controls.Add(this.mainBox);
 			this.Controls.Add(this.scrollBarV);
+			this.Controls.Add(this.mainBox);
+			this.Controls.Add(this.bottomPanel);
+			this.Controls.Add(this.noDocPanel);
+			this.Controls.Add(this.dataTextBox);
+			this.Controls.Add(this.assemblyTextBox);
 			this.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
 			this.KeyPreview = true;
 			this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -232,6 +276,9 @@
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).EndInit();
 			this.viewSwitchPanel.ResumeLayout(false);
 			this.viewSwitchPanel.PerformLayout();
+			this.noDocPanel.ResumeLayout(false);
+			this.bottomPanel.ResumeLayout(false);
+			this.bottomPanel.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -241,15 +288,18 @@
 
 		private System.Windows.Forms.PictureBox mainBox;
 		private System.Windows.Forms.VScrollBar scrollBarV;
-		private System.Windows.Forms.Panel viewSwitchPanel;
 		private System.Windows.Forms.RadioButton viewAssemblyRadio;
 		private System.Windows.Forms.RadioButton viewHexRadio;
 		private System.Windows.Forms.RadioButton viewDataRadio;
 		private System.Windows.Forms.TextBox dataTextBox;
-		private System.Windows.Forms.Label dragFileHereLabel;
 		private System.Windows.Forms.TextBox assemblyTextBox;
 		private System.Windows.Forms.RadioButton viewTextRadio;
-		private System.Windows.Forms.TextBox textBox;
 		private System.Windows.Forms.Button compileButton;
+		private System.Windows.Forms.Panel noDocPanel;
+		private System.Windows.Forms.Button newFileButton;
+		private System.Windows.Forms.Label dragFileHereLabel;
+		private System.Windows.Forms.FlowLayoutPanel viewSwitchPanel;
+		private System.Windows.Forms.TableLayoutPanel bottomPanel;
+		private System.Windows.Forms.TextBox commandLineTextBox;
 	}
 }

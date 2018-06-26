@@ -15,6 +15,8 @@ namespace Uide
 		const string PRODUCT_NAME = "Foxdev by Zdeněk Gromnica";
 		const int DEFAULT_MARGIN = 30;
 
+		const int tabSize = 4;
+
 		const int paddingWidth = 5;
 
 		bool isFileLoaded = false,
@@ -34,9 +36,17 @@ namespace Uide
 			linesScrollWheel;
 
 		int leftMargin = 0;
+		int charWidth;
 
 		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
+		SolidBrush outsideDocumentBrush = new SolidBrush(Color.FromArgb(0xf8, 0xf8, 0xf8));
+		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
+		int lineHeight;
 
+		int Measure(string text)
+		{
+			return text.Length * charWidth;
+		}
 
 		public MainForm(string[] args)
 		{
@@ -51,6 +61,7 @@ namespace Uide
 			this.Icon = Uide.Properties.Resources.Foxdev;
 
 			MainForm_Resize(null, null);
+			lineHeight = (int)Math.Ceiling(font.GetHeight());
 
 			if (args.Length > 0)
 				OpenFile(args[0]);
@@ -105,6 +116,19 @@ namespace Uide
 			lines = fileText.Split('\n');
 
 			leftMargin = 0;
+
+			/*Graphics graphics;
+			graphics = this.CreateGraphics();*/
+
+			//charWidth = (int)Math.Ceiling(graphics.MeasureString("W", font).Width); // @TODO returns too big for some reason?
+			charWidth = 8;
+
+			leftMargin = lines.Length.ToString().Length * charWidth + paddingWidth * 2;
+			if (leftMargin < DEFAULT_MARGIN)
+				leftMargin = DEFAULT_MARGIN;
+
+			//graphics.Dispose();
+
 
 			if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
 				&& file[0] == 0x7F
@@ -448,7 +472,7 @@ Mp */
 		{
 			//Size sizeFont = TextRenderer.MeasureText("M", font);
 
-			maxVisibleLines = (int)Math.Ceiling(mainBox.Height / font.GetHeight()) - 1;
+			maxVisibleLines = (int)Math.Ceiling(mainBox.Height / (double)lineHeight) - 1;
 
 			if (maxVisibleLines <= 0)
 				return;
@@ -520,8 +544,6 @@ Mp */
 
 		void DrawHex(PaintEventArgs e)
 		{
-			float lineHeight = font.GetHeight();
-
 			int i, start, max;
 
 			if (scrollBarV.Enabled)
@@ -542,7 +564,7 @@ Mp */
 				string line = "000102030405060708090A0B0C0D0E0F";
 				int jMax = line.Length / 2;
 
-				for (var j = 0; j < jMax; j++)
+				for (int j = 0; j < jMax; j++)
 				{
 					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Gray, 72 + j * 21, 0);
 				}
@@ -565,7 +587,7 @@ Mp */
 				string line = ByteToHex.ByteArrayToHexViaLookup32(file, (ii * 16), length);
 				int jMax = line.Length / 2;
 
-				for (var j = 0; j < jMax; j++)
+				for (int j = 0; j < jMax; j++)
 				{
 					e.Graphics.DrawString(line.Substring(j * 2, 2), font, Brushes.Black, 72 + j * 21, // @TODO non-fixed offset
 						top);
@@ -761,18 +783,9 @@ Mp */
 
 		void DrawCode(PaintEventArgs e)
 		{
-			if (leftMargin == 0)
-			{
-				leftMargin = (int)e.Graphics.MeasureString(lines.Length.ToString(), font).Width + 10;
-				if (leftMargin < DEFAULT_MARGIN)
-					leftMargin = DEFAULT_MARGIN;
-			}
-
-			float lineHeight = font.GetHeight();
-
 			int max, start = scrollBarV.Value;
 
-			e.Graphics.FillRectangle(Brushes.LightGray, 0, 0, leftMargin, mainBox.Height);
+			e.Graphics.FillRectangle(outsideDocumentBrush, 0, 0, leftMargin, mainBox.Height);
 
 			max = maxVisibleLines + 1;
 			if (max + start > lines.Length)
@@ -780,20 +793,76 @@ Mp */
 				max = lines.Length - start;
 
 				// end of file grey:
-				e.Graphics.FillRectangle(Brushes.LightGray, 0, max * lineHeight + paddingWidth * 2, mainBox.Width, mainBox.Height);
+				e.Graphics.FillRectangle(outsideDocumentBrush, 0, max * lineHeight + paddingWidth, mainBox.Width, mainBox.Height);
 			}
 
-			for (int i = -1; i < max; i++)
+			int i = 0;
+			if (start == 0)
+			{
+				e.Graphics.FillRectangle(outsideDocumentBrush, 0, 0, mainBox.Width, paddingWidth);
+			}
+			else
+			{
+				i = -1;
+			}
+
+			int prevTabC = 0;
+
+			for (; i < max; i++)
 			{
 				float top = i * lineHeight + paddingWidth;
+				
+				string lineNum = (i + start).ToString();
 
-				if (i + start >= 0)
+				e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
+				//e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
+
+				int j = 0;
+				int offset = 0;
+				int tabC = 0;
+				string line = lines[i + start];
+				int lenLine = line.Length;
+
+				for (; j < line.Length; j++)
 				{
-					string lineNum = (i + start).ToString();
+					char c = line[j];
 
-					e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
-					e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
+					if (c == '\t')
+					{
+						int l = offset * charWidth + leftMargin;
+						e.Graphics.DrawLine(Pens.Gray, l, top,
+							l, top + lineHeight);
+
+						offset += tabSize;
+
+						tabC++;
+						continue;
+					}
+					else if (c == '\r')
+					{
+						lenLine--;
+						break;
+					}
+
+					e.Graphics.DrawString(c.ToString(), font, Brushes.Black, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
+
+					offset++;
 				}
+
+				float w = offset * charWidth + leftMargin + 2;
+				e.Graphics.FillRectangle(eolBrush, w, top, mainBox.Width - w, lineHeight);
+
+				if (lenLine == 0 && prevTabC > 0)
+					for (j = 0; j < prevTabC; j++)
+					{
+						offset = j * tabSize;
+
+						int l = offset * charWidth + leftMargin;
+						e.Graphics.DrawLine(Pens.Gray, l, top,
+							l, top + lineHeight);
+					}
+
+				prevTabC = tabC;
 			}
 		}
 	}

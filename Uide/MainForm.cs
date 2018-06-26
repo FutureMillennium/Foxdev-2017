@@ -15,7 +15,7 @@ namespace Uide
 		const string PRODUCT_NAME = "Foxdev by Zdeněk Gromnica";
 		const int DEFAULT_MARGIN = 30;
 
-		const int tabSize = 4;
+		const int tabSize = 4; // @warning must not be < 1
 
 		const int paddingWidth = 5;
 
@@ -26,10 +26,13 @@ namespace Uide
 			fileName,
 			fileText;
 		string[] lines;
+		//int lineCount;
+
 		byte[] file;
 		ELFheader32 elfHeader;
 		int maxVisibleLines = 0,
-			hexLines = 0;
+			hexLines = 0,
+			maxCharsPerLine;
 		bool isMultiboot = false;
 
 		int deltaScrollWheel,
@@ -123,7 +126,7 @@ namespace Uide
 			//charWidth = (int)Math.Ceiling(graphics.MeasureString("W", font).Width); // @TODO returns too big for some reason?
 			charWidth = 8;
 
-			leftMargin = lines.Length.ToString().Length * charWidth + paddingWidth * 2;
+			leftMargin = (lines.Length.ToString().Length * charWidth) + (paddingWidth * 2) + 4; // @TODO corner case when lineCount > lines.Length
 			if (leftMargin < DEFAULT_MARGIN)
 				leftMargin = DEFAULT_MARGIN;
 
@@ -481,6 +484,36 @@ Mp */
 			{
 				if (viewTextRadio.Checked)
 				{
+					maxCharsPerLine = (int)Math.Floor((mainBox.Width - leftMargin) / (double)charWidth) - 1;
+
+					//lineCount = lines.Length;
+
+					/*for (int i = 0; i < lines.Length; i++)
+					{
+						string line = lines[i];
+						int tabCount = 0;
+
+						for (int j = 0; j < line.Length; j++)
+						{
+							char c = line[j];
+							if (c == '\t')
+								tabCount++;
+							else
+								break;
+							// @TODO remove \r
+						}
+
+						int len = line.Length + (tabCount * (tabSize - 1));
+
+						if (len > maxCharsPerLine)
+						{
+							//lineCount += (int)Math.Ceiling(len / (double)maxCharsPerLine) - 1;
+							mainBox.Refresh();
+							break;
+						}
+					}*/
+
+					//scrollBarV.Maximum = lineCount;
 					scrollBarV.Maximum = lines.Length;
 					scrollBarV.LargeChange = maxVisibleLines;
 				}
@@ -490,16 +523,21 @@ Mp */
 					scrollBarV.LargeChange = maxVisibleLines - 1;
 				}
 
-				if (scrollBarV.Maximum > maxVisibleLines)
-					scrollBarV.Enabled = true;
-				else
-					scrollBarV.Enabled = false;
+				mainBox.Refresh();
 			}
 			else
 			{
 				scrollBarV.Value = 0;
 				scrollBarV.Enabled = false;
 			}
+		}
+
+		private void UpdateScrollbar()
+		{
+			if (scrollBarV.Maximum > maxVisibleLines)
+				scrollBarV.Enabled = true;
+			else
+				scrollBarV.Enabled = false;
 		}
 
 		private void scrollBarV_ValueChanged(object sender, EventArgs e)
@@ -791,9 +829,6 @@ Mp */
 			if (max + start > lines.Length)
 			{
 				max = lines.Length - start;
-
-				// end of file grey:
-				e.Graphics.FillRectangle(outsideDocumentBrush, 0, max * lineHeight + paddingWidth, mainBox.Width, mainBox.Height);
 			}
 
 			int i = 0;
@@ -807,10 +842,12 @@ Mp */
 			}
 
 			int prevTabC = 0;
+			int iAdj = 0;
+			int adjBy = 0;
 
 			for (; i < max; i++)
 			{
-				float top = i * lineHeight + paddingWidth;
+				float top = iAdj * lineHeight + paddingWidth;
 				
 				string lineNum = (i + start).ToString();
 
@@ -819,6 +856,7 @@ Mp */
 
 				int j = 0;
 				int offset = 0;
+				int oTabOffset = 0;
 				int tabC = 0;
 				string line = lines[i + start];
 				int lenLine = line.Length;
@@ -830,10 +868,11 @@ Mp */
 					if (c == '\t')
 					{
 						int l = offset * charWidth + leftMargin;
-						e.Graphics.DrawLine(Pens.Gray, l, top,
+						e.Graphics.DrawLine(Pens.LightGray, l, top,
 							l, top + lineHeight);
 
 						offset += tabSize;
+						oTabOffset += tabSize;
 
 						tabC++;
 						continue;
@@ -844,26 +883,48 @@ Mp */
 						break;
 					}
 
+					if (offset >= maxCharsPerLine)
+					{
+						offset = oTabOffset + 2;
+						top += lineHeight;
+						iAdj++;
+						adjBy++;
+					}
+
 					e.Graphics.DrawString(c.ToString(), font, Brushes.Black, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
 
 					offset++;
 				}
 
 				float w = offset * charWidth + leftMargin + 2;
-				e.Graphics.FillRectangle(eolBrush, w, top, mainBox.Width - w, lineHeight);
+				e.Graphics.FillRectangle(eolBrush, w, top, mainBox.Width - w, lineHeight); // end of line grey
 
 				if (lenLine == 0 && prevTabC > 0)
 					for (j = 0; j < prevTabC; j++)
 					{
 						offset = j * tabSize;
 
-						int l = offset * charWidth + leftMargin;
-						e.Graphics.DrawLine(Pens.Gray, l, top,
+						int l = offset * charWidth + leftMargin; // @TODO @cleanup @dupl
+						e.Graphics.DrawLine(Pens.LightGray, l, top,
 							l, top + lineHeight);
 					}
 
 				prevTabC = tabC;
+				iAdj++;
+				if (iAdj > (maxVisibleLines + 1))
+					break;
 			}
+
+			// end of file grey:
+			if (i + start >= lines.Length)
+			{
+				e.Graphics.FillRectangle(outsideDocumentBrush, 0, iAdj * lineHeight + paddingWidth, mainBox.Width, mainBox.Height);
+			}
+
+			int newMax = lines.Length + adjBy;
+			if (scrollBarV.Value + scrollBarV.LargeChange < newMax)
+				scrollBarV.Maximum = newMax;
+			UpdateScrollbar();
 		}
 	}
 }

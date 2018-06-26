@@ -973,7 +973,7 @@ Mp */
 						top += lineHeight;
 						iAdj++;
 						adjBy++;
-						if ((yCursor - start) >= iAdj)
+						if ((yCursor - start) > i)
 							yAdjCursor++;
 
 						if (iAdj < maxVisibleLines + 1)

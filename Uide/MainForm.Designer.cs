@@ -28,7 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.mainBox = new System.Windows.Forms.PictureBox();
+			this.mainBox = new Uide.SelectablePictureBox();
 			this.scrollBarV = new System.Windows.Forms.VScrollBar();
 			this.viewSwitchPanel = new System.Windows.Forms.FlowLayoutPanel();
 			this.compileButton = new System.Windows.Forms.Button();
@@ -63,6 +63,7 @@
 			this.mainBox.TabStop = false;
 			this.mainBox.Visible = false;
 			this.mainBox.Paint += new System.Windows.Forms.PaintEventHandler(this.mainBox_Paint);
+			this.mainBox.MouseDown += new System.Windows.Forms.MouseEventHandler(this.mainBox_MouseDown);
 			// 
 			// scrollBarV
 			// 
@@ -251,6 +252,7 @@
 			this.commandLineTextBox.Name = "commandLineTextBox";
 			this.commandLineTextBox.Size = new System.Drawing.Size(715, 29);
 			this.commandLineTextBox.TabIndex = 13;
+			this.commandLineTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.commandLineTextBox_KeyDown);
 			// 
 			// MainForm
 			// 
@@ -285,8 +287,6 @@
 		}
 
 		#endregion
-
-		private System.Windows.Forms.PictureBox mainBox;
 		private System.Windows.Forms.VScrollBar scrollBarV;
 		private System.Windows.Forms.RadioButton viewAssemblyRadio;
 		private System.Windows.Forms.RadioButton viewHexRadio;
@@ -301,5 +301,6 @@
 		private System.Windows.Forms.FlowLayoutPanel viewSwitchPanel;
 		private System.Windows.Forms.TableLayoutPanel bottomPanel;
 		private System.Windows.Forms.TextBox commandLineTextBox;
+		private SelectablePictureBox mainBox;
 	}
 }

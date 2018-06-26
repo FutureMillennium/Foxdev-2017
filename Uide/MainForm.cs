@@ -26,6 +26,7 @@ namespace Uide
 			fileName,
 			fileText;
 		string[] lines;
+		int[] wrappedLines;
 		//int lineCount;
 
 		byte[] file;
@@ -40,16 +41,40 @@ namespace Uide
 
 		int leftMargin = 0;
 		int charWidth;
+		int lineHeight;
+
+		int xCursor = -1,
+			yCursor = -1;
 
 		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
 		SolidBrush outsideDocumentBrush = new SolidBrush(Color.FromArgb(0xf8, 0xf8, 0xf8));
 		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
 		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
-		int lineHeight;
 
 		int Measure(string text)
 		{
 			return text.Length * charWidth;
+		}
+
+		int LineLength(string line)
+		{
+			int tabCount = 0;
+
+			for (int j = 0; j < line.Length; j++)
+			{
+				char c = line[j];
+				if (c == '\t')
+					tabCount++;
+				else
+					break;
+			}
+
+			int len = line.Length + (tabCount * (tabSize - 1));
+
+			if (line.Length > 0 && line[line.Length - 1] == '\r')
+				len--;
+
+			return len;
 		}
 
 		public MainForm(string[] args)
@@ -640,6 +665,44 @@ Mp */
 			}
 		}
 
+		private void commandLineTextBox_KeyDown(object sender, KeyEventArgs e)
+		{
+			switch (e.KeyCode)
+			{
+				case Keys.Escape:
+					mainBox.Focus();
+					e.Handled = true;
+					break;
+			}
+		}
+
+		private void mainBox_MouseDown(object sender, MouseEventArgs e)
+		{
+			if (viewTextRadio.Checked)
+			{
+				if (e.X >= leftMargin)
+					xCursor = (int)Math.Round((e.X - leftMargin) / (double)charWidth);
+				else
+					xCursor = 0;
+				yCursor = (int)Math.Floor((e.Y - paddingWidth) / (double)lineHeight);
+
+				if (yCursor > -1)
+				{
+					yCursor = wrappedLines[yCursor] + scrollBarV.Value;
+
+					if (yCursor >= lines.Length)
+						yCursor = lines.Length - 1;
+
+					int len = LineLength(lines[yCursor]);
+
+					if (xCursor > len)
+						xCursor = len;
+				}
+
+				mainBox.Refresh();
+			}
+		}
+
 		private void newFileButton_Click(object sender, EventArgs e)
 		{
 			fileText = "";
@@ -660,18 +723,24 @@ Mp */
 
 		private void MainForm_KeyDown(object sender, KeyEventArgs e)
 		{
-			if (e.KeyCode == Keys.F1)
+			switch (e.KeyCode)
 			{
-				commandLineTextBox.Focus();
-			}
-			else if (e.KeyCode == Keys.F5 && compileButton.Visible)
-			{
-				compileButton_Click(null, null);
-				e.Handled = true;
-			}
-			else if (e.KeyCode == Keys.W && e.Control == true)
-			{
-				this.Close();
+				case Keys.F1:
+					commandLineTextBox.Focus();
+					break;
+				case Keys.F5:
+					if (compileButton.Visible)
+					{
+						compileButton_Click(null, null);
+						e.Handled = true;
+					}
+					break;
+				case Keys.W:
+					if (e.Control == true)
+					{
+						this.Close();
+					}
+					break;
 			}
 		}
 
@@ -827,6 +896,9 @@ Mp */
 			e.Graphics.FillRectangle(outsideDocumentBrush, 0, 0, leftMargin, mainBox.Height);
 
 			max = maxVisibleLines + 1;
+
+			wrappedLines = new int[max + 1];
+
 			if (max + start > lines.Length)
 			{
 				max = lines.Length - start;
@@ -848,11 +920,16 @@ Mp */
 			int prevTabC = 0;
 			int adjBy = 0;
 
+			int yAdjCursor = yCursor - start;
+
 			for (; i < max; i++)
 			{
 				float top = iAdj * lineHeight + paddingWidth;
 				
 				string lineNum = (i + start).ToString();
+
+				if (iAdj > -1)
+					wrappedLines[iAdj] = i;
 
 				e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
 				//e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
@@ -896,6 +973,11 @@ Mp */
 						top += lineHeight;
 						iAdj++;
 						adjBy++;
+						if ((yCursor - start) >= iAdj)
+							yAdjCursor++;
+
+						if (iAdj < maxVisibleLines + 1)
+							wrappedLines[iAdj] = i;
 
 						e.Graphics.FillRectangle(wrapBrush, 0, top,
 							offset * charWidth + leftMargin, lineHeight); // beginning of line wrap grey
@@ -929,6 +1011,12 @@ Mp */
 			if (i + start >= lines.Length)
 			{
 				e.Graphics.FillRectangle(outsideDocumentBrush, 0, iAdj * lineHeight + paddingWidth, mainBox.Width, mainBox.Height);
+			}
+
+			if (xCursor > -1 && yCursor > -1 && yCursor >= start - 1 && yCursor < start + i)
+			{
+				e.Graphics.FillRectangle(Brushes.Red, leftMargin + xCursor * charWidth, yAdjCursor * lineHeight + paddingWidth,
+					2, lineHeight);
 			}
 
 			int newMax = lines.Length + adjBy;

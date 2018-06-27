@@ -44,7 +44,8 @@ namespace Uide
 		int lineHeight;
 
 		int xCursor = -1,
-			yCursor = -1;
+			yCursor = -1,
+			yLineCursor = -1;
 
 		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
 		SolidBrush outsideDocumentBrush = new SolidBrush(Color.FromArgb(0xf8, 0xf8, 0xf8));
@@ -688,12 +689,15 @@ Mp */
 
 				if (yCursor > -1)
 				{
-					yCursor = wrappedLines[yCursor] + scrollBarV.Value;
+					if (yCursor + scrollBarV.Value >= lines.Length)
+					{
+						yCursor = lines.Length - 1 - scrollBarV.Value;
+					}
 
-					if (yCursor >= lines.Length)
-						yCursor = lines.Length - 1;
+					yLineCursor = wrappedLines[yCursor] + scrollBarV.Value;
+					yCursor += scrollBarV.Value;
 
-					int len = LineLength(lines[yCursor]);
+					int len = LineLength(lines[yLineCursor]);
 
 					if (xCursor > len)
 						xCursor = len;
@@ -920,8 +924,6 @@ Mp */
 			int prevTabC = 0;
 			int adjBy = 0;
 
-			int yAdjCursor = yCursor - start;
-
 			for (; i < max; i++)
 			{
 				float top = iAdj * lineHeight + paddingWidth;
@@ -973,8 +975,6 @@ Mp */
 						top += lineHeight;
 						iAdj++;
 						adjBy++;
-						if ((yCursor - start) > i)
-							yAdjCursor++;
 
 						if (iAdj < maxVisibleLines + 1)
 							wrappedLines[iAdj] = i;
@@ -1013,9 +1013,9 @@ Mp */
 				e.Graphics.FillRectangle(outsideDocumentBrush, 0, iAdj * lineHeight + paddingWidth, mainBox.Width, mainBox.Height);
 			}
 
-			if (xCursor > -1 && yCursor > -1 && yCursor >= start - 1 && yCursor < start + i)
+			if (xCursor > -1 && yCursor > -1 && yLineCursor >= start - 1 && yLineCursor < start + i)
 			{
-				e.Graphics.FillRectangle(Brushes.Red, leftMargin + xCursor * charWidth, yAdjCursor * lineHeight + paddingWidth,
+				e.Graphics.FillRectangle(Brushes.Red, leftMargin + xCursor * charWidth, (yCursor - start) * lineHeight + paddingWidth,
 					2, lineHeight);
 			}
 

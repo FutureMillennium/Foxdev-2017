@@ -16,6 +16,7 @@ namespace Uide
 		const int DEFAULT_MARGIN = 30;
 
 		const int tabSize = 4; // @warning must not be < 1
+		const int tWrapTabSize = 2;
 
 		const int paddingWidth = 5;
 
@@ -27,7 +28,8 @@ namespace Uide
 			fileText;
 		string[] lines;
 		int[] wrappedLines;
-		//int lineCount;
+		int[] tabCountsLine;
+		int[] lenWrappedLine;
 
 		byte[] file;
 		ELFheader32 elfHeader;
@@ -90,8 +92,8 @@ namespace Uide
 			this.Text = PRODUCT_NAME;
 			this.Icon = Uide.Properties.Resources.Foxdev;
 
-			MainForm_Resize(null, null);
 			lineHeight = (int)Math.Ceiling(font.GetHeight());
+			MainForm_Resize(null, null);
 
 			if (args.Length > 0)
 				OpenFile(args[0]);
@@ -502,7 +504,14 @@ Mp */
 		{
 			//Size sizeFont = TextRenderer.MeasureText("M", font);
 
+			if (lineHeight == 0)
+				return;
+
 			maxVisibleLines = (int)Math.Ceiling(mainBox.Height / (double)lineHeight) - 1;
+
+			wrappedLines = new int[maxVisibleLines + 2];
+			tabCountsLine = new int[maxVisibleLines + 2];
+			lenWrappedLine = new int[maxVisibleLines + 2];
 
 			if (maxVisibleLines <= 0)
 				return;
@@ -682,7 +691,7 @@ Mp */
 			if (viewTextRadio.Checked)
 			{
 				if (e.X >= leftMargin)
-					xCursor = (int)Math.Round((e.X - leftMargin) / (double)charWidth);
+					xCursor = (int)Math.Round((e.X - leftMargin - 1) / (double)charWidth, 0, MidpointRounding.AwayFromZero);
 				else
 					xCursor = 0;
 				yCursor = (int)Math.Floor((e.Y - paddingWidth) / (double)lineHeight);
@@ -695,12 +704,29 @@ Mp */
 					}
 
 					yLineCursor = wrappedLines[yCursor] + scrollBarV.Value;
-					yCursor += scrollBarV.Value;
 
-					int len = LineLength(lines[yLineCursor]);
+					int len;
+
+					if (lenWrappedLine[yCursor] != -1)
+					{
+						int min = (tabCountsLine[yCursor] * tabSize) + tWrapTabSize;
+						len = lenWrappedLine[yCursor] + min;
+
+						if (xCursor < min)
+							xCursor = min;
+
+					} else {
+						int min = (tabCountsLine[yCursor] * tabSize);
+						len = LineLength(lines[yLineCursor]);
+
+						if (xCursor < min)
+							xCursor = (int)Math.Round((xCursor - 1) / (double)tabSize, 0, MidpointRounding.AwayFromZero) * tabSize;
+					}
 
 					if (xCursor > len)
 						xCursor = len;
+
+					yCursor += scrollBarV.Value;
 				}
 
 				mainBox.Refresh();
@@ -901,8 +927,6 @@ Mp */
 
 			max = maxVisibleLines + 1;
 
-			wrappedLines = new int[max + 1];
-
 			if (max + start > lines.Length)
 			{
 				max = lines.Length - start;
@@ -931,17 +955,22 @@ Mp */
 				string lineNum = (i + start).ToString();
 
 				if (iAdj > -1)
+				{
 					wrappedLines[iAdj] = i;
+					lenWrappedLine[iAdj] = -1;
+				}
 
 				e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
 				//e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
 
-				int j = 0;
+				int j = 0,
+					jLast = 0;
 				int offset = 0;
 				int oTabOffset = 0;
 				int tabC = 0;
 				string line = lines[i + start];
 				int lenLine = line.Length;
+				bool wrappedLine = false;
 
 				for (; j < line.Length; j++)
 				{
@@ -971,16 +1000,32 @@ Mp */
 						e.Graphics.FillRectangle(wrapBrush, l, top,
 							mainBox.Width - l, lineHeight); // end of line wrap grey
 
-						offset = oTabOffset + 2;
+						if (iAdj > -1 && iAdj < lenWrappedLine.Length)
+						{
+							if (wrappedLine)
+							{
+								lenWrappedLine[iAdj] = j - jLast;
+							}
+							else
+							{
+								tabCountsLine[iAdj] = tabC;
+							}
+						}
+						jLast = j;
+
+						offset = oTabOffset + tWrapTabSize;
 						top += lineHeight;
 						iAdj++;
 						adjBy++;
 
-						if (iAdj < maxVisibleLines + 1)
+						if (iAdj < wrappedLines.Length) {
 							wrappedLines[iAdj] = i;
+						}
 
 						e.Graphics.FillRectangle(wrapBrush, 0, top,
 							offset * charWidth + leftMargin, lineHeight); // beginning of line wrap grey
+
+						wrappedLine = true;
 					}
 
 					e.Graphics.DrawString(c.ToString(), font, Brushes.Black, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
@@ -988,10 +1033,17 @@ Mp */
 					offset++;
 				}
 
+				if (wrappedLine && iAdj > 0 && iAdj < lenWrappedLine.Length)
+				{
+					lenWrappedLine[iAdj] = j - jLast;
+				}
+
 				float w = offset * charWidth + leftMargin + 2;
 				e.Graphics.FillRectangle(eolBrush, w, top, mainBox.Width - w, lineHeight); // end of line grey
 
 				if (lenLine == 0 && prevTabC > 0)
+				{
+					tabC = prevTabC;
 					for (j = 0; j < prevTabC; j++)
 					{
 						offset = j * tabSize;
@@ -1000,7 +1052,10 @@ Mp */
 						e.Graphics.DrawLine(Pens.LightGray, l, top,
 							l, top + lineHeight);
 					}
+				}
 
+				if (iAdj > -1 && iAdj < tabCountsLine.Length)
+					tabCountsLine[iAdj] = tabC;
 				prevTabC = tabC;
 				iAdj++;
 				if (iAdj > (maxVisibleLines + 1))

@@ -54,6 +54,8 @@ namespace Uide
 		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
 		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
 
+		FoxlangCompiler compiler;
+
 		int Measure(string text)
 		{
 			return text.Length * charWidth;
@@ -675,6 +677,23 @@ Mp */
 			}
 		}
 
+		private void errorsListBox_DoubleClick(object sender, EventArgs e)
+		{
+			if (errorsListBox.SelectedIndex <= 0)
+				return;
+
+			var msg = compiler.outputMessages[errorsListBox.SelectedIndex - 1];
+
+			if (msg.token == null)
+				return;
+
+			yCursor = msg.token.line - 1;
+			yLineCursor = msg.token.line - 1;
+			xCursor = msg.token.col - 1;
+			scrollBarV.Value = msg.token.line - 1;
+			mainBox.Refresh();
+		}
+
 		private void commandLineTextBox_KeyDown(object sender, KeyEventArgs e)
 		{
 			switch (e.KeyCode)
@@ -755,6 +774,9 @@ Mp */
 		{
 			switch (e.KeyCode)
 			{
+				case Keys.Escape:
+					errorsListBox.Visible = !errorsListBox.Visible;
+					break;
 				case Keys.F1:
 					commandLineTextBox.Focus();
 					break;
@@ -777,7 +799,7 @@ Mp */
 		private void compileButton_Click(object sender, EventArgs e)
 		{
 			bool success;
-			FoxlangCompiler compiler = new FoxlangCompiler();
+			compiler = new FoxlangCompiler();
 
 			if (filePath.EndsWith(".foxasm"))
 				success = compiler.FoxasmCompile(filePath);
@@ -788,21 +810,36 @@ Mp */
 
 			StringBuilder sb = new StringBuilder();
 
+			errorsListBox.Items.Clear();
+
+			string resMessage;
 			if (success)
-				sb.Append("Success!");
+				resMessage = "Success!";
 			else
-				sb.Append("Error!");
+				resMessage = "Error!";
+
+			errorsListBox.Items.Add(resMessage);
+			sb.Append(resMessage);
 
 			sb.Append(Environment.NewLine);
 
 			foreach (Foxlang.OutputMessage msg in compiler.outputMessages)
 			{
+				string message = "[" + msg.type.ToString() + "] \t";
+
 				if (msg.token != null)
-					sb.Append("[" + msg.type.ToString() + "] \t" + msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]");
+					message += msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]";
 				else
-					sb.Append("[" + msg.type.ToString() + "] \t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")");
+					message += msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")";
+				errorsListBox.Items.Add(message);
+				sb.Append(message);
 				sb.Append(Environment.NewLine);
 			}
+
+			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
+			errorsListBox.Visible = true;
+			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
+			
 
 
 			if (compiler.output != null)
@@ -831,7 +868,7 @@ Mp */
 
 			dataTextBox.Text = sb.ToString();
 
-			viewDataRadio.Checked = true;
+			//viewDataRadio.Checked = true;
 		}
 
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)

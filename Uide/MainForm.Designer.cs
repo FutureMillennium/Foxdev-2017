@@ -43,6 +43,7 @@
 			this.dragFileHereLabel = new System.Windows.Forms.Label();
 			this.bottomPanel = new System.Windows.Forms.TableLayoutPanel();
 			this.commandLineTextBox = new System.Windows.Forms.TextBox();
+			this.errorsListBox = new System.Windows.Forms.ListBox();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
 			this.noDocPanel.SuspendLayout();
@@ -254,12 +255,26 @@
 			this.commandLineTextBox.TabIndex = 13;
 			this.commandLineTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.commandLineTextBox_KeyDown);
 			// 
+			// errorsListBox
+			// 
+			this.errorsListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.errorsListBox.FormattingEnabled = true;
+			this.errorsListBox.ItemHeight = 21;
+			this.errorsListBox.Location = new System.Drawing.Point(0, 421);
+			this.errorsListBox.Name = "errorsListBox";
+			this.errorsListBox.Size = new System.Drawing.Size(1139, 214);
+			this.errorsListBox.TabIndex = 12;
+			this.errorsListBox.Visible = false;
+			this.errorsListBox.DoubleClick += new System.EventHandler(this.errorsListBox_DoubleClick);
+			// 
 			// MainForm
 			// 
 			this.AllowDrop = true;
 			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(1140, 670);
+			this.Controls.Add(this.errorsListBox);
 			this.Controls.Add(this.scrollBarV);
 			this.Controls.Add(this.mainBox);
 			this.Controls.Add(this.bottomPanel);
@@ -302,5 +317,6 @@
 		private System.Windows.Forms.TableLayoutPanel bottomPanel;
 		private System.Windows.Forms.TextBox commandLineTextBox;
 		private SelectablePictureBox mainBox;
+		private System.Windows.Forms.ListBox errorsListBox;
 	}
 }

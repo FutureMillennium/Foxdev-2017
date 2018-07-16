@@ -952,7 +952,7 @@ Mp */
 			{
 				float top = iAdj * lineHeight + paddingWidth;
 				
-				string lineNum = (i + start).ToString();
+				string lineNum = (i + start + 1).ToString();
 
 				if (iAdj > -1)
 				{

@@ -803,17 +803,45 @@ Mp */
 		void ZM01Compile(CompilerSubtype subtype)
 		{
 			ZM01.ZMAsm zmAsm = new ZM01.ZMAsm();
-			zmAsm.Compile(filePath);
+			bool success = zmAsm.Compile(filePath);
 
 			StringBuilder sb = new StringBuilder();
 
 			errorsListBox.Items.Clear();
 
+			string resMessage;
+			if (success)
+				resMessage = "Success!";
+			else
+				resMessage = "Error!";
+
+			errorsListBox.Items.Add(resMessage);
+			sb.Append(resMessage);
+
+			sb.Append(Environment.NewLine);
+
+			foreach (var msg in zmAsm.outputMessages)
+			{
+				string message = "[" + msg.type.ToString() + "] \t";
+
+				if (msg.token != null)
+					message += msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]";
+				else
+					message += msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")";
+				errorsListBox.Items.Add(message);
+				sb.Append(message);
+				sb.Append(Environment.NewLine);
+			}
+
+			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
+			errorsListBox.Visible = true;
+			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
+
 			// write out all tokens
 			sb.Append(Environment.NewLine);
 			sb.Append(Environment.NewLine);
 
-			foreach (Compiler.LexerParser.Token token in zmAsm.tokens)
+			foreach (Compiler.Token token in zmAsm.tokens)
 			{
 				sb.Append(token.ToString());
 				sb.Append(Environment.NewLine);

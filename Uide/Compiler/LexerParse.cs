@@ -3,22 +3,22 @@ using System.IO;
 
 namespace Compiler
 {
+	internal class Token
+	{
+		public string token;
+		public int line,
+			col,
+			pos;
+
+		public override string ToString()
+		{
+			return this.token + " \t[line: " + this.line + ", col: " + this.col + "]";
+		}
+	}
+
 	partial class LexerParser
 	{
 		enum LexingState { Normal, IgnoringUntilNewLine, ReadingString, ReadingDoubleString, NestedComments }
-
-		internal class Token
-		{
-			public string token;
-			public int line,
-				col,
-				pos;
-
-			public override string ToString()
-			{
-				return this.token + " \t[line: " + this.line + ", col: " + this.col + "]";
-			}
-		}
 
 		static internal void LexerParse(string filePath, List<Token> tokens)
 		{

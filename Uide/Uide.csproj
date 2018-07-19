@@ -69,7 +69,9 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Compiler\InvalidSyntaxException.cs" />
     <Compile Include="Compiler\LexerParse.cs" />
+    <Compile Include="Compiler\types.cs" />
     <Compile Include="Foxlang\ByteCode.cs" />
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />

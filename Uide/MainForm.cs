@@ -20,6 +20,9 @@ namespace Uide
 
 		const int paddingWidth = 5;
 
+		enum CompilerType { Foxlang, ZM01 }
+		enum CompilerSubtype { Foxasm, FoxBC, Foxlang, ZM01Asm }
+
 		bool isFileLoaded = false,
 			isELFfile,
 			isCompilable = false;
@@ -297,7 +300,8 @@ namespace Uide
 			scrollBarV.Value = 0;
 			UpdateDisplay();
 
-			if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc"))
+			if (fileName.EndsWith(".foxasm") || fileName.EndsWith(".foxlang") || fileName.EndsWith(".foxlangproj") || fileName.EndsWith(".foxbc")
+				|| fileName.EndsWith(".zmasm"))
 			{
 				isCompilable = true;
 			}
@@ -796,17 +800,49 @@ Mp */
 			}
 		}
 
-		private void compileButton_Click(object sender, EventArgs e)
+		void ZM01Compile(CompilerSubtype subtype)
 		{
-			bool success;
-			compiler = new FoxlangCompiler();
+			ZM01.ZMAsm zmAsm = new ZM01.ZMAsm();
+			zmAsm.Compile(filePath);
 
-			if (filePath.EndsWith(".foxasm"))
-				success = compiler.FoxasmCompile(filePath);
-			else if (filePath.EndsWith(".foxbc"))
-				success = compiler.FoxBCCompileFile(filePath);
-			else
-				success = compiler.CompileProject(filePath);
+			StringBuilder sb = new StringBuilder();
+
+			errorsListBox.Items.Clear();
+
+			// write out all tokens
+			sb.Append(Environment.NewLine);
+			sb.Append(Environment.NewLine);
+
+			foreach (Compiler.LexerParser.Token token in zmAsm.tokens)
+			{
+				sb.Append(token.ToString());
+				sb.Append(Environment.NewLine);
+			}
+
+			dataTextBox.Text = sb.ToString();
+
+			viewDataRadio.Checked = true;
+
+
+		}
+
+		void FoxlangCompile(CompilerSubtype subtype)
+		{
+			compiler = new FoxlangCompiler();
+			bool success = false;
+
+			switch (subtype)
+			{
+				case CompilerSubtype.Foxasm:
+					success = compiler.FoxasmCompile(filePath);
+					break;
+				case CompilerSubtype.FoxBC:
+					success = compiler.FoxBCCompileFile(filePath);
+					break;
+				case CompilerSubtype.Foxlang:
+					success = compiler.CompileProject(filePath);
+					break;
+			}
 
 			StringBuilder sb = new StringBuilder();
 
@@ -839,7 +875,7 @@ Mp */
 			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
 			errorsListBox.Visible = true;
 			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
-			
+
 
 
 			if (compiler.output != null)
@@ -869,6 +905,52 @@ Mp */
 			dataTextBox.Text = sb.ToString();
 
 			//viewDataRadio.Checked = true;
+		}
+
+		private void compileButton_Click(object sender, EventArgs e)
+		{
+			string[] filenameParts = filePath.Split('.');
+
+			if (filenameParts.Length == 1)
+			{
+				return; // @TODO error
+			}
+
+			CompilerType compilerType;
+			CompilerSubtype subtype;
+
+			switch (filenameParts[filenameParts.Length - 1])
+			{
+				case "zmasm":
+					compilerType = CompilerType.ZM01;
+					subtype = CompilerSubtype.ZM01Asm;
+					break;
+				case "foxasm":
+					compilerType = CompilerType.Foxlang;
+					subtype = CompilerSubtype.Foxasm;
+					break;
+				case "foxbc":
+					compilerType = CompilerType.Foxlang;
+					subtype = CompilerSubtype.FoxBC;
+					break;
+				/*case "foxlang":
+				case "foxlangproj":*/
+				default:
+					compilerType = CompilerType.Foxlang;
+					subtype = CompilerSubtype.Foxlang;
+					break;
+			}
+
+			switch (compilerType)
+			{
+				case CompilerType.Foxlang:
+					FoxlangCompile(subtype);
+					break;
+				case CompilerType.ZM01:
+					ZM01Compile(subtype);
+					break;
+			}
+			
 		}
 
 		string ByteArrayToASCIIString(byte[] array, int start, int length = 0)

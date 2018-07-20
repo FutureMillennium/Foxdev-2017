@@ -279,7 +279,15 @@ namespace Uide
 			{
 				isELFfile = false;
 
-				if (fileName.EndsWith(".com"))
+				if (fileName.EndsWith(".zmbin"))
+				{
+					ZM01.ZMDisassembler disasm = new ZM01.ZMDisassembler();
+					assemblyTextBox.Text = disasm.Disassemble(file);
+					viewAssemblyRadio.Checked = true;
+					//viewDataRadio.Checked = true;
+					viewAssemblyRadio.Visible = true;
+				}
+				else if (fileName.EndsWith(".com"))
 				{
 					assemblyTextBox.Text = Disassemble(0, (uint)file.Length - 2); // @TODO @hack
 					viewAssemblyRadio.Checked = true;

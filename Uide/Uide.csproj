@@ -97,6 +97,7 @@
     </Compile>
     <Compile Include="ZM01\Bitcode.cs" />
     <Compile Include="ZM01\ZMAsm.cs" />
+    <Compile Include="ZM01\ZMDisassembler.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="OPcodes.cs" />

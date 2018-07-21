@@ -6,6 +6,8 @@ using System.Text;
 
 namespace ZM01
 {
+	enum RefType { Label, String };
+
 	class Label
 	{
 		public long bytePos;
@@ -16,6 +18,14 @@ namespace ZM01
 	{
 		public long bytePos;
 		public string symbol;
+		public RefType refType;
+		public StringData refObj;
+	}
+
+	class StringData
+	{
+		public string str;
+		public long bytePos;
 	}
 
 	class ZMAsm
@@ -66,6 +76,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			tokens = new List<Compiler.Token>();
 			labels = new List<Label>();
 			List<FeedMe> feedMes = new List<FeedMe>();
+			List<StringData> stringData = new List<StringData>(); // @unused
 
 			Compiler.LexerParser.LexerParse(filePath, tokens);
 
@@ -129,30 +140,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				
 			}
 
-			UInt32 RequireLiteral(int byteLen)
-			{
-				Token tok = GetToken();
-				if (tok.token.Length > 1 &&
-					tok.token[0] == '"'
-					&& tok.token[tok.token.Length - 1] == '"')
-				{
-					// @TODO add string
-					return 0xFEED57FE; // @TODO placeholder constant?
-				}
-				else
-				{
-					UInt32 res;
-					if (ParseLiteral(tok.token, out res) == false)
-					{
-						ThrowError("Expected numerical or string literal, got: “" + tok.token + "”");
-					}
-
-					// @TODO check size (byteLen)
-
-					return res;
-				}
-			}
-
 			bool ThrowError(string message)
 			{
 				throw new CompilerException(message, tokens[i], filePath);
@@ -160,6 +147,38 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 
 			using (BinaryWriter writer = new BinaryWriter(File.Open(outputFile, FileMode.Create), Encoding.Default)) {
+
+
+				UInt32 RequireLiteral(int byteLen)
+				{
+					Token tok = GetToken();
+					if (tok.token.Length > 1 &&
+						tok.token[0] == '"'
+						&& tok.token[tok.token.Length - 1] == '"')
+					{
+						string str = tok.token.Substring(1, tok.token.Length - 2);
+						StringData strData = new StringData
+						{
+							str = str,
+						};
+						stringData.Add(strData);
+						feedMes.Add(new FeedMe { /*symbol = str,*/ bytePos = writer.BaseStream.Position + 1, refType = RefType.String, refObj = strData });
+						return 0xFEED57FE; // @TODO placeholder constant?
+					}
+					else
+					{
+						UInt32 res;
+						if (ParseLiteral(tok.token, out res) == false)
+						{
+							ThrowError("Expected numerical or string literal, got: “" + tok.token + "”");
+						}
+
+						// @TODO check size (byteLen)
+
+						return res;
+					}
+				}
+
 
 				try
 				{
@@ -201,7 +220,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										ThrowError("Expected label, got “" + label.token + "”");
 
 									write1byte = 0xFE;
-									feedMes.Add(new FeedMe { bytePos = writer.BaseStream.Position, symbol = label.token });
+									feedMes.Add(new FeedMe { bytePos = writer.BaseStream.Position + 1, symbol = label.token });
 									break;
 								}
 							case Bitcode.movRsR: // 01 reg 000	00001 reg		movRsR	R3	R3s
@@ -322,11 +341,36 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							writer.Write((byte)write1byte);
 						if (write4bytes != null)
 							writer.Write((UInt32)write4bytes);
+					}
 
-						// @TODO:
-						foreach (var feedMe in feedMes)
+					foreach (var strData in stringData)
+					{
+						strData.bytePos = writer.BaseStream.Position + 1; // @TODO
+						writer.Write(strData.str);
+						writer.Write((byte)0);
+					}
+
+					// @TODO:
+					foreach (var feedMe in feedMes)
+					{
+						switch (feedMe.refType)
 						{
+							case RefType.Label:
+								Label found = labels.Find(x => x.symbol == feedMe.symbol);
+								if (found == null)
+									ThrowError("Undeclared label: “" + feedMe.symbol + "”");
 
+								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin); // @WTF Seek wants int but Position is long??
+								writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
+
+								break;
+							case RefType.String:
+								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin);
+								writer.Write((UInt32)feedMe.refObj.bytePos);
+								break;
+							default:
+								ThrowError("Compiler error: unknown feedMe.refType.");
+								break;
 						}
 					}
 				}

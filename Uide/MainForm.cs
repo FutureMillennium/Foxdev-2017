@@ -305,6 +305,7 @@ namespace Uide
 			}
 
 			noDocPanel.Visible = false;
+			errorsListBox.Visible = false;
 
 			viewSwitchPanel.Visible = true;
 
@@ -861,18 +862,18 @@ Mp */
 			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
 
 			// write out all tokens
-			sb.Append(Environment.NewLine);
+			/*sb.Append(Environment.NewLine);
 			sb.Append(Environment.NewLine);
 
 			foreach (Compiler.Token token in zmAsm.tokens)
 			{
 				sb.Append(token.ToString());
 				sb.Append(Environment.NewLine);
-			}
+			}*/
 
 			dataTextBox.Text = sb.ToString();
 
-			viewDataRadio.Checked = true;
+			//viewDataRadio.Checked = true;
 
 
 		}

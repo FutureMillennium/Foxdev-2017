@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Threading;
 
 namespace ZM01
 {
@@ -16,11 +17,30 @@ namespace ZM01
 		UInt32 ip = 0;
 		UInt32[] registerFile = new UInt32[8];
 		bool zf = false;
+		bool isRunning = false;
+		string teletypeText = "";
+
+		DispatcherTimer timer = new DispatcherTimer();
 
 		public EmulatorForm()
 		{
 			InitializeComponent();
 			this.Icon = Uide.Properties.Resources.Foxdev;
+			timer.Interval = new TimeSpan(1000);
+			timer.Tick += Timer_Tick;
+		}
+
+		private void Timer_Tick(object sender, EventArgs e)
+		{
+			if (isRunning)
+			{
+				Step();
+				teletypeBox.Refresh();
+			}
+			else
+			{
+				stopButton_Click(null, null);
+			}
 		}
 
 		void Step()
@@ -40,7 +60,7 @@ namespace ZM01
 								// @TODO
 								break;
 							case Instruction.hlt:
-								// @TODO
+								isRunning = false;
 								break;
 							case Instruction.cli:
 								// @TODO
@@ -54,9 +74,9 @@ namespace ZM01
 							case Instruction.jne: // @TODO
 								break;
 							case Instruction.je: // @TODO
+								ip++;
 								if (zf)
 								{
-									ip++;
 									ip = (UInt32)(ip + (sbyte)(file[ip]));
 								}
 								break;
@@ -114,7 +134,7 @@ namespace ZM01
 						int target = ((b & 0b11_000_000) >> 6) + 1;
 						if (registerFile[target] >= 0xB8000)
 						{
-							teletypeTextBox.Text += (char)(registerFile[source]);
+							teletypeText += (char)(registerFile[source]);
 						}
 						else
 						{
@@ -134,6 +154,30 @@ namespace ZM01
 		private void stepButton_Click(object sender, EventArgs e)
 		{
 			Step();
+			teletypeBox.Refresh();
+		}
+
+		private void startButton_Click(object sender, EventArgs e)
+		{
+			isRunning = true;
+			timer.IsEnabled = true;
+			stopButton.Enabled = true;
+			startButton.Enabled = false;
+			stepButton.Enabled = false;
+		}
+
+		private void stopButton_Click(object sender, EventArgs e)
+		{
+			isRunning = false;
+			timer.IsEnabled = false;
+			stopButton.Enabled = false;
+			startButton.Enabled = true;
+			stepButton.Enabled = true;
+		}
+
+		private void teletypeBox_Paint(object sender, PaintEventArgs e)
+		{
+			e.Graphics.DrawString(teletypeText, teletypeBox.Font, Brushes.Black, 0, 0);
 		}
 	}
 }

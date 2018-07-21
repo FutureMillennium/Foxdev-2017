@@ -15,13 +15,14 @@ namespace ZM01
 		r5,
 		r6,
 		r7,
+		sp,
 
 		nop,
 		hlt,
 		cli,
 		sti,
 		jmp,
-
+		iret,
 		jne,
 		je,
 
@@ -58,7 +59,7 @@ namespace ZM01
 		cli = 0b00_010_000,
 		sti = 0b00_011_000,
 		jmp = 0b00_100_000,
-
+		iret = 0b00_101_000,
 		jne = 0b00_110_000,
 		je = 0b00_111_000,
 
@@ -103,7 +104,7 @@ namespace ZM01
 			0b00_010_000,
 			0b00_011_000,
 			0b00_100_000,
-
+			0b00_101_000,
 			0b00_110_000,
 			0b00_111_000,
 
@@ -154,5 +155,19 @@ namespace ZM01
 		{
 			{ Bitcode.nop, new BCProperties {} },
 		};*/
+	}
+
+	enum Registers
+	{
+		rz = 0,
+		r1,
+		r2,
+		r3,
+		r4,
+		r5,
+		r6,
+		r7,
+		sp,
+		lr,
 	}
 }

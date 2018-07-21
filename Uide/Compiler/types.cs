@@ -15,4 +15,17 @@ namespace Compiler
 			filename;
 		internal Token token;
 	}
+
+	internal class Token
+	{
+		public string token;
+		public int line,
+			col,
+			pos;
+
+		public override string ToString()
+		{
+			return this.token + " \t[line: " + this.line + ", col: " + this.col + "]";
+		}
+	}
 }

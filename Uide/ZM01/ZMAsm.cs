@@ -7,6 +7,7 @@ using System.Text;
 namespace ZM01
 {
 	enum RefType { Label, String };
+	enum RefSubType { Relative, Absolute };
 
 	class Label
 	{
@@ -17,8 +18,9 @@ namespace ZM01
 	class FeedMe
 	{
 		public long bytePos;
-		public string symbol;
+		public Token token;
 		public RefType refType;
+		public RefSubType subType;
 		public StringData refObj;
 	}
 
@@ -33,7 +35,7 @@ namespace ZM01
 		internal List<Token> tokens;
 		public List<OutputMessage> outputMessages = new List<OutputMessage>();
 		List<Label> labels;
-
+		UInt32 address = 0x100;
 
 		static internal bool ParseLiteral(string strVal, out UInt32 ii)
 		{
@@ -128,7 +130,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				{
 					ThrowError("Expected register, got: “" + tok.token + "”");
 				}
-				if (bitcode < Bitcode.rz || bitcode > Bitcode.r7)
+				if (bitcode < Bitcode.rz || bitcode > Bitcode.sp)
 				{
 					ThrowError("Expected register, got: “" + tok.token + "”");
 				}
@@ -140,9 +142,11 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				
 			}
 
-			bool ThrowError(string message)
+			bool ThrowError(string message, Token token = null)
 			{
-				throw new CompilerException(message, tokens[i], filePath);
+				if (token == null)
+					token = tokens[i];
+				throw new CompilerException(message, token, filePath);
 			}
 
 
@@ -152,7 +156,12 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				UInt32 RequireLiteral(int byteLen)
 				{
 					Token tok = GetToken();
-					if (tok.token.Length > 1 &&
+					if (tok.token[0] == '.')
+					{
+						feedMes.Add(new FeedMe { token = tok, bytePos = writer.BaseStream.Position + 1, refType = RefType.Label, subType = RefSubType.Absolute });
+						return 0xFEED14FE; // @TODO placeholder constant?
+					}
+					else if (tok.token.Length > 1 &&
 						tok.token[0] == '"'
 						&& tok.token[tok.token.Length - 1] == '"')
 					{
@@ -196,6 +205,12 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							labels.Add(new Label { bytePos = writer.BaseStream.Position, symbol = token });
 							continue;
 						}
+						else if (token == "#address")
+						{
+							RequireToken("=");
+							address = RequireLiteral(4);
+							continue;
+						}
 
 						if (Enum.TryParse(token, out bitcode) == false)
 						{
@@ -210,6 +225,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							case Bitcode.hlt: // 00 001 000 			hlt		
 							case Bitcode.cli: // 00 010 000 			cli		
 							case Bitcode.sti: // 00 011 000 			sti		
+							case Bitcode.iret:
 								break;
 							case Bitcode.jmp: // 00 100 000 			jmp	Imm8/1	
 							case Bitcode.jne: // 00 110 000 			jne	Imm8/1	
@@ -220,7 +236,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										ThrowError("Expected label, got “" + label.token + "”");
 
 									write1byte = 0xFE;
-									feedMes.Add(new FeedMe { bytePos = writer.BaseStream.Position + 1, symbol = label.token });
+									feedMes.Add(new FeedMe { bytePos = writer.BaseStream.Position + 1, token = label });
 									break;
 								}
 							case Bitcode.movRsR: // 01 reg 000	00001 reg		movRsR	R3	R3s
@@ -356,17 +372,20 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						switch (feedMe.refType)
 						{
 							case RefType.Label:
-								Label found = labels.Find(x => x.symbol == feedMe.symbol);
+								Label found = labels.Find(x => x.symbol == feedMe.token.token);
 								if (found == null)
-									ThrowError("Undeclared label: “" + feedMe.symbol + "”");
+									ThrowError("Undeclared label: “" + feedMe.token.token + "”", feedMe.token);
 
 								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin); // @WTF Seek wants int but Position is long??
-								writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
+								if (feedMe.subType == RefSubType.Absolute)
+									writer.Write((UInt32)(found.bytePos + address));
+								else
+									writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
 
 								break;
 							case RefType.String:
 								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin);
-								writer.Write((UInt32)feedMe.refObj.bytePos);
+								writer.Write((UInt32)(feedMe.refObj.bytePos + address));
 								break;
 							default:
 								ThrowError("Compiler error: unknown feedMe.refType.");

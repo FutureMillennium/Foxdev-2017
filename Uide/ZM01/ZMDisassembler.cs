@@ -19,6 +19,8 @@ namespace ZM01
 				Bitcode bc;
 				string after = null;
 
+				sb.Append(i.ToString("x8") + " ");
+
 				if ((b & 0b0000_0111) == 0)
 				{
 					if ((b & (0b11 << 6)) == 0)

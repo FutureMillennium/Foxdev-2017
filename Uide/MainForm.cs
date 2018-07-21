@@ -58,6 +58,7 @@ namespace Uide
 		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
 
 		FoxlangCompiler compiler;
+		ZM01.ZMAsm zmAsm;
 
 		int Measure(string text)
 		{
@@ -698,16 +699,31 @@ Mp */
 			if (errorsListBox.SelectedIndex <= 0)
 				return;
 
-			var msg = compiler.outputMessages[errorsListBox.SelectedIndex - 1];
+			if (compiler != null)
+			{
+				var msg = compiler.outputMessages[errorsListBox.SelectedIndex - 1];
 
-			if (msg.token == null)
-				return;
+				if (msg.token == null)
+					return;
 
-			yCursor = msg.token.line - 1;
-			yLineCursor = msg.token.line - 1;
-			xCursor = msg.token.col - 1;
-			scrollBarV.Value = msg.token.line - 1;
-			mainBox.Refresh();
+				yCursor = msg.token.line - 1;
+				yLineCursor = msg.token.line - 1;
+				xCursor = msg.token.col - 1;
+				scrollBarV.Value = msg.token.line - 1;
+				mainBox.Refresh();
+			} else if (zmAsm != null)
+			{
+				var msg = zmAsm.outputMessages[errorsListBox.SelectedIndex - 1];
+
+				if (msg.token == null)
+					return;
+
+				yCursor = msg.token.line - 1;
+				yLineCursor = msg.token.line - 1;
+				xCursor = msg.token.col - 1;
+				scrollBarV.Value = msg.token.line - 1;
+				mainBox.Refresh();
+			}
 		}
 
 		private void commandLineTextBox_KeyDown(object sender, KeyEventArgs e)
@@ -770,8 +786,7 @@ Mp */
 
 		private void runButton_Click(object sender, EventArgs e)
 		{
-			ZM01.EmulatorForm emulatorForm = new ZM01.EmulatorForm();
-			emulatorForm.file = file;
+			ZM01.EmulatorForm emulatorForm = new ZM01.EmulatorForm(file);
 			emulatorForm.Show();
 		}
 
@@ -826,7 +841,7 @@ Mp */
 
 		void ZM01Compile(CompilerSubtype subtype)
 		{
-			ZM01.ZMAsm zmAsm = new ZM01.ZMAsm();
+			zmAsm = new ZM01.ZMAsm();
 			bool success = zmAsm.Compile(filePath);
 
 			StringBuilder sb = new StringBuilder();
@@ -837,7 +852,7 @@ Mp */
 			if (success)
 				resMessage = "Success!";
 			else
-				resMessage = "Error!";
+				resMessage = "Failed to compile!";
 
 			errorsListBox.Items.Add(resMessage);
 			sb.Append(resMessage);

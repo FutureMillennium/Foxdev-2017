@@ -44,6 +44,7 @@
 			this.bottomPanel = new System.Windows.Forms.TableLayoutPanel();
 			this.commandLineTextBox = new System.Windows.Forms.TextBox();
 			this.errorsListBox = new System.Windows.Forms.ListBox();
+			this.runButton = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
 			this.noDocPanel.SuspendLayout();
@@ -82,15 +83,16 @@
 			// 
 			this.viewSwitchPanel.AutoSize = true;
 			this.viewSwitchPanel.Controls.Add(this.compileButton);
+			this.viewSwitchPanel.Controls.Add(this.runButton);
 			this.viewSwitchPanel.Controls.Add(this.viewDataRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewAssemblyRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewHexRadio);
 			this.viewSwitchPanel.Controls.Add(this.viewTextRadio);
 			this.viewSwitchPanel.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
-			this.viewSwitchPanel.Location = new System.Drawing.Point(721, 0);
+			this.viewSwitchPanel.Location = new System.Drawing.Point(584, 0);
 			this.viewSwitchPanel.Margin = new System.Windows.Forms.Padding(0);
 			this.viewSwitchPanel.Name = "viewSwitchPanel";
-			this.viewSwitchPanel.Size = new System.Drawing.Size(402, 35);
+			this.viewSwitchPanel.Size = new System.Drawing.Size(539, 35);
 			this.viewSwitchPanel.TabIndex = 4;
 			this.viewSwitchPanel.Visible = false;
 			this.viewSwitchPanel.WrapContents = false;
@@ -98,7 +100,7 @@
 			// compileButton
 			// 
 			this.compileButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.compileButton.Location = new System.Drawing.Point(280, 0);
+			this.compileButton.Location = new System.Drawing.Point(417, 0);
 			this.compileButton.Margin = new System.Windows.Forms.Padding(15, 0, 0, 0);
 			this.compileButton.Name = "compileButton";
 			this.compileButton.Size = new System.Drawing.Size(122, 35);
@@ -251,7 +253,7 @@
 			this.commandLineTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.commandLineTextBox.Location = new System.Drawing.Point(3, 3);
 			this.commandLineTextBox.Name = "commandLineTextBox";
-			this.commandLineTextBox.Size = new System.Drawing.Size(715, 29);
+			this.commandLineTextBox.Size = new System.Drawing.Size(578, 29);
 			this.commandLineTextBox.TabIndex = 13;
 			this.commandLineTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.commandLineTextBox_KeyDown);
 			// 
@@ -267,6 +269,18 @@
 			this.errorsListBox.TabIndex = 12;
 			this.errorsListBox.Visible = false;
 			this.errorsListBox.DoubleClick += new System.EventHandler(this.errorsListBox_DoubleClick);
+			// 
+			// runButton
+			// 
+			this.runButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.runButton.Location = new System.Drawing.Point(280, 0);
+			this.runButton.Margin = new System.Windows.Forms.Padding(15, 0, 0, 0);
+			this.runButton.Name = "runButton";
+			this.runButton.Size = new System.Drawing.Size(122, 35);
+			this.runButton.TabIndex = 11;
+			this.runButton.Text = "Run";
+			this.runButton.UseVisualStyleBackColor = true;
+			this.runButton.Click += new System.EventHandler(this.runButton_Click);
 			// 
 			// MainForm
 			// 
@@ -318,5 +332,6 @@
 		private System.Windows.Forms.TextBox commandLineTextBox;
 		private SelectablePictureBox mainBox;
 		private System.Windows.Forms.ListBox errorsListBox;
+		private System.Windows.Forms.Button runButton;
 	}
 }

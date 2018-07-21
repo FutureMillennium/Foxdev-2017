@@ -51,6 +51,45 @@ namespace ZM01
 		strL,
 	}
 
+	enum Instruction
+	{
+		nop = 0b00_000_000,
+		hlt = 0b00_001_000,
+		cli = 0b00_010_000,
+		sti = 0b00_011_000,
+		jmp = 0b00_100_000,
+
+		jne = 0b00_110_000,
+		je = 0b00_111_000,
+
+		movRsR = 0b01_000_000,
+		cmpRs = 0b01_000_000,
+		addRs = 0b01_000_000,
+		ldrRsB = 0b01_000_000,
+		strRsB = 0b01_000_000,
+		ldrRsL = 0b01_000_000,
+		strRsL = 0b01_000_000,
+		not = 0b01_000_000,
+		xor = 0b01_000_000,
+		mul = 0b01_000_000,
+		div = 0b01_000_000,
+		sub = 0b01_000_000,
+		or = 0b01_000_000,
+		and = 0b01_000_000,
+
+		addImmB = 0b10_000_000,
+		movRImmL = 0b11_000_000,
+
+
+		movRR = 0b00_000_001,
+		cmp = 0b00_000_010,
+		add = 0b00_000_011,
+		ldrB = 0b00_000_100,
+		strB = 0b00_000_101,
+		ldrL = 0b00_000_110,
+		strL = 0b00_000_111,
+	}
+
 	/*class BCProperties
 	{
 

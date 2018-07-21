@@ -279,6 +279,8 @@ namespace Uide
 			{
 				isELFfile = false;
 
+				runButton.Visible = false;
+
 				if (fileName.EndsWith(".zmbin"))
 				{
 					ZM01.ZMDisassembler disasm = new ZM01.ZMDisassembler();
@@ -286,6 +288,7 @@ namespace Uide
 					viewAssemblyRadio.Checked = true;
 					//viewDataRadio.Checked = true;
 					viewAssemblyRadio.Visible = true;
+					runButton.Visible = true;
 				}
 				else if (fileName.EndsWith(".com"))
 				{
@@ -764,6 +767,13 @@ Mp */
 			}
 		}
 
+		private void runButton_Click(object sender, EventArgs e)
+		{
+			ZM01.EmulatorForm emulatorForm = new ZM01.EmulatorForm();
+			emulatorForm.file = file;
+			emulatorForm.Show();
+		}
+
 		private void newFileButton_Click(object sender, EventArgs e)
 		{
 			fileText = "";
@@ -793,7 +803,12 @@ Mp */
 					commandLineTextBox.Focus();
 					break;
 				case Keys.F5:
-					if (compileButton.Visible)
+					if (runButton.Visible)
+					{
+						runButton_Click(null, null);
+						e.Handled = true;
+					}
+					else if (compileButton.Visible)
 					{
 						compileButton_Click(null, null);
 						e.Handled = true;

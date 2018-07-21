@@ -180,7 +180,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 						if (Enum.TryParse(token, out bitcode) == false)
 						{
-							// @TODO parse .Labels:
 							return ThrowError("Invalid instruction.");
 						}
 
@@ -201,6 +200,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (label.token[0] != '.')
 										ThrowError("Expected label, got “" + label.token + "”");
 
+									write1byte = 0xFE;
 									feedMes.Add(new FeedMe { bytePos = writer.BaseStream.Position, symbol = label.token });
 									break;
 								}
@@ -212,6 +212,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							case Bitcode.ldrRsL: // 01 reg 000	00110 reg		ldrRsL	R3	R3s
 							case Bitcode.strRsL: // 01 reg 000	00111 reg		strRsL	R3	R3s
 								{
+									ThrowError("Not implemented: “" + token + "”");
 									RequireR3s();
 									RequireToken("<<"); // @TODO
 									RequireReg();
@@ -224,10 +225,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							case Bitcode.sub: // 01 reg 000	01100 reg		sub	R3	R3
 							case Bitcode.or: // 01 reg 000	01101 reg		or	R3	R3
 							case Bitcode.and: // 01 reg 000	01110 reg		and	R3	R3
-								RequireReg();
-								RequireToken(","); // @TODO
-								RequireReg();
-								break;
+								{
+									ThrowError("Not implemented: “" + token + "”");
+									RequireReg();
+									RequireToken(","); // @TODO
+									RequireReg();
+									break;
+								}
 							case Bitcode.addImmB: // 10 reg 000			addImmB	R3	Imm8/1
 							case Bitcode.movRImmL: // 11 reg 000		3×8x	movRImmL	R3	Imm32/4
 								{

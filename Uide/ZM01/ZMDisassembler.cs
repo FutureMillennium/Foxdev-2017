@@ -24,9 +24,22 @@ namespace ZM01
 					if ((b & (0b11 << 6)) == 0)
 					{
 						found = Array.IndexOf(BitcodeInfo.lsb, b);
+						bc = (Bitcode)(found + (int)Bitcode.nop);
+
+						switch (bc)
+						{
+							case Bitcode.jmp:
+							case Bitcode.je:
+							case Bitcode.jne:
+								i++;
+								after = " 0x" + file[i].ToString("x2");
+								break;
+						}
+
 					}
 					else
 					{
+						// @TODO MSB
 						found = Array.IndexOf(BitcodeInfo.lsb, (byte)(b & 0b1100_0111));
 					}
 

@@ -43,7 +43,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.teletypeBox.BackColor = System.Drawing.Color.White;
-			this.teletypeBox.Font = new System.Drawing.Font("Consolas", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+			this.teletypeBox.Font = new System.Drawing.Font("Consolas", 14, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel, ((byte)(238)));
 			this.teletypeBox.ForeColor = System.Drawing.Color.Black;
 			this.teletypeBox.Location = new System.Drawing.Point(0, 0);
 			this.teletypeBox.Name = "teletypeBox";
@@ -53,13 +53,14 @@
 			// 
 			// flowLayoutPanel1
 			// 
+			this.flowLayoutPanel1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
 			this.flowLayoutPanel1.Controls.Add(this.startButton);
 			this.flowLayoutPanel1.Controls.Add(this.stopButton);
 			this.flowLayoutPanel1.Controls.Add(this.stepButton);
-			this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Bottom;
 			this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 367);
 			this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-			this.flowLayoutPanel1.Size = new System.Drawing.Size(654, 34);
+			this.flowLayoutPanel1.Size = new System.Drawing.Size(642, 34);
 			this.flowLayoutPanel1.TabIndex = 2;
 			// 
 			// startButton
@@ -106,6 +107,7 @@
 			this.Controls.Add(this.flowLayoutPanel1);
 			this.Controls.Add(this.teletypeBox);
 			this.Name = "EmulatorForm";
+			this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
 			this.Text = "ZM01 Emulator by Zdeněk Gromnica";
 			((System.ComponentModel.ISupportInitialize)(this.teletypeBox)).EndInit();
 			this.flowLayoutPanel1.ResumeLayout(false);

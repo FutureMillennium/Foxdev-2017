@@ -69,9 +69,13 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Compiler\InvalidSyntaxException.cs" />
-    <Compile Include="Compiler\LexerParse.cs" />
-    <Compile Include="Compiler\types.cs" />
+    <Compile Include="Compilers\Compiler.cs" />
+    <Compile Include="Compilers\InvalidSyntaxException.cs" />
+    <Compile Include="Compilers\LexerParse.cs" />
+    <Compile Include="Compilers\types.cs" />
+    <Compile Include="Foxasm\Foxasm.ConstMathParse.cs" />
+    <Compile Include="Foxasm\Instructions.cs" />
+    <Compile Include="Foxasm\Foxasm.cs" />
     <Compile Include="Foxlang\ByteCode.cs" />
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />
@@ -142,6 +146,7 @@
   <ItemGroup>
     <None Include="Resources\Foxdev.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

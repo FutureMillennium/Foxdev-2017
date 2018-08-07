@@ -1,4 +1,4 @@
-﻿using Compiler;
+﻿using Compilers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -75,12 +75,12 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 		internal bool Compile(string filePath)
 		{
-			tokens = new List<Compiler.Token>();
+			tokens = new List<Compilers.Token>();
 			labels = new List<Label>();
 			List<FeedMe> feedMes = new List<FeedMe>();
 			List<StringData> stringData = new List<StringData>(); // @unused
 
-			Compiler.LexerParser.LexerParse(filePath, tokens);
+			Compilers.LexerParser.LexerParse(filePath, tokens);
 
 			string outputFile = Path.ChangeExtension(filePath, ".zmbin");
 

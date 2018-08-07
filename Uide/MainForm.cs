@@ -20,7 +20,7 @@ namespace Uide
 
 		const int paddingWidth = 5;
 
-		enum CompilerType { Foxlang, ZM01 }
+		enum CompilerType { Foxlang, Foxasm, ZM01 }
 		enum CompilerSubtype { Foxasm, FoxBC, Foxlang, ZM01Asm }
 
 		bool isFileLoaded = false,
@@ -57,7 +57,8 @@ namespace Uide
 		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
 		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
 
-		FoxlangCompiler compiler;
+		FoxlangCompiler foxlangCompiler;
+		Compilers.Compiler compiler;
 		ZM01.ZMAsm zmAsm;
 
 		int Measure(string text)
@@ -699,9 +700,9 @@ Mp */
 			if (errorsListBox.SelectedIndex <= 0)
 				return;
 
-			if (compiler != null)
+			if (foxlangCompiler != null)
 			{
-				var msg = compiler.outputMessages[errorsListBox.SelectedIndex - 1];
+				var msg = foxlangCompiler.outputMessages[errorsListBox.SelectedIndex - 1];
 
 				if (msg.token == null)
 					return;
@@ -711,9 +712,23 @@ Mp */
 				xCursor = msg.token.col - 1;
 				scrollBarV.Value = msg.token.line - 1;
 				mainBox.Refresh();
-			} else if (zmAsm != null)
+			}
+			else if (zmAsm != null)
 			{
 				var msg = zmAsm.outputMessages[errorsListBox.SelectedIndex - 1];
+
+				if (msg.token == null)
+					return;
+
+				yCursor = msg.token.line - 1;
+				yLineCursor = msg.token.line - 1;
+				xCursor = msg.token.col - 1;
+				scrollBarV.Value = msg.token.line - 1;
+				mainBox.Refresh();
+			}
+			else if (compiler != null)
+			{
+				var msg = compiler.outputMessages[errorsListBox.SelectedIndex - 1];
 
 				if (msg.token == null)
 					return;
@@ -895,19 +910,19 @@ Mp */
 
 		void FoxlangCompile(CompilerSubtype subtype)
 		{
-			compiler = new FoxlangCompiler();
+			foxlangCompiler = new FoxlangCompiler();
 			bool success = false;
 
 			switch (subtype)
 			{
 				case CompilerSubtype.Foxasm:
-					success = compiler.FoxasmCompile(filePath);
+					success = foxlangCompiler.FoxasmCompile(filePath);
 					break;
 				case CompilerSubtype.FoxBC:
-					success = compiler.FoxBCCompileFile(filePath);
+					success = foxlangCompiler.FoxBCCompileFile(filePath);
 					break;
 				case CompilerSubtype.Foxlang:
-					success = compiler.CompileProject(filePath);
+					success = foxlangCompiler.CompileProject(filePath);
 					break;
 			}
 
@@ -926,7 +941,7 @@ Mp */
 
 			sb.Append(Environment.NewLine);
 
-			foreach (Foxlang.OutputMessage msg in compiler.outputMessages)
+			foreach (Foxlang.OutputMessage msg in foxlangCompiler.outputMessages)
 			{
 				string message = "[" + msg.type.ToString() + "] \t";
 
@@ -945,18 +960,88 @@ Mp */
 
 
 
-			if (compiler.output != null)
+			if (foxlangCompiler.output != null)
 			{
 				sb.AppendLine();
 				sb.AppendLine("[Binary output]");
-				sb.AppendLine(compiler.output);
+				sb.AppendLine(foxlangCompiler.output);
 			}
 
 
 			sb.AppendLine();
 			sb.AppendLine("[Bytecode output]");
 
-			sb.Append(compiler.EchoBytecode());
+			sb.Append(foxlangCompiler.EchoBytecode());
+
+
+			// write out all tokens
+			/*sb.Append(Environment.NewLine);
+			sb.Append(Environment.NewLine);
+
+			foreach (FoxlangCompiler.Token token in compiler.tokens)
+			{
+				sb.Append(token.token + "\t[line: " + token.line + ", col: " + token.col + "]");
+				sb.Append(Environment.NewLine);
+			}*/
+
+			dataTextBox.Text = sb.ToString();
+
+			//viewDataRadio.Checked = true;
+		}
+
+		void Compile()
+		{
+			compiler = new Foxasm.Foxasm();
+			bool success = false;
+
+			success = compiler.Compile(filePath);
+
+			StringBuilder sb = new StringBuilder();
+
+			errorsListBox.Items.Clear();
+
+			string resMessage;
+			if (success)
+				resMessage = "Success!";
+			else
+				resMessage = "Error!";
+
+			errorsListBox.Items.Add(resMessage);
+			sb.Append(resMessage);
+
+			sb.Append(Environment.NewLine);
+
+			foreach (Compilers.OutputMessage msg in compiler.outputMessages)
+			{
+				string message = "[" + msg.type.ToString() + "] \t";
+
+				if (msg.token != null)
+					message += msg.token.token + "\t" + msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")[line " + msg.token.line + ", col " + msg.token.col + "]";
+				else
+					message += msg.message + "\t(" + msg.filename.Substring(Path.GetDirectoryName(filePath).Length + 1) + ")";
+				errorsListBox.Items.Add(message);
+				sb.Append(message);
+				sb.Append(Environment.NewLine);
+			}
+
+			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
+			errorsListBox.Visible = true;
+			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
+
+
+
+			if (compiler.outputFilePath != null)
+			{
+				sb.AppendLine();
+				sb.AppendLine("[Binary output]");
+				sb.AppendLine(compiler.outputFilePath);
+			}
+
+
+			/*sb.AppendLine();
+			sb.AppendLine("[Bytecode output]");
+
+			sb.Append(compiler.EchoBytecode());*/
 
 
 			// write out all tokens
@@ -993,7 +1078,7 @@ Mp */
 					subtype = CompilerSubtype.ZM01Asm;
 					break;
 				case "foxasm":
-					compilerType = CompilerType.Foxlang;
+					compilerType = CompilerType.Foxasm;
 					subtype = CompilerSubtype.Foxasm;
 					break;
 				case "foxbc":
@@ -1012,6 +1097,9 @@ Mp */
 			{
 				case CompilerType.Foxlang:
 					FoxlangCompile(subtype);
+					break;
+				case CompilerType.Foxasm:
+					Compile();
 					break;
 				case CompilerType.ZM01:
 					ZM01Compile(subtype);

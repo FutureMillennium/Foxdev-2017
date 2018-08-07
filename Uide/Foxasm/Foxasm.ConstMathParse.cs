@@ -164,7 +164,14 @@ namespace Foxasm
 				iT++;
 			}
 
-			return -1;
+			if (canEnd)
+			{
+				return End();
+			}
+			else
+			{
+				return ThrowError("Unexpected end of file.");
+			}
 		}
 	}
 }

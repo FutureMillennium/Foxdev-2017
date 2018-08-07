@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Foxasm
 {
-	enum RefType { Label, String, Variable };
+	enum RefType { Label, String, Const };
 	enum RefSubType { Relative, Absolute };
 	enum Bits { Bits16, Bits32 }
 	public enum Format { Invalid, Flat }
@@ -20,6 +20,7 @@ namespace Foxasm
 	class FeedMe
 	{
 		public long bytePos;
+		public byte width;
 		public Token token;
 		public RefType refType;
 		public RefSubType subType;
@@ -32,13 +33,21 @@ namespace Foxasm
 		public long bytePos;
 	}
 
+	class Const
+	{
+		public Token token;
+		public int val;
+	}
+
 	partial class Foxasm : Compiler
 	{
 		internal List<Token> tokens;
 		List<Label> labels;
-		UInt32 address = 0x100;
+		List<Const> consts = new List<Const>();
+		UInt32 address = 0;
 		string filePath;
 		int iT = 0;
+		BinaryWriter writer = null;
 
 		static internal bool TryIntLiteralParse(string strVal, out UInt32 ii)
 		{
@@ -82,6 +91,46 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			throw new CompilerException(message, token, filePath);
 		}
 
+		byte RegisterNumber(Registers register)
+		{
+			switch (register)
+			{
+				case Registers.Al:
+				case Registers.Ax:
+				case Registers.Eax:
+					return 0;
+				case Registers.Cl:
+				case Registers.Cx:
+				case Registers.Ecx:
+					return 1;
+				case Registers.Dl:
+				case Registers.Dx:
+				case Registers.Edx:
+					return 2;
+				case Registers.Bl:
+				case Registers.Bx:
+				case Registers.Ebx:
+					return 3;
+				case Registers.Sp:
+				case Registers.Esp:
+				case Registers.Ah:
+					return 4;
+				case Registers.Bp:
+				case Registers.Ebp:
+				case Registers.Ch:
+					return 5;
+				case Registers.Si:
+				case Registers.Esi:
+				case Registers.Dh:
+					return 6;
+				case Registers.Di:
+				case Registers.Edi:
+				case Registers.Bh:
+					return 7;
+			}
+			return 0xFF;
+		}
+
 
 		override internal bool Compile(string filePath)
 		{
@@ -97,8 +146,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			outputFilePath = Path.ChangeExtension(filePath, ".bin");
 
-			BinaryWriter writer = null;
-
 
 
 			bool AddError(string message, Token token)
@@ -113,7 +160,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				return false;
 			}
 
-			Token GetToken()
+			Token GetNextToken()
 			{
 				iT++;
 				Token tok = tokens[iT];
@@ -122,7 +169,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			void RequireToken(string token)
 			{
-				Token tok = GetToken();
+				Token tok = GetNextToken();
 				if (tok.token != token)
 					ThrowError("Expected “" + token + "”, got: “" + tok.token + "”");
 			}
@@ -144,17 +191,23 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			bool ThrowError(string message, Token token = null)
 			{
-				if (token == null)
+				if (token == null && iT < tokens.Count)
 					token = tokens[iT];
 				throw new CompilerException(message, token, filePath);
 			}
 
 			UInt32 RequireLiteral(int byteLen)
 			{
-				Token tok = GetToken();
+				Token tok = GetNextToken();
 				if (tok.token[0] == '.')
 				{
-					feedMes.Add(new FeedMe { token = tok, bytePos = writer.BaseStream.Position + 1, refType = RefType.Label, subType = RefSubType.Absolute });
+					feedMes.Add(new FeedMe {
+						token = tok,
+						bytePos = writer.BaseStream.Position + 1,
+						refType = RefType.Label,
+						subType = RefSubType.Absolute,
+						width = (byte)byteLen,
+					});
 					return (UInt32)Placeholders.Label;
 				}
 				else if (tok.token.Length > 1 &&
@@ -167,7 +220,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						str = str,
 					};
 					stringData.Add(strData);
-					feedMes.Add(new FeedMe { /*symbol = str,*/ bytePos = writer.BaseStream.Position + 1, refType = RefType.String, refObj = strData });
+					feedMes.Add(new FeedMe {
+						/*symbol = str,*/
+						bytePos = writer.BaseStream.Position + 1,
+						refType = RefType.String,
+						refObj = strData,
+						width = (byte)byteLen,
+					});
 					return (UInt32)Placeholders.String;
 				}
 				else
@@ -186,7 +245,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			string RequireStringLiteral()
 			{
-				Token tok = GetToken();
+				Token tok = GetNextToken();
 				if (tok.token.Length > 1 &&
 						((tok.token[0] == '"'
 						&& tok.token[tok.token.Length - 1] == '"')
@@ -203,7 +262,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			UInt32 RequireIntegerLiteral()
 			{
-				Token tok = GetToken();
+				Token tok = GetNextToken();
 				UInt32 res;
 				if (TryIntLiteralParse(tok.token, out res) == false)
 				{
@@ -263,6 +322,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					case 1:
 						writer.Write((byte)ii);
 						break;
+					default:
+						ThrowError("Compiler error: Invalid Write width.");
+						break;
 				}
 			}
 
@@ -272,7 +334,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					token = tok,
 					bytePos = writer.BaseStream.Position,
 					refType = RefType.Label,
-					subType = RefSubType.Absolute
+					subType = RefSubType.Absolute,
+					width = (byte)writeWidth,
 				});
 
 				UInt32 ii = (UInt32)Placeholders.Label;
@@ -285,11 +348,21 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				{
 					token = tok,
 					bytePos = writer.BaseStream.Position,
-					refType = RefType.Variable,
+					refType = RefType.Const,
+					width = (byte)writeWidth,
 				});
 
 				UInt32 ii = (UInt32)Placeholders.Variable;
 				Write(ii, writeWidth);
+			}
+
+			void ConstCreate(Token tok, int val)
+			{
+				consts.Add(new Const
+				{
+					token = tok,
+					val = val,
+				});
 			}
 
 
@@ -367,7 +440,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (writer == null)
 										writer = new BinaryWriter(File.Open(outputFilePath, FileMode.Create), Encoding.Default);
 
-									Token next = GetToken();
+									Token next = GetNextToken();
 									if (TryStringLit(next, out string str)) // string lit
 									{
 										/*if (str.Length > put)
@@ -390,7 +463,17 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									}
 									else if (TryIntLiteralParse(next.token, out UInt32 ii)) // int lit
 									{
-										Write(ii, put);
+										if (put > 4)
+										{
+											for (int j = 0; j < put; j++)
+											{
+												writer.Write((byte)ii);
+											}
+										}
+										else
+										{
+											Write(ii, put);
+										}
 									}
 									else // var
 									{
@@ -413,7 +496,16 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						}
 					}
 
-					if (Enum.TryParse(token, out instruction) == false)
+					if (PeekNext() == "=")
+					{
+						Token varTok = tok;
+						RequireToken("=");
+						int val = ConstMathParse();
+						ConstCreate(tok, val);
+						continue;
+					}
+
+					if (Enum.TryParse(token, true, out instruction) == false)
 					{
 						return ThrowError("Invalid instruction.");
 					}
@@ -423,17 +515,25 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 					switch (instruction)
 					{
+						case Instructions.Ret:
+							writer.Write((byte)0xc3);
+							break;
+						case Instructions.Mov:
+							Token next = GetNextToken();
+							Registers dest;
+							if (Enum.TryParse(next.token, true, out dest) == false)
+								ThrowError("Expected register, got: " + next.token);
+							RequireToken("=");
+							UInt32 val = RequireIntegerLiteral();
+
+							//case ByteCode.MovRImmL:
+							writer.Write((byte)(0xb8 + RegisterNumber(dest)));
+							writer.Write((uint)val);
+
+							break;
 						default:
 							return ThrowError("Instruction not implemented. Sorry!");
 					}
-
-					/*
-					writer.Write(lsb);
-					if (write1byte != null)
-						writer.Write((byte)write1byte);
-					if (write4bytes != null)
-						writer.Write((UInt32)write4bytes);
-					*/
 				}
 
 				foreach (var strData in stringData)
@@ -449,21 +549,33 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					switch (feedMe.refType)
 					{
 						case RefType.Label:
-							Label found = labels.Find(x => x.symbol == feedMe.token.token);
-							if (found == null)
-								ThrowError("Undeclared label: “" + feedMe.token.token + "”", feedMe.token);
+							{
+								Label found = labels.Find(x => x.symbol == feedMe.token.token);
+								if (found == null)
+									ThrowError("Undeclared label: “" + feedMe.token.token + "”", feedMe.token);
 
-							writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin); // @WTF Seek wants int but Position is long??
-							if (feedMe.subType == RefSubType.Absolute)
-								writer.Write((UInt32)(found.bytePos + address));
-							else
-								writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
+								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin); // @WTF Seek wants int but Position is long??
+								if (feedMe.subType == RefSubType.Absolute)
+									writer.Write((UInt32)(found.bytePos + address));
+								else
+									writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
 
-							break;
+								break;
+							}
 						case RefType.String:
 							writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin);
 							writer.Write((UInt32)(feedMe.refObj.bytePos + address));
 							break;
+						case RefType.Const:
+							{
+								Const found = consts.Find(x => x.token.token == feedMe.token.token);
+								if (found == null)
+									ThrowError("Undeclared constant: “" + feedMe.token.token + "”", feedMe.token);
+
+								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin);
+								Write((UInt32)(found.val), feedMe.width);
+								break;
+							}
 						default:
 							ThrowError("Compiler error: unknown feedMe.refType.");
 							break;

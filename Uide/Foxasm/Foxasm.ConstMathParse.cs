@@ -128,9 +128,22 @@ namespace Foxasm
 						{
 							return End();
 						}
+						else if (tokens[iT].token == "$")
+						{
+							if (DoVal((uint)writer.BaseStream.Position) == false)
+								return -1;
+						}
 						else if (TryIntLiteralParse(tokens[iT].token, out newVal))
 						{
 							if (DoVal(newVal) == false)
+								return -1;
+						}
+						else if (tokens[iT].token[0] == '.')
+						{
+							Label found = labels.Find(x => x.symbol == tokens[iT].token);
+							if (found == null)
+								ThrowError("Undeclared label: “" + tokens[iT].token + "”");
+							if (DoVal((uint)found.bytePos) == false)
 								return -1;
 						}
 						else

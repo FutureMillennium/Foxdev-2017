@@ -1,0 +1,131 @@
+#bits 32
+
+//
+// MZ header
+//
+// The only two fields that matter are e_magic and e_lfanew
+
+.mzhdr:
+    #Put2 "MZ"                       // e_magic
+    #Put2 0                          // e_cblp UNUSED
+    #Put2 0                          // e_cp UNUSED
+    #Put2 0                          // e_crlc UNUSED
+    #Put2 0                          // e_cparhdr UNUSED
+    #Put2 0                          // e_minalloc UNUSED
+    #Put2 0                          // e_maxalloc UNUSED
+    #Put2 0                          // e_ss UNUSED
+    #Put2 0                          // e_sp UNUSED
+    #Put2 0                          // e_csum UNUSED
+    #Put2 0                          // e_ip UNUSED
+    #Put2 0                          // e_cs UNUSED
+    #Put2 0                          // e_lsarlc UNUSED
+    #Put2 0                          // e_ovno UNUSED
+    #DoTimes 4 #Put2 0                  // e_res UNUSED
+    #Put2 0                          // e_oemid UNUSED
+    #Put2 0                          // e_oeminfo UNUSED
+    #DoTimes 10 #Put2 0                 // e_res2 UNUSED
+    #Put4 pesig                      // e_lfanew
+
+//
+// PE signature
+//
+
+.pesig:
+    #Put4 "PE"
+
+//
+// PE header
+//
+
+.pehdr:
+    #Put2 0x014C                     // Machine (Intel 386)
+    #Put2 1                          // NumberOfSections
+    #Put4 0x4545BE5D                 // TimeDateStamp UNUSED
+    #Put4 0                          // PointerToSymbolTable UNUSED
+    #Put4 0                          // NumberOfSymbols UNUSED
+    #Put2 opthdrsize                 // SizeOfOptionalHeader
+    #Put2 0x103                      // Characteristics (no relocations, executable, 32 bit)
+
+//
+// PE optional header
+//
+
+FILEALIGN = 1
+SECTALIGN = 1
+
+//%define round(n, r) (((n+(r-1))/r)*r)
+
+.opthdr:
+    #Put2 0x10B                      // Magic (PE32)
+    #Put1 8                          // MajorLinkerVersion UNUSED
+    #Put1 0                          // MinorLinkerVersion UNUSED
+    #Put4 #Round(codesize / FILEALIGN) // SizeOfCode UNUSED
+    #Put4 0                          // SizeOfInitializedData UNUSED
+    #Put4 0                          // SizeOfUninitializedData UNUSED
+    #Put4 start                      // AddressOfEntryPoint
+    #Put4 code                       // BaseOfCode UNUSED
+    #Put4 #Round(filesize / SECTALIGN) // BaseOfData UNUSED
+    #Put4 0x400000                   // ImageBase
+    #Put4 SECTALIGN                  // SectionAlignment
+    #Put4 FILEALIGN                  // FILEALIGNment
+    #Put2 4                          // MajorOperatingSystemVersion UNUSED
+    #Put2 0                          // MinorOperatingSystemVersion UNUSED
+    #Put2 0                          // MajorImageVersion UNUSED
+    #Put2 0                          // MinorImageVersion UNUSED
+    #Put2 4                          // MajorSubsystemVersion
+    #Put2 0                          // MinorSubsystemVersion UNUSED
+    #Put4 0                          // Win32VersionValue UNUSED
+    #Put4 #Round(filesize / SECTALIGN) // SizeOfImage
+    #Put4 #Round(hdrsize / FILEALIGN)  // SizeOfHeaders
+    #Put4 0                          // CheckSum UNUSED
+    #Put2 2                          // Subsystem (Win32 GUI)
+    #Put2 0x400                      // DllCharacteristics UNUSED
+    #Put4 0x100000                   // SizeOfStackReserve UNUSED
+    #Put4 0x1000                     // SizeOfStackCommit
+    #Put4 0x100000                   // SizeOfHeapReserve
+    #Put4 0x1000                     // SizeOfHeapCommit UNUSED
+    #Put4 0                          // LoaderFlags UNUSED
+    #Put4 16                         // NumberOfRvaAndSizes UNUSED
+
+//
+// Data directories
+//
+
+    #DoTimes 16 #Put4 0, 0
+
+opthdrsize = $ - .opthdr
+
+//
+// PE code section
+//
+
+    #Put1 ".text", 0, 0, 0           // Name
+    #Put4 codesize                   // VirtualSize
+    #Put4 #Round(hdrsize / SECTALIGN)  // VirtualAddress
+    #Put4 #Round(codesize / FILEALIGN) // SizeOfRawData
+    #Put4 .code                       // PointerToRawData
+    #Put4 0                          // PointerToRelocations UNUSED
+    #Put4 0                          // PointerToLinenumbers UNUSED
+    #Put2 0                          // NumberOfRelocations UNUSED
+    #Put2 0                          // NumberOfLinenumbers UNUSED
+    #Put4 0x60000020                 // Characteristics (code, execute, read) UNUSED
+
+hdrsize = $ - $$
+
+//
+// PE code section data
+//
+
+#Align FILEALIGN, #Put1 0
+
+.code:
+
+// Entry point
+
+.start:
+    mov eax = 42
+    ret
+
+codesize = $ - .code
+
+filesize = $ - $$

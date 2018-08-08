@@ -1,0 +1,189 @@
+#bits 32
+#extension '.exe'
+#format Flat
+
+//
+// MZ header
+//
+// The only two fields that matter are e_magic and e_lfanew
+
+.mzhdr:
+    #Put2 "MZ"                       // e_magic
+    #Put2 0                          // e_cblp UNUSED
+    #Put2 0                          // e_cp UNUSED
+    #Put2 0                          // e_crlc UNUSED
+    #Put2 0                          // e_cparhdr UNUSED
+    #Put2 0                          // e_minalloc UNUSED
+    #Put2 0                          // e_maxalloc UNUSED
+    #Put2 0                          // e_ss UNUSED
+    #Put2 0                          // e_sp UNUSED
+    #Put2 0                          // e_csum UNUSED
+    #Put2 0                          // e_ip UNUSED
+    #Put2 0                          // e_cs UNUSED
+    #Put2 0                          // e_lsarlc UNUSED
+    #Put2 0                          // e_ovno UNUSED
+    #Put 4 * 2: 0 //#DoTimes 4 #Put2 0                  // e_res UNUSED
+    #Put2 0                          // e_oemid UNUSED
+    #Put2 0                          // e_oeminfo UNUSED
+    #Put 10 * 2: 0 //#DoTimes 10 #Put2 0                 // e_res2 UNUSED
+    #Put4 .pesig                      // e_lfanew
+
+//
+// PE signature
+//
+
+.pesig:
+    #Put4 "PE"
+
+//
+// PE header
+//
+
+.pehdr:
+    #Put2 0x014C                     // Machine (Intel 386)
+    #Put2 1                          // NumberOfSections
+    #Put4 0x4545BE5D                 // TimeDateStamp UNUSED
+    #Put4 0                          // PointerToSymbolTable UNUSED
+    #Put4 0                          // NumberOfSymbols UNUSED
+    #Put2 opthdrSIZE                 // SizeOfOptionalHeader
+    #Put2 0x103                      // Characteristics (no relocations, executable, 32 bit)
+
+//
+// PE optional header
+//
+
+FILEALIGN = 1
+SECTALIGN = 1
+
+//%define round(n, r) (((n+(r-1))/r)*r)
+
+.opthdr:
+    #Put2 0x10B                      // Magic (PE32)
+    #Put1 8                          // MajorLinkerVersion UNUSED
+    #Put1 0                          // MinorLinkerVersion UNUSED
+    #Put4 CODESIZE //#Round(CODESIZE / FILEALIGN) // SizeOfCode UNUSED
+    #Put4 0                          // SizeOfInitializedData UNUSED
+    #Put4 0                          // SizeOfUninitializedData UNUSED
+    #Put4 .start                      // AddressOfEntryPoint
+    #Put4 .code                       // BaseOfCode UNUSED
+    #Put4 FILESIZE //#Round(FILESIZE / SECTALIGN) // BaseOfData UNUSED
+    #Put4 0x400000                   // ImageBase
+    #Put4 SECTALIGN                  // SectionAlignment
+    #Put4 FILEALIGN                  // FILEALIGNment
+    #Put2 4                          // MajorOperatingSystemVersion UNUSED
+    #Put2 0                          // MinorOperatingSystemVersion UNUSED
+    #Put2 0                          // MajorImageVersion UNUSED
+    #Put2 0                          // MinorImageVersion UNUSED
+    #Put2 4                          // MajorSubsystemVersion
+    #Put2 0                          // MinorSubsystemVersion UNUSED
+    #Put4 0                          // Win32VersionValue UNUSED
+    #Put4 FILESIZE //#Round(FILESIZE / SECTALIGN) // SizeOfImage
+    #Put4 hdrSIZE //#Round(hdrSIZE / FILEALIGN)  // SizeOfHeaders
+    #Put4 0                          // CheckSum UNUSED
+    #Put2 2                          // Subsystem (Win32 GUI)
+    #Put2 0x400                      // DllCharacteristics UNUSED
+    #Put4 0x100000                   // SizeOfStackReserve UNUSED
+    #Put4 0x1000                     // SizeOfStackCommit
+    #Put4 0x100000                   // SizeOfHeapReserve
+    #Put4 0x1000                     // SizeOfHeapCommit UNUSED
+    #Put4 0                          // LoaderFlags UNUSED
+    #Put4 16                         // NumberOfRvaAndSizes UNUSED
+
+//
+// Data directories
+//
+
+		#Put4 0, 0 //.edata
+		#Put4 ._import_start, IMPORT_SIZE //.idata
+		
+    #Put 13 * 4 * 2: 0 //#DoTimes 16 #Put4 0, 0
+		#Put4 0, 0 // Reserved, must be zero
+
+opthdrSIZE = $ - .opthdr
+
+//
+// PE code section
+//
+
+    #Put1 ".text", 0, 0, 0           // Name
+    #Put4 CODESIZE                   // VirtualSize
+    #Put4 hdrSIZE // #Round(hdrSIZE / SECTALIGN)  // VirtualAddress
+    #Put4 CODESIZE // #Round(CODESIZE / FILEALIGN) // SizeOfRawData
+    #Put4 .code                       // PointerToRawData
+    #Put4 0                          // PointerToRelocations UNUSED
+    #Put4 0                          // PointerToLinenumbers UNUSED
+    #Put2 0                          // NumberOfRelocations UNUSED
+    #Put2 0                          // NumberOfLinenumbers UNUSED
+    #Put4 0x60000020                 // Characteristics (code, execute, read) UNUSED
+
+hdrSIZE = $ // - $$
+
+//
+// PE code section data
+//
+
+//#Align FILEALIGN, #Put1 0
+
+.code:
+
+// Entry point
+
+#address 0x400000
+
+.start:
+    pushL 0
+    pushL ._title
+    pushL ._text
+    pushL 0
+    callL [.MessageBoxA]
+
+    pushL 0
+    callL [.ExitProcess]
+
+    ret
+
+._title: #Put1 "win32-3.foxasm", 0
+._text: #Put1 "Hello from Foxasm!", 0
+
+#Align 4
+
+#address 0
+
+IMAGE_BASE = 0
+
+._import_start:
+#Put4 0,0,0, ._kernel32_dll /*- IMAGE_BASE*/, ._kernel32_import /*- IMAGE_BASE*/
+#Put4 0,0,0, ._user32_dll /*- IMAGE_BASE*/, ._user32_import /*- IMAGE_BASE*/
+#Put4 0,0,0,0,0
+
+._kernel32_import:
+//label ExitProcess dword
+.ExitProcess:
+#Put4 ._ExitProcess // - IMAGE_BASE
+#Put4 0
+
+._user32_import:
+//label MessageBoxA dword
+.MessageBoxA:
+#Put4 ._MessageBoxA // - IMAGE_BASE
+#Put4 0
+
+._kernel32_dll: #Put1 "kernel32.dll", 0
+._user32_dll: #Put1 "user32.dll", 0
+
+._ExitProcess:
+#Put1 0,0,"ExitProcess",0
+
+._MessageBoxA:
+#Put1 0,0,"MessageBoxA",0
+
+#Align 4
+
+._import_end:
+._section1_end:
+
+IMPORT_SIZE = ._import_end - ._import_start
+
+CODESIZE = $ - .code
+
+FILESIZE = $ // - $$

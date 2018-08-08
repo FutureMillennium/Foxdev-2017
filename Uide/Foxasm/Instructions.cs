@@ -30,7 +30,7 @@ namespace Foxasm
 		// Q: quadword – 8 bytes, 64 bits
 		Cli, Sti, Hlt,
 
-		Call,
+		Call, CallL,
 		Jmp, JmpB, JmpW, JmpL,
 		Mov, MovB, MovW, MovL,
 		Push, PushW, PushL,
@@ -48,5 +48,10 @@ namespace Foxasm
 		Label = 0xFEED1AFE,
 		String = 0xFEED57FE,
 		Variable = 0xFEED5AFE,
+	}
+
+	enum ModRegRM : byte
+	{
+		RMemImm = 0b00_000_101, // 00 xxx 101 – Displacement-Only Mode
 	}
 }

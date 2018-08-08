@@ -5,3 +5,4 @@ obj
 .vs
 /code examples/vars.cmd
 *.user
+trace-*

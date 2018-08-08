@@ -1,0 +1,197 @@
+// Raw PE format with tiny header and dos stub
+// v0.30
+// for flat assembler by Grom PE
+
+//macro zeroalign value { rb (value-1)-($+value-1) mod value }
+
+#bits 16
+#format Flat
+#extension '.exe'
+
+IMAGE_BASE = 0x400000
+
+#Put2 'MZ'                           // === MZ header ===
+#Put2 0x200                     // Bytes on last page
+#Put2 0x1                     // Pages in file
+#Put2 0x0                     // Relocations count
+#Put2 0x1                     // Paragraphs in header
+#Put1 0, 'G'                          // Minimum memory (Note: I think it's not
+                                  //                 dangerous to have min>max,
+                                  //                 the stub runs perfectly on
+                                  //                 DOSBox and DOS 7.10)
+#Put4 'PE'       // === PE header === // Maximum memory + SS
+
+$address = 0x100
+
+#Put2       0x14C // Machine           // SP
+#Put2         0x1 // Count of sections // Checksum
+#Put2       0x13C // \ Timestamp       // IP
+#Put2     0x0FFF0 // /                 // CS
+#Put2        0x78 // \ <UNUSED>        // Relocations table address
+#Put2 0          // /                 // <UNUSED>
+#Put4 0          // <UNUSED>          // <UNUSED>
+                                  // === End of MZ header ===
+
+#Put2       0x0E0 // Size of optional header
+#Put2       0x10F // 0xCaracteristics
+#Put2       0x10B // Magic optional header
+  _dos_msg #Put1 'Need Win32.',0x0D,0x0A,'$' // Unused fields  - part of DOS stub
+#Put4      0x1000 // Entry point
+#Put4 ?          // <UNUSED>
+#Put4        0x0C // Pointer to PE header
+#Put4 IMAGE_BASE // Image base
+#Put4      0x1000 // Section alignment
+#Put4       0x200 // File alignment
+
+  mov dx,_dos_msg // Unused fields - part of DOS stub
+  mov 0xa,0x9
+  int 0x21
+
+  #Put1 0x0E9 // Caution: uses next two bytes - jmp+4 --.
+#Put4         0x4 // Subsystem version                  |
+#Put2 ?          // <UNUSED>                           |
+  int 0x20 // Unused bytes - end of DOS stub      <-- 
+#Put4      0x2000 // Size of image
+#Put4       0x200 // Size of header
+#Put4 ?          // <UNUSED> (Checksum)
+#Put2         0x2 // Subsystem
+#Put2         0x0 // DLL flags
+#Put4      0x1000 // Stack allocation
+#Put4      0x1000 // Stack commit
+#Put4     0x10000 // Heap allocation
+#Put4         0x0 // Heap commit
+#Put4 ?          // <UNUSED?> (Loader flag)
+#Put4        0x0A // Number of directories
+              // === End of PE header ===
+
+// === Constants used for directories ===
+
+IMPORT_START = ._import_start - IMAGE_BASE
+IMPORT_SIZE = ._import_end - ._import_start
+
+                       // === Directories ===
+#Put4        0x0,       0x0 // Export RVA and Size
+#Put4 IMPORT_START, IMPORT_SIZE // Import
+#Put4        0x0,       0x0 // Resource
+
+#Put4        0x0,       0x0 // Exception
+#Put4        0x0,       0x0 // Security
+#Put4        0x0,       0x0 // Reloc
+#Put4        0x0,       0x0 // Debug
+#Put4        0x0,       0x0 // Description
+#Put4        0x0,       0x0 // MIPSGP
+#Put4        0x0,       0x0 // TLSVA
+                       // === End of directories ===
+
+#Put 0x30: 0 // <UNUSED>
+// There is still space for some nice DOS stub
+
+// === Constants used for sections ===
+
+SECTION1_SIZE = _section1_end - _section1_start
+
+              // === Sections ===
+dq 'SECTION1' // 1 Name
+#Put4       0x400 //   Virtual size
+#Put4      0x1000 //   RVA
+#Put4 SECTION1_SIZE //   Physical size
+#Put4       0x200 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x0E0000060 //   Flags
+dq ''         // 2 Name
+#Put4         0x0 //   Virtual size
+#Put4         0x0 //   RVA
+#Put4         0x0 //   Physical size
+#Put4         0x0 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x000000000 //   Flags
+dq ''         // 3 Name
+#Put4         0x0 //   Virtual size
+#Put4         0x0 //   RVA
+#Put4         0x0 //   Physical size
+#Put4         0x0 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x000000000 //   Flags
+dq ''         // 4 Name
+#Put4         0x0 //   Virtual size
+#Put4         0x0 //   RVA
+#Put4         0x0 //   Physical size
+#Put4         0x0 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x000000000 //   Flags
+dq ''         // 5 Name
+#Put4         0x0 //   Virtual size
+#Put4         0x0 //   RVA
+#Put4         0x0 //   Physical size
+#Put4         0x0 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x000000000 //   Flags
+dq ''         // 6 Name
+#Put4         0x0 //   Virtual size
+#Put4         0x0 //   RVA
+#Put4         0x0 //   Physical size
+#Put4         0x0 //   Physical offset
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 ?          //   <UNUSED>
+#Put4 0x000000000 //   Flags
+              // === End of sections ===
+// "6 sections should be enough for everyone!"
+
+#Put 0x0c: 0
+
+#bits 32
+#address IMAGE_BASE + 0x1000
+
+._section1_start:
+
+  push 0 _test _looknice 0
+  call [MessageBoxA]
+  push 0
+  call [ExitProcess]
+  // plain "ret" could be used here, but we have to import at least one function
+  // from kernel32 to be runable under Win2000. So let's use it.
+
+_test #Put1 "Test", 0
+_looknice #Put1 "Do I look small and nice?", 0
+
+#Align 4
+
+._import_start:
+#Put4 0,0,0,_kernel32_dll - IMAGE_BASE,_kernel32_import - IMAGE_BASE
+#Put4 0,0,0,_user32_dll   - IMAGE_BASE,_user32_import   - IMAGE_BASE
+#Put4 0,0,0,0,0
+
+._kernel32_import:
+label ExitProcess dword
+#Put4 _ExitProcess - IMAGE_BASE
+#Put4 0
+
+_user32_import:
+label MessageBoxA dword
+#Put4 _MessageBoxA - IMAGE_BASE
+#Put4 0
+
+_kernel32_dll: #Put1 "kernel32.dll",0
+_user32_dll: #Put1 "user32.dll",0
+
+_ExitProcess:
+#Put1 0,0,"ExitProcess",0
+
+_MessageBoxA:
+#Put1 0,0,"MessageBoxA",0
+
+#Align 4
+
+._import_end:
+._section1_end:

@@ -142,6 +142,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			List<StringData> stringData = new List<StringData>();
 			Bits bits = Bits.Bits32;
 			Format format = Format.Flat;
+			bool isDataWritten = false;
 
 			LexerParser.LexerParse(filePath, tokens);
 
@@ -359,6 +360,17 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				});
 			}
 
+			void WriteData()
+			{
+				foreach (var strData in stringData)
+				{
+					strData.bytePos = writer.BaseStream.Position + 1; // @TODO
+					writer.Write(strData.str);
+					writer.Write((byte)0);
+				}
+				isDataWritten = true;
+			}
+
 
 
 
@@ -499,8 +511,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									}
 									continue;
 								}
-							/*case "#DoTimes":
-								break;*/
+							case "#PutData":
+								WriteData();
+								continue;
 							default:
 								ThrowError("Invalid compiler directive.");
 								break;
@@ -565,11 +578,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					}
 				}
 
-				foreach (var strData in stringData)
+				if (isDataWritten == false)
 				{
-					strData.bytePos = writer.BaseStream.Position + 1; // @TODO
-					writer.Write(strData.str);
-					writer.Write((byte)0);
+					WriteData();
 				}
 
 				foreach (var feedMe in feedMes)

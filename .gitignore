@@ -2,6 +2,6 @@
 *.vshost.exe*
 Debug
 obj
-/.vs
+.vs
 /code examples/vars.cmd
 *.user

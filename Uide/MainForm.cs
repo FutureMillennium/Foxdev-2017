@@ -307,7 +307,7 @@ namespace Uide
 			}
 
 			noDocPanel.Visible = false;
-			errorsListBox.Visible = false;
+			ErrorListVisible(false);
 
 			viewSwitchPanel.Visible = true;
 
@@ -828,7 +828,7 @@ Mp */
 			switch (e.KeyCode)
 			{
 				case Keys.Escape:
-					errorsListBox.Visible = !errorsListBox.Visible;
+					ErrorListVisible(!errorsListBox.Visible);
 					break;
 				case Keys.F1:
 					commandLineTextBox.Focus();
@@ -888,7 +888,7 @@ Mp */
 			}
 
 			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
-			errorsListBox.Visible = true;
+			ErrorListVisible(true);
 			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
 
 			// write out all tokens
@@ -955,7 +955,7 @@ Mp */
 			}
 
 			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
-			errorsListBox.Visible = true;
+			ErrorListVisible(true);
 			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
 
 
@@ -1025,7 +1025,7 @@ Mp */
 			}
 
 			errorsListBox.Height = errorsListBox.ItemHeight * (errorsListBox.Items.Count + 1);
-			errorsListBox.Visible = true;
+			ErrorListVisible(true);
 			errorsListBox.Top = this.ClientSize.Height - bottomPanel.Height - errorsListBox.Height;
 
 
@@ -1353,6 +1353,19 @@ Mp */
 			{
 				scrollBarV.Maximum = newMax;
 				UpdateScrollbar();
+			}
+		}
+
+		void ErrorListVisible(bool makeVisible)
+		{
+			if (makeVisible)
+			{
+				Controls.SetChildIndex(errorsListBox, 0);
+				errorsListBox.Visible = true;
+			}
+			else
+			{
+				errorsListBox.Visible = false;
 			}
 		}
 	}

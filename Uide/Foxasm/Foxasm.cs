@@ -421,6 +421,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 										ThrowError("Expected format, got " + next);
 									continue;
 								}
+							case "#Align":
+								{
+									uint alignBy = RequireIntegerLiteral();
+									long left = (writer.BaseStream.Position) % alignBy;
+									if (left != 0)
+									{
+										left = alignBy - left;
+										for (int j = 0; j < left; j++)
+											writer.Write((byte)0x90);
+									}
+									continue;
+								}
 							case "#Put1":
 								put = 1;
 								goto PutSub;

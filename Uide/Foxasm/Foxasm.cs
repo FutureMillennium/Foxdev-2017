@@ -49,6 +49,7 @@ namespace Foxasm
 		string filePath;
 		int iT = 0;
 		BinaryWriter writer = null;
+		Bits bits = Bits.Bits32;
 
 		static internal bool TryIntLiteralParse(string strVal, out UInt32 ii)
 		{
@@ -129,6 +130,65 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				case Registers.Bh:
 					return 7;
 			}
+
+			ThrowError("Compiler error: cannot translate register: " + register.ToString());
+			return 0xFF;
+		}
+
+		byte MemoryRegisterNumber(Registers register)
+		{
+			if (bits == Bits.Bits32)
+			{
+				switch (register)
+				{
+					case Registers.Al:
+					case Registers.Ax:
+					case Registers.Eax:
+						return 0;
+					case Registers.Cl:
+					case Registers.Cx:
+					case Registers.Ecx:
+						return 1;
+					case Registers.Dl:
+					case Registers.Dx:
+					case Registers.Edx:
+						return 2;
+					case Registers.Bl:
+					case Registers.Bx:
+					case Registers.Ebx:
+						return 3;
+					case Registers.Sp:
+					case Registers.Esp:
+					case Registers.Ah:
+						return 4;
+					case Registers.Bp:
+					case Registers.Ebp:
+					case Registers.Ch:
+						return 5;
+					case Registers.Si:
+					case Registers.Esi:
+					case Registers.Dh:
+						return 6;
+					case Registers.Di:
+					case Registers.Edi:
+					case Registers.Bh:
+						return 7;
+				}
+			}
+			else if (bits == Bits.Bits16)
+			{
+				switch (register)
+				{
+					case Registers.Si:
+						return 4;
+					case Registers.Di:
+						return 5;
+					case Registers.Bx:
+						return 7;
+				}
+			}
+
+			ThrowError("Compiler error: cannot translate register: " + register.ToString());
 			return 0xFF;
 		}
 
@@ -140,7 +200,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			labels = new List<Label>();
 			List<FeedMe> feedMes = new List<FeedMe>();
 			List<StringData> stringData = new List<StringData>();
-			Bits bits = Bits.Bits32;
 			Format format = Format.Flat;
 			bool isDataWritten = false;
 
@@ -175,21 +234,6 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				if (tok.token != token)
 					ThrowError("Expected “" + token + "”, got: “" + tok.token + "”");
 			}
-
-			/*Bitcode RequireReg()
-			{
-				Token tok = GetToken();
-				Bitcode bitcode;
-				if (Enum.TryParse(tok.token, out bitcode) == false)
-				{
-					ThrowError("Expected register, got: “" + tok.token + "”");
-				}
-				if (bitcode < Bitcode.rz || bitcode > Bitcode.sp)
-				{
-					ThrowError("Expected register, got: “" + tok.token + "”");
-				}
-				return bitcode;
-			}*/
 
 			bool ThrowError(string message, Token token = null)
 			{
@@ -266,6 +310,66 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				return res;
 			}
 
+			UInt32 RequireLabel(int byteLen, bool absolute = true)
+			{
+				Token tok = GetNextToken();
+				if (TryLabel(tok) == false)
+					ThrowError($"Expected label, got “{tok.token}”");
+
+				AddLabelRef(tok, byteLen, absolute);
+				return (UInt32)Placeholders.Label;
+			}
+
+			Registers RequireRegister(out int width)
+			{
+				Registers reg;
+				Token next = GetNextToken();
+				string str = next.token;
+
+				if (str[0] == '%')
+					str = str.Substring(1);
+
+				if (Enum.TryParse(str, true, out reg) == false)
+					ThrowError("Expected register, got: " + next.token);
+
+				width = 0;
+				switch (reg)
+				{
+					case Registers.Al:
+					case Registers.Cl:
+					case Registers.Bl:
+					case Registers.Dl:
+					case Registers.Ah:
+					case Registers.Ch:
+					case Registers.Dh:
+					case Registers.Bh:
+						width = 1;
+						break;
+					case Registers.Ax:
+					case Registers.Cx:
+					case Registers.Dx:
+					case Registers.Bx:
+					case Registers.Sp:
+					case Registers.Bp:
+					case Registers.Si:
+					case Registers.Di:
+						width = 2;
+						break;
+					case Registers.Eax:
+					case Registers.Ecx:
+					case Registers.Edx:
+					case Registers.Ebx:
+					case Registers.Esp:
+					case Registers.Ebp:
+					case Registers.Esi:
+					case Registers.Edi:
+						width = 4;
+						break;
+				}
+
+				return reg;
+			}
+
 			string GetNext()
 			{
 				iT++;
@@ -275,6 +379,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 			string PeekNext()
 			{
+				if (iT + 1 >= tokens.Count)
+					return null;
+
 				Token tok = tokens[iT + 1];
 				return tok.token;
 			}
@@ -323,13 +430,13 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				}
 			}
 
-			UInt32 AddLabelRef(Token tok, int writeWidth)
+			UInt32 AddLabelRef(Token tok, int writeWidth, bool absolute = true)
 			{
 				feedMes.Add(new FeedMe {
 					token = tok,
 					bytePos = writer.BaseStream.Position,
 					refType = RefType.Label,
-					subType = RefSubType.Absolute,
+					subType = (absolute ? RefSubType.Absolute : RefSubType.Relative),
 					width = (byte)writeWidth,
 					offset = address,
 				});
@@ -512,6 +619,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									continue;
 								}
 							case "#PutData":
+							case "#WriteData":
 								WriteData();
 								continue;
 							default:
@@ -542,18 +650,50 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case Instructions.Ret:
 							writer.Write((byte)0xc3);
 							break;
+						case Instructions.Cli:
+							writer.Write((byte)0xfa);
+							break;
+						case Instructions.Hlt:
+							writer.Write((byte)0xf4);
+							break;
+						case Instructions.LodsB:
+							writer.Write((byte)0xAC);
+							break;
+						case Instructions.Int:
+							writer.Write((byte)0xcd);
+							Write(RequireIntegerLiteral(), 1);
+							break;
 						case Instructions.Mov:
 							{
-								Token next = GetNextToken();
-								Registers dest;
-								if (Enum.TryParse(next.token, true, out dest) == false)
-									ThrowError("Expected register, got: " + next.token);
+								Registers dest = RequireRegister(out int width);
 								RequireToken("=");
-								UInt32 val = RequireIntegerLiteral();
 
-								//case ByteCode.MovRImmL:
-								writer.Write((byte)(0xb8 + RegisterNumber(dest)));
-								writer.Write((uint)val);
+								if (bits == Bits.Bits16 && width == 4)
+									ThrowError("Cannot use 32-bit registers in 16-bit code.");
+
+								byte opcode;
+
+								switch (width)
+								{
+									case 1:
+										opcode = 0xb0; // MovRImmB
+										break;
+									case 2:
+										if (bits == Bits.Bits32)
+											ThrowError("Compiler error: 16-bit Mov in 32-bit not implemented. Sorry!"); // @TODO 16bit vs 32bit
+
+										opcode = 0xb8; // MovRImmW
+										break;
+									case 4:
+										opcode = 0xb8; // MovRImmL
+										break;
+									default:
+										ThrowError($"Compiler error: Invalid register width: “{dest}” of width {width}.");
+										break;
+								}
+
+								writer.Write((byte)(opcode + RegisterNumber(dest)));
+								Write(RequireLiteral(width), width);
 
 								break;
 							}
@@ -573,8 +713,36 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								RequireToken("]");
 								break;
 							}
+						case Instructions.CmpB:
+							{
+								byte modRegRM = (byte)ModRegRM.RToR | (7 << 3);
+								Registers dest = RequireRegister(out int width);
+								if (width != 1)
+									ThrowError("Non-matching register width.");
+
+								RequireToken(",");
+								writer.Write((byte)0x80);
+								writer.Write((byte)modRegRM);
+								Write(RequireLiteral(width), width);
+
+								break;
+							}
+						case Instructions.Je:
+							writer.Write((byte)0x74);
+							goto JmpCommon;
+						case Instructions.Jne:
+							writer.Write((byte)0x75);
+							goto JmpCommon;
+						case Instructions.Jmp:
+							writer.Write((byte)0xEB);
+
+							JmpCommon:
+							{
+								Write(RequireLabel(1, false), 1);
+							}
+							break;
 						default:
-							return ThrowError("Instruction not implemented. Sorry!");
+							return ThrowError("Compiler error: Instruction not implemented. Sorry!");
 					}
 				}
 
@@ -595,7 +763,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 								writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin); // @WTF Seek wants int but Position is long??
 								if (feedMe.subType == RefSubType.Absolute)
-									writer.Write((UInt32)(found.bytePos + feedMe.offset));
+									Write((UInt32)found.bytePos + feedMe.offset, feedMe.width);
 								else
 									writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
 
@@ -603,7 +771,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							}
 						case RefType.String:
 							writer.Seek((int)feedMe.bytePos, SeekOrigin.Begin);
-							writer.Write((UInt32)(feedMe.refObj.bytePos + feedMe.offset));
+							Write((UInt32)(feedMe.refObj.bytePos + feedMe.offset), feedMe.width);
 							break;
 						case RefType.Const:
 							{

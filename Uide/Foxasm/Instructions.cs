@@ -52,6 +52,7 @@ namespace Foxasm
 
 	enum ModRegRM : byte
 	{
+		RToR = 0b11_000_000,
 		RMemImm = 0b00_000_101, // 00 xxx 101 – Displacement-Only Mode
 	}
 }

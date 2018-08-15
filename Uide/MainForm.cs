@@ -140,34 +140,40 @@ namespace Uide
 			}
 		}
 
-		void OpenFile(string path)
+		void FileInit()
 		{
-			filePath = path; // @TODO more than 1 file
-
-			file = File.ReadAllBytes(filePath);
-
-			isFileLoaded = true;
-			fileName = Path.GetFileName(filePath);
-			hexLines = (int)Math.Ceiling((decimal)file.Length / 16);
-
-
-			fileText = System.Text.Encoding.Default.GetString(file);
 			lines = fileText.Split('\n');
 
 			leftMargin = 0;
+
+			isFileLoaded = true;
 
 			/*Graphics graphics;
 			graphics = this.CreateGraphics();*/
 
 			//charWidth = (int)Math.Ceiling(graphics.MeasureString("W", font).Width); // @TODO returns too big for some reason?
+
+			//graphics.Dispose();
+
 			charWidth = 8;
 
 			leftMargin = (lines.Length.ToString().Length * charWidth) + (paddingWidth * 2) + 4; // @TODO corner case when lineCount > lines.Length
 			if (leftMargin < DEFAULT_MARGIN)
 				leftMargin = DEFAULT_MARGIN;
+		}
 
-			//graphics.Dispose();
+		void OpenFile(string path)
+		{
+			filePath = path; // @TODO more than 1 file?
 
+			file = File.ReadAllBytes(filePath);
+
+			fileName = Path.GetFileName(filePath);
+			hexLines = (int)Math.Ceiling((decimal)file.Length / 16);
+
+			fileText = System.Text.Encoding.Default.GetString(file);
+
+			FileInit();
 
 			if (file.Length > 52 // @TODO sizeof Elf32_Ehdr
 				&& file[0] == 0x7F
@@ -756,6 +762,9 @@ Mp */
 		{
 			if (viewTextRadio.Checked)
 			{
+				if (lines == null)
+					return;
+
 				if (e.X >= leftMargin)
 					xCursor = (int)Math.Round((e.X - leftMargin - 1) / (double)charWidth, 0, MidpointRounding.AwayFromZero);
 				else
@@ -817,6 +826,8 @@ Mp */
 			compileButton.Visible = false;
 
 			noDocPanel.Visible = false;
+
+			FileInit();
 
 			mainBox.Focus();
 

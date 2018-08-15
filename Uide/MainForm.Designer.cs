@@ -32,6 +32,7 @@
 			this.scrollBarV = new System.Windows.Forms.VScrollBar();
 			this.viewSwitchPanel = new System.Windows.Forms.FlowLayoutPanel();
 			this.compileButton = new System.Windows.Forms.Button();
+			this.runButton = new System.Windows.Forms.Button();
 			this.viewDataRadio = new System.Windows.Forms.RadioButton();
 			this.viewAssemblyRadio = new System.Windows.Forms.RadioButton();
 			this.viewHexRadio = new System.Windows.Forms.RadioButton();
@@ -44,7 +45,6 @@
 			this.bottomPanel = new System.Windows.Forms.TableLayoutPanel();
 			this.commandLineTextBox = new System.Windows.Forms.TextBox();
 			this.errorsListBox = new System.Windows.Forms.ListBox();
-			this.runButton = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.mainBox)).BeginInit();
 			this.viewSwitchPanel.SuspendLayout();
 			this.noDocPanel.SuspendLayout();
@@ -108,6 +108,19 @@
 			this.compileButton.Text = "Compile";
 			this.compileButton.UseVisualStyleBackColor = true;
 			this.compileButton.Click += new System.EventHandler(this.compileButton_Click);
+			// 
+			// runButton
+			// 
+			this.runButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.runButton.Location = new System.Drawing.Point(280, 0);
+			this.runButton.Margin = new System.Windows.Forms.Padding(15, 0, 0, 0);
+			this.runButton.Name = "runButton";
+			this.runButton.Size = new System.Drawing.Size(122, 35);
+			this.runButton.TabIndex = 11;
+			this.runButton.Text = "Run";
+			this.runButton.UseVisualStyleBackColor = true;
+			this.runButton.Visible = false;
+			this.runButton.Click += new System.EventHandler(this.runButton_Click);
 			// 
 			// viewDataRadio
 			// 
@@ -269,18 +282,6 @@
 			this.errorsListBox.TabIndex = 12;
 			this.errorsListBox.Visible = false;
 			this.errorsListBox.DoubleClick += new System.EventHandler(this.errorsListBox_DoubleClick);
-			// 
-			// runButton
-			// 
-			this.runButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.runButton.Location = new System.Drawing.Point(280, 0);
-			this.runButton.Margin = new System.Windows.Forms.Padding(15, 0, 0, 0);
-			this.runButton.Name = "runButton";
-			this.runButton.Size = new System.Drawing.Size(122, 35);
-			this.runButton.TabIndex = 11;
-			this.runButton.Text = "Run";
-			this.runButton.UseVisualStyleBackColor = true;
-			this.runButton.Click += new System.EventHandler(this.runButton_Click);
 			// 
 			// MainForm
 			// 

@@ -10,7 +10,7 @@ namespace Foxasm
 			internal char op = (char)0;
 		}
 
-		int ConstMathParse()
+		int ConstMathParse(Compilers.Token next = null)
 		{
 			bool canEnd = false;
 			MathEl curEl = new MathEl();
@@ -65,8 +65,8 @@ namespace Foxasm
 				return -1;
 			}
 
-
-			iT++;
+			if (next == null)
+				iT++;
 			int iMax = tokens.Count;
 
 			while (iT < iMax)
@@ -148,15 +148,15 @@ namespace Foxasm
 						}
 						else
 						{
-							/*Var foundVar;
-							if (FindVar(MakeNamespace(tokens[i].token), out foundVar, consts) == false)
-								return AddError("Can't parse this literal, or undefined constant: " + tokens[i].token);
+							Const found = consts.Find(x => x.token.token == tokens[iT].token);
+							if (found == null)
+								ThrowError("Can't parse this literal, or undefined constant: " + tokens[iT].token);
+							
+							if (DoVal((uint)found.val) == false)
+								return -1;
 
-							if (DoVal((uint)foundVar.value) == false)
-								return false;
-
-							canEnd = true;*/
-							ThrowError("Unexpected: " + tokens[iT].token);
+							canEnd = true;
+							//ThrowError("Unexpected: " + tokens[iT].token);
 						}
 						break;
 				}

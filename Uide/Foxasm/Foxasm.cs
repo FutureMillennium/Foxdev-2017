@@ -280,7 +280,10 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 				}
 				else
-					ThrowError("Expected register, label or literal, got: “" + next.token + "”");
+				{
+					side.offset = (uint)ConstMathParse(next);
+					// ThrowError("Expected register, label or literal, got: “" + next.token + "”");
+				}
 
 				if (PeekNext() == "+")
 				{
@@ -745,6 +748,8 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					if (writer == null)
 						writer = new BinaryWriter(File.Open(outputFilePath, FileMode.Create), Encoding.Default);
 
+					byte forceWidth = 0;
+
 					switch (instruction)
 					{
 						case Instructions.Ret:
@@ -759,11 +764,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case Instructions.LodsB:
 							writer.Write((byte)0xAC);
 							break;
+						case Instructions.Inc:
+							writer.Write((byte)(0x40 + RegisterNumber(RequireRegister(out forceWidth))));
+							break;
 						case Instructions.Int:
 							writer.Write((byte)0xcd);
 							Write(RequireIntegerLiteral(), 1);
 							break;
+						case Instructions.MovB:
+							forceWidth = 1; // @TODO enforce forceWidth
+							goto MovCommon;
 						case Instructions.Mov:
+						MovCommon:
 							{
 								Side dest = RequireSide(0);
 
@@ -773,7 +785,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 
 								byte opcode;
 
-								if (dest.reg != Registers.None && src.reg == Registers.None && src.isMemoryAccess == false)
+								if (dest.reg != Registers.None && src.reg == Registers.None && src.isMemoryAccess == false && dest.isMemoryAccess == false)
 								{
 									switch (dest.width)
 									{
@@ -868,7 +880,23 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									if (write4 != null)
 										writer.Write((UInt32)write4);
 								}
-								else if (dest.isMemoryAccess)
+								else if (dest.isMemoryAccess && src.reg == Registers.None)
+								{
+									byte modRegRM = (byte)((byte)ModRegRM.RRMem | RegisterNumber(dest.reg));
+									if (src.offset < 256)
+									{
+										writer.Write((byte)0xC6);
+										writer.Write(modRegRM);
+										writer.Write((byte)src.offset);
+									}
+									else
+									{
+										writer.Write((byte)0xC7);
+										writer.Write(modRegRM);
+										writer.Write((UInt32)src.offset);
+									}
+								}
+								else if (dest.isMemoryAccess && src.reg != Registers.None)
 								{
 									// @TODO @cleanup dupl
 									byte modRegRM;
@@ -967,9 +995,21 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								break;
 							}
 						case Instructions.PushL:
+							forceWidth = 4; // @TODO enforce forceWidth
+							goto PushCommon;
+						case Instructions.Push:
+						PushCommon:
 							{
+								if (forceWidth == 0)
+								{
+									if (bits == Bits.Bits16)
+										forceWidth = 2;
+									else
+										forceWidth = 4;
+								}
+
 								writer.Write((byte)0x68);
-								Write(RequireLiteral(4), 4);
+								Write(RequireLiteral(forceWidth), forceWidth);
 								break;
 							}
 						case Instructions.CallL:
@@ -986,6 +1026,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							{
 								byte modRegRM = (byte)ModRegRM.RToR | (7 << 3);
 								Registers dest = RequireRegister(out byte width);
+								modRegRM |= (byte)RegisterNumber(dest);
 								if (width != 1)
 									ThrowError("Non-matching register width.");
 
@@ -1008,6 +1049,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							JmpCommon:
 							{
 								Write(RequireLabel(1, false), 1);
+							}
+							break;
+						case Instructions.Call:
+							{
+								byte width;
+								if (bits == Bits.Bits16)
+									width = 2;
+								else
+									width = 4;
+								writer.Write((byte)0xE8);
+
+								Write(RequireLabel(width, false), width);
 							}
 							break;
 						default:
@@ -1034,7 +1087,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 								if (feedMe.subType == RefSubType.Absolute)
 									Write((UInt32)found.bytePos + feedMe.offset, feedMe.width);
 								else
-									writer.Write((sbyte)(found.bytePos - (feedMe.bytePos + 1)));
+									Write((uint)(found.bytePos - (feedMe.bytePos + feedMe.width)), feedMe.width);
 
 								break;
 							}

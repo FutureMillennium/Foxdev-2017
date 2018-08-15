@@ -62,6 +62,12 @@ namespace Foxasm
 
 		static internal bool TryIntLiteralParse(string strVal, out UInt32 ii)
 		{
+			if (strVal == null)
+			{
+				ii = 0;
+				return false;
+			}
+
 			UInt32 multiplier = 1;
 			System.Globalization.NumberStyles baseNum = System.Globalization.NumberStyles.Integer;
 
@@ -285,16 +291,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					// ThrowError("Expected register, label or literal, got: “" + next.token + "”");
 				}
 
-				if (PeekNext() == "+")
-				{
-					GetNextToken();
-					next = GetNextToken();
-					if (TryIntLiteralParse(next.token, out side.offset) == false)
-						ThrowError("Expected offset (integer literal), got: “" + next.token + "”");
-				}
-
 				if (side.isMemoryAccess)
+				{
+					if (PeekNext() == "+")
+					{
+						GetNextToken();
+						next = GetNextToken();
+						if (TryIntLiteralParse(next.token, out side.offset) == false)
+							ThrowError("Expected offset (integer literal), got: “" + next.token + "”");
+					}
+
 					RequireToken("]");
+				}
 
 				return side;
 			}
@@ -740,7 +748,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						continue;
 					}
 
-					if (Enum.TryParse(token, true, out instruction) == false)
+					if (Enum.TryParse(token, true, out instruction) == false || Enum.IsDefined(typeof(Instructions), instruction) == false) // @TODO integers get parsed as enum
 					{
 						return ThrowError("Invalid instruction.");
 					}
@@ -753,7 +761,16 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					switch (instruction)
 					{
 						case Instructions.Ret:
-							writer.Write((byte)0xc3);
+							if (TryIntLiteralParse(PeekNext(), out UInt32 ii))
+							{
+								GetNextToken();
+								writer.Write((byte)0xC2);
+								Write(ii, 2);
+							}
+							else
+							{
+								writer.Write((byte)0xc3);
+							}
 							break;
 						case Instructions.Cli:
 							writer.Write((byte)0xfa);
@@ -766,6 +783,9 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							break;
 						case Instructions.Inc:
 							writer.Write((byte)(0x40 + RegisterNumber(RequireRegister(out forceWidth))));
+							break;
+						case Instructions.Pop:
+							writer.Write((byte)(0x58 + RegisterNumber(RequireRegister(out forceWidth))));
 							break;
 						case Instructions.Int:
 							writer.Write((byte)0xcd);
@@ -1000,16 +1020,35 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case Instructions.Push:
 						PushCommon:
 							{
-								if (forceWidth == 0)
+								Side side = RequireSide(0);
+
+								if (side.isMemoryAccess)
+									ThrowError("Not implemented. Sorry!");
+
+								if (side.reg != Registers.None)
 								{
-									if (bits == Bits.Bits16)
-										forceWidth = 2;
-									else
-										forceWidth = 4;
+									writer.Write((byte)(0x50 + RegisterNumber(side.reg)));
+								}
+								else
+								{
+									if (forceWidth == 0) {
+										if (bits == Bits.Bits16)
+											forceWidth = 2;
+										else
+											forceWidth = 4;
+									}
+
+									writer.Write((byte)0x68);
+									if (side.feedMe != null)
+									{
+										side.feedMe.bytePos += 1;
+										side.feedMe.width = forceWidth;
+									}
+									Write(side.offset, forceWidth);
 								}
 
-								writer.Write((byte)0x68);
-								Write(RequireLiteral(forceWidth), forceWidth);
+
+								//Write(RequireLiteral(forceWidth), forceWidth);
 								break;
 							}
 						case Instructions.CallL:

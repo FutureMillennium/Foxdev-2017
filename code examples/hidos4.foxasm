@@ -1,4 +1,5 @@
 #bits 16
+#extension '.com'
 #address 0x100
 
 Push "Hello DOS!$"

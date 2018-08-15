@@ -40,6 +40,15 @@ namespace Foxasm
 		public int val;
 	}
 
+	class Side
+	{
+		internal Registers reg;
+		internal bool isMemoryAccess;
+		internal UInt32 offset;
+		internal byte width;
+		internal FeedMe feedMe;
+	}
+
 	partial class Foxasm : Compiler
 	{
 		internal List<Token> tokens;
@@ -235,6 +244,58 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 					ThrowError("Expected “" + token + "”, got: “" + tok.token + "”");
 			}
 
+			void RequireEitherToken(params string[] accepts)
+			{
+				Token tok = GetNextToken();
+				if (Array.IndexOf(accepts, tok.token) == -1)
+					ThrowError("Expected “" + accepts[0] + "”, got: “" + tok.token + "”");
+			}
+
+			Side RequireSide(byte width)
+			{
+				Side side = new Side();
+
+				if (PeekNext() == "[")
+				{
+					GetNextToken();
+					side.isMemoryAccess = true;
+				}
+
+				Token next = GetNextToken();
+
+				if (TryAddLabel(next, out side.offset, width, out side.feedMe))
+				{
+
+				}
+				else if (TryAddStringLit(next, out side.offset, width, out side.feedMe))
+				{
+
+				}
+				else if (TryIntLiteralParse(next.token, out side.offset))
+				{
+
+				}
+				else if (TryRegister(next, out side.reg, out side.width))
+				{
+
+				}
+				else
+					ThrowError("Expected register, label or literal, got: “" + next.token + "”");
+
+				if (PeekNext() == "+")
+				{
+					GetNextToken();
+					next = GetNextToken();
+					if (TryIntLiteralParse(next.token, out side.offset) == false)
+						ThrowError("Expected offset (integer literal), got: “" + next.token + "”");
+				}
+
+				if (side.isMemoryAccess)
+					RequireToken("]");
+
+				return side;
+			}
+
 			bool ThrowError(string message, Token token = null)
 			{
 				if (token == null && iT < tokens.Count)
@@ -242,31 +303,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				throw new CompilerException(message, token, filePath);
 			}
 
-			UInt32 RequireLiteral(int byteLen)
+			UInt32 RequireLiteral(byte byteLen)
 			{
 				Token tok = GetNextToken();
-				if (TryLabel(tok))
+				FeedMe feedMe;
+				UInt32 ret;
+				if (TryAddLabel(tok, out ret, byteLen, out feedMe))
 				{
-					AddLabelRef(tok, byteLen);
-					return (UInt32)Placeholders.Label;
+					return ret;
 				}
-				else if (TryStringLit(tok, out string str))
+				else if (TryAddStringLit(tok, out ret, byteLen, out feedMe))
 				{
-					StringData strData = new StringData
-					{
-						str = str,
-					};
-					stringData.Add(strData);
-					feedMes.Add(new FeedMe
-					{
-						/*symbol = str,*/
-						bytePos = writer.BaseStream.Position,
-						refType = RefType.String,
-						refObj = strData,
-						width = (byte)byteLen,
-						offset = address,
-					});
-					return (UInt32)Placeholders.String;
+					return ret;
 				}
 				else
 				{
@@ -316,23 +364,33 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				if (TryLabel(tok) == false)
 					ThrowError($"Expected label, got “{tok.token}”");
 
-				AddLabelRef(tok, byteLen, absolute);
+				AddLabelRef(tok, byteLen, absolute, out FeedMe feedMe);
 				return (UInt32)Placeholders.Label;
 			}
 
-			Registers RequireRegister(out int width)
+			Registers RequireRegister(out byte width)
 			{
 				Registers reg;
 				Token next = GetNextToken();
+
+				if (TryRegister(next, out reg, out width) == false)
+					ThrowError("Expected register, got: " + next.token);
+
+				return reg;
+			}
+
+			bool TryRegister(Token next, out Registers reg, out byte width)
+			{
 				string str = next.token;
 
 				if (str[0] == '%')
 					str = str.Substring(1);
 
-				if (Enum.TryParse(str, true, out reg) == false)
-					ThrowError("Expected register, got: " + next.token);
-
 				width = 0;
+
+				if (Enum.TryParse(str, true, out reg) == false || Enum.IsDefined(typeof(Registers), reg) == false)
+					return false;
+
 				switch (reg)
 				{
 					case Registers.Al:
@@ -367,7 +425,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						break;
 				}
 
-				return reg;
+				return true;
 			}
 
 			string GetNext()
@@ -402,12 +460,52 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				return false;
 			}
 
+			bool TryAddStringLit(Token tok, out UInt32 val, byte byteLen, out FeedMe feedMe)
+			{
+				if (TryStringLit(tok, out string str))
+				{
+					StringData strData = new StringData
+					{
+						str = str,
+					};
+					stringData.Add(strData);
+					feedMe = new FeedMe
+					{
+						/*symbol = str,*/
+						bytePos = writer.BaseStream.Position,
+						refType = RefType.String,
+						refObj = strData,
+						width = byteLen,
+						offset = address,
+					};
+					feedMes.Add(feedMe);
+					val = (UInt32)Placeholders.String;
+					return true;
+				}
+
+				feedMe = null;
+				val = 0;
+				return false;
+			}
+
 			bool TryLabel(Token tok)
 			{
 				if (tok.token[0] == '.')
 				{
 					return true;
 				}
+				return false;
+			}
+
+			bool TryAddLabel(Token tok, out UInt32 val, byte byteLen, out FeedMe feedMe)
+			{
+				if (TryLabel(tok))
+				{
+					val = AddLabelRef(tok, byteLen, true, out feedMe);
+					return true;
+				}
+				feedMe = null;
+				val = 0;
 				return false;
 			}
 
@@ -430,16 +528,18 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 				}
 			}
 
-			UInt32 AddLabelRef(Token tok, int writeWidth, bool absolute = true)
+			UInt32 AddLabelRef(Token tok, int writeWidth, bool absolute, out FeedMe feedMe)
 			{
-				feedMes.Add(new FeedMe {
+				feedMe = new FeedMe
+				{
 					token = tok,
 					bytePos = writer.BaseStream.Position,
 					refType = RefType.Label,
 					subType = (absolute ? RefSubType.Absolute : RefSubType.Relative),
 					width = (byte)writeWidth,
 					offset = address,
-				});
+				};
+				feedMes.Add(feedMe);
 
 				return (UInt32)Placeholders.Label;
 			}
@@ -471,7 +571,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 			{
 				foreach (var strData in stringData)
 				{
-					strData.bytePos = writer.BaseStream.Position + 1; // @TODO
+					strData.bytePos = writer.BaseStream.Position + 1; // @TODO C# length-prefixed strings?
 					writer.Write(strData.str);
 					writer.Write((byte)0);
 				}
@@ -589,7 +689,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 									}
 									else if (TryLabel(next)) // label
 									{
-										Write(AddLabelRef(next, put), put);
+										Write(AddLabelRef(next, put, true, out FeedMe feedMe), put);
 									}
 									else if (TryIntLiteralParse(next.token, out UInt32 ii)) // int lit
 									{
@@ -665,35 +765,204 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 							break;
 						case Instructions.Mov:
 							{
-								Registers dest = RequireRegister(out int width);
-								RequireToken("=");
+								Side dest = RequireSide(0);
 
-								if (bits == Bits.Bits16 && width == 4)
-									ThrowError("Cannot use 32-bit registers in 16-bit code.");
+								RequireEitherToken("=", ",");
+
+								Side src = RequireSide(dest.width);
 
 								byte opcode;
 
-								switch (width)
+								if (dest.reg != Registers.None && src.reg == Registers.None && src.isMemoryAccess == false)
 								{
-									case 1:
-										opcode = 0xb0; // MovRImmB
-										break;
-									case 2:
-										if (bits == Bits.Bits32)
-											ThrowError("Compiler error: 16-bit Mov in 32-bit not implemented. Sorry!"); // @TODO 16bit vs 32bit
+									switch (dest.width)
+									{
+										case 1:
+											opcode = 0xb0; // MovRImmB
+											break;
+										case 2:
+											if (bits == Bits.Bits32)
+												ThrowError("Compiler error: 16-bit Mov in 32-bit code not implemented. Sorry!"); // @TODO 16bit vs 32bit
 
-										opcode = 0xb8; // MovRImmW
-										break;
-									case 4:
-										opcode = 0xb8; // MovRImmL
-										break;
-									default:
-										ThrowError($"Compiler error: Invalid register width: “{dest}” of width {width}.");
-										break;
+											opcode = 0xb8; // MovRImmW
+											break;
+										case 4:
+											opcode = 0xb8; // MovRImmL
+											break;
+										default:
+											ThrowError($"Compiler error: Invalid register width: “{dest}” of width {dest.width}.");
+											break;
+									}
+
+									writer.Write((byte)(opcode + RegisterNumber(dest.reg)));
+									if (src.feedMe != null)
+										src.feedMe.bytePos++;
+									Write(src.offset, dest.width);
 								}
+								else if (dest.isMemoryAccess && src.isMemoryAccess)
+								{
+									ThrowError("Invalid instruction – cannot access memory on both sides.");
+								}
+								else if (src.isMemoryAccess)
+								{
+									// @TODO @cleanup dupl
+									byte modRegRM;
+									byte? write1 = null;
+									UInt32? write4 = null;
 
-								writer.Write((byte)(opcode + RegisterNumber(dest)));
-								Write(RequireLiteral(width), width);
+									if (src.reg == Registers.None)
+									{
+										modRegRM = (byte)ModRegRM.RMemImm;
+										write4 = src.offset;
+									}
+									else if (src.offset != 0 || src.reg == Registers.Ebp)
+									{
+										if (src.offset > -127 && src.offset < 128)
+										{
+											modRegRM = (byte)ModRegRM.ROffset1RMem;
+											write1 = (byte)src.offset;
+										}
+										else
+										{
+											modRegRM = (byte)ModRegRM.ROffset4RMem;
+											write4 = src.offset;
+										}
+										modRegRM |= (byte)(RegisterNumber(src.reg));
+										
+									}
+									else
+									{
+										modRegRM = (byte)ModRegRM.RRMem;
+										modRegRM |= (byte)(RegisterNumber(src.reg));
+									}
+
+									modRegRM |= (byte)(RegisterNumber(dest.reg) << 3);
+
+									switch (dest.width)
+									{
+										case 1:
+											opcode = 0x8A;
+											break;
+										case 2:
+											if (bits == Bits.Bits32)
+												ThrowError("Compiler error: 16-bit Mov in 32-bit code not implemented. Sorry!"); // @TODO 16bit vs 32bit
+
+											opcode = 0x8B;
+											break;
+										case 4:
+											opcode = 0x8B;
+											break;
+										default:
+											ThrowError($"Compiler error: Invalid register width: “{dest.reg}” of width {dest.width}.");
+											break;
+									}
+
+									writer.Write(opcode);
+									writer.Write(modRegRM);
+
+									if (src.feedMe != null)
+										src.feedMe.bytePos += 2;
+
+									if (write1 != null)
+										writer.Write((byte)write1);
+									if (write4 != null)
+										writer.Write((UInt32)write4);
+								}
+								else if (dest.isMemoryAccess)
+								{
+									// @TODO @cleanup dupl
+									byte modRegRM;
+									byte? write1 = null;
+									UInt32? write4 = null;
+
+									if (dest.reg == Registers.None)
+									{
+										modRegRM = (byte)ModRegRM.RMemImm;
+										write4 = dest.offset;
+									}
+									else if (dest.offset != 0 || dest.reg == Registers.Ebp)
+									{
+										if (dest.offset > -127 && dest.offset < 128)
+										{
+											modRegRM = (byte)ModRegRM.ROffset1RMem;
+											write1 = (byte)dest.offset;
+										}
+										else
+										{
+											modRegRM = (byte)ModRegRM.ROffset4RMem;
+											write4 = dest.offset;
+										}
+										modRegRM |= (byte)(RegisterNumber(dest.reg));
+
+									}
+									else
+									{
+										modRegRM = (byte)ModRegRM.RRMem;
+										modRegRM |= (byte)(RegisterNumber(dest.reg));
+									}
+
+									modRegRM |= (byte)(RegisterNumber(src.reg) << 3);
+
+									switch (src.width)
+									{
+										case 1:
+											opcode = 0x88;
+											break;
+										case 2:
+											if (bits == Bits.Bits32)
+												ThrowError("Compiler error: 16-bit Mov in 32-bit code not implemented. Sorry!"); // @TODO 16bit vs 32bit
+
+											opcode = 0x89;
+											break;
+										case 4:
+											opcode = 0x89;
+											break;
+										default:
+											ThrowError($"Compiler error: Invalid register width: “{src.reg}” of width {src.width}.");
+											break;
+									}
+
+									writer.Write(opcode);
+									writer.Write(modRegRM);
+
+									if (dest.feedMe != null)
+										dest.feedMe.bytePos += 2;
+
+									if (write1 != null)
+										writer.Write((byte)write1);
+									if (write4 != null)
+										writer.Write((UInt32)write4);
+								}
+								else if (dest.reg != Registers.None && src.reg != Registers.None)
+								{
+									byte modRegRM = (byte)((byte)ModRegRM.RToR | RegisterNumber(dest.reg) | (RegisterNumber(src.reg) << 3));
+
+									switch (dest.width)
+									{
+										case 1:
+											opcode = 0x88;
+											break;
+										case 2:
+											if (bits == Bits.Bits32)
+												ThrowError("Compiler error: 16-bit Mov in 32-bit code not implemented. Sorry!"); // @TODO 16bit vs 32bit
+
+											opcode = 0x89;
+											break;
+										case 4:
+											opcode = 0x89;
+											break;
+										default:
+											ThrowError($"Compiler error: Invalid register width: “{dest}” of width {dest.width}.");
+											break;
+									}
+
+									writer.Write(opcode);
+									writer.Write(modRegRM);
+								}
+								else
+								{
+									ThrowError("Compiler error: invalid instruction.");
+								}
 
 								break;
 							}
@@ -716,7 +985,7 @@ System.Globalization.CultureInfo.CurrentCulture, out ii))
 						case Instructions.CmpB:
 							{
 								byte modRegRM = (byte)ModRegRM.RToR | (7 << 3);
-								Registers dest = RequireRegister(out int width);
+								Registers dest = RequireRegister(out byte width);
 								if (width != 1)
 									ThrowError("Non-matching register width.");
 

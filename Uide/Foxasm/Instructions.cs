@@ -8,6 +8,8 @@ namespace Foxasm
 {
 	public enum Registers
 	{
+		None,
+
 		// registers:
 		// 8-bit:
 		Al, Cl, Dl, Bl,
@@ -52,6 +54,9 @@ namespace Foxasm
 
 	enum ModRegRM : byte
 	{
+		RRMem = 0b00_000_000,
+		ROffset1RMem = 0b01_000_000,
+		ROffset4RMem = 0b10_000_000,
 		RToR = 0b11_000_000,
 		RMemImm = 0b00_000_101, // 00 xxx 101 – Displacement-Only Mode
 	}

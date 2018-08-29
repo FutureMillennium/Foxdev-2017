@@ -54,7 +54,7 @@ namespace Uide
 
 		Font font = new Font("Consolas", 14, GraphicsUnit.Pixel);
 		SolidBrush outsideDocumentBrush = new SolidBrush(Color.FromArgb(0xf8, 0xf8, 0xf8));
-		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(0xfa, 0xfa, 0xfa));
+		SolidBrush eolBrush = new SolidBrush(Color.FromArgb(5, 0, 0, 0));
 		SolidBrush wrapBrush = new SolidBrush(Color.FromArgb(0xee, 0xee, 0xff));
 
 		FoxlangCompiler foxlangCompiler;
@@ -1250,6 +1250,8 @@ Mp */
 			int j = 0,
 				jLast = 0;
 			string line;
+			int offset;
+			float top;
 
 			void ResetWord(bool total = false)
 			{
@@ -1263,14 +1265,11 @@ Mp */
 				}
 			}
 
-			string GetWord()
+			int FindWordEnd(int startIndex)
 			{
-				int iWord = j;
-				int wordStart = j;
-
-				for (; iWord < line.Length; iWord++)
+				for (; startIndex < line.Length; startIndex++)
 				{
-					switch (line[iWord])
+					switch (line[startIndex])
 					{
 						case ' ':
 						case '\t':
@@ -1286,26 +1285,44 @@ Mp */
 						case '+':
 						case '-':
 						case '*':
+						case '=':
 						case '.':
 						case '[':
 						case ']':
 						case '/':
 						case '\r':
-							goto Found;
+							return startIndex;
 					}
 				}
-				iWord--;
-			Found:
-				return line.Substring(wordStart, iWord - wordStart);
 
+				return startIndex;
 			}
 
-			bool IsKeyword(string word)
+			string GetWord()
 			{
-				if (Array.IndexOf(Foxlang.Keywords.keywords, word) != -1)
+				int wordStart = j;
+				int iWord = FindWordEnd(j);
+				return line.Substring(wordStart, iWord - wordStart);
+			}
+
+			char FindNextSymbol()
+			{
+				return line[FindWordEnd(j + 1)];
+			}
+
+			bool IsKeyword(string word, out string keyword)
+			{
+				int fi = Array.IndexOf(Foxlang.Keywords.keywords, word);
+				if (fi != -1)
+				{
+					keyword = Foxlang.Keywords.keywords[fi];
 					return true;
+				}
 				else
+				{
+					keyword = null;
 					return false;
+				}
 			}
 
 			bool IsType(string word)
@@ -1316,9 +1333,16 @@ Mp */
 					return false;
 			}
 
+			void DrawRectToLineEnd(Brush brush)
+			{
+				float l = offset * charWidth + leftMargin;
+				e.Graphics.FillRectangle(brush, l, top,
+					mainBox.Width - l, lineHeight);
+			}
+
 			for (; i < max; i++)
 			{
-				float top = iAdj * lineHeight + paddingWidth;
+				top = iAdj * lineHeight + paddingWidth;
 				
 				string lineNum = (i + start + 1).ToString();
 
@@ -1333,7 +1357,7 @@ Mp */
 
 				j = 0;
 				jLast = 0;
-				int offset = 0;
+				offset = 0;
 				int oTabOffset = 0;
 				int tabC = 0;
 				line = lines[i + start];
@@ -1346,8 +1370,9 @@ Mp */
 					&& state != SyntaxHighlighterState.DoubleQuoteString)
 				{
 					ResetWord(true);
-					isFirstWord = true;
 				}
+
+				isFirstWord = true;
 
 				for (; j < line.Length; j++)
 				{
@@ -1358,196 +1383,228 @@ Mp */
 					{
 						lenLine--;
 						break;
-					} else switch (c)
+					} else switch (state)
 						{
-							case '\t':
-								{
-									int l = offset * charWidth + leftMargin;
-									e.Graphics.DrawLine(Pens.LightGray, l, top,
-										l, top + lineHeight);
-
-									offset += tabSize;
-									oTabOffset += tabSize;
-
-									tabC++;
-
-									ResetWord();
-
-									continue;
-								}
-							case '#':
-								if (isEmptyWord)
-								{
-									isEmptyWord = false;
-									colour = Brushes.DarkBlue;
-								}
-								else
-									goto default;
-								break;
-							case '%':
-								if (isEmptyWord)
-								{
-									isEmptyWord = false;
-									colour = Brushes.Magenta;
-								}
-								else
-									goto default;
-								break;
-							case '\'':
-								if (state == SyntaxHighlighterState.SingleQuoteString)
+							case SyntaxHighlighterState.BlockComment:
+								if (c == '/' && line[j - 1] == '*')
 								{
 									state = SyntaxHighlighterState.Normal;
 									resetAfter = true;
 								}
-								else if (isEmptyWord)
-								{
-									state = SyntaxHighlighterState.SingleQuoteString;
-									isEmptyWord = false;
-									colour = Brushes.DarkOrange;
-								}
-								else
-									goto default;
 								break;
-							case '"':
-								if (state == SyntaxHighlighterState.DoubleQuoteString)
+							case SyntaxHighlighterState.SingleQuoteString:
+								if (c == '\'')
 								{
 									state = SyntaxHighlighterState.Normal;
 									resetAfter = true;
 								}
-								else if (isEmptyWord)
-								{
-									state = SyntaxHighlighterState.DoubleQuoteString;
-									isEmptyWord = false;
-									colour = Brushes.DarkRed;
-								}
-								else
-									goto default;
 								break;
-							case '0':
-							case '1':
-							case '2':
-							case '3':
-							case '4':
-							case '5':
-							case '6':
-							case '7':
-							case '8':
-							case '9':
-								if (state == SyntaxHighlighterState.NumericLiteral && line[j - 1] == 'x')
-								{
-									colour = Brushes.Purple;
-								}
-								else if (isEmptyWord)
-								{
-									state = SyntaxHighlighterState.NumericLiteral;
-									isEmptyWord = false;
-									if (line[j + 1] == 'x')
-										colour = Brushes.Pink;
-									else
-										colour = Brushes.Purple;
-								}
-								else
-									goto default;
-								break;
-							case 'a':
-							case 'A':
-							case 'b':
-							case 'B':
-							case 'c':
-							case 'C':
-							case 'd':
-							case 'D':
-							case 'e':
-							case 'E':
-							case 'f':
-							case 'F':
-								if (state == SyntaxHighlighterState.NumericLiteral)
-									colour = Brushes.Purple;
-								else
-									goto default;
-								break;
-							case '[':
-							case ']':
-								if (state == SyntaxHighlighterState.NumericLiteral)
-								{
-									state = SyntaxHighlighterState.Normal;
-								}
-
-								if (state == SyntaxHighlighterState.Normal)
-								{
-									colour = Brushes.Blue;
-									resetAfter = true;
-								}
-								else
-									goto default;
-								break;
-							case '.':
-								if (isFirstWord)
-								{
-									// @TODO labels
-								}
-								else
-									goto default;
-								break;
-							case ':':
-							case ',':
-							case '(':
-							case ')':
-							case ';':
-							case '+':
-							case '-':
-							case '*':
-								if (state == SyntaxHighlighterState.NumericLiteral
-									|| state == SyntaxHighlighterState.Normal)
-								{
-									state = SyntaxHighlighterState.Normal;
-									ResetWord();
-								}
-								else
-									goto default;
-								break;
-							case '/':
-								if (state == SyntaxHighlighterState.BlockComment && line[j - 1] == '*')
+							case SyntaxHighlighterState.DoubleQuoteString:
+								if (c == '"')
 								{
 									state = SyntaxHighlighterState.Normal;
 									resetAfter = true;
 								}
-								else if (line[j + 1] == '*')
-								{
-									state = SyntaxHighlighterState.BlockComment;
-									colour = Brushes.DarkCyan;
-								}
-								else if (line[j + 1] == '/')
-								{
-									state = SyntaxHighlighterState.LineComment;
-									colour = Brushes.DarkGreen;
-								}
-								else if (state == SyntaxHighlighterState.NumericLiteral
-									|| state == SyntaxHighlighterState.Normal)
-								{
-									state = SyntaxHighlighterState.Normal;
-									ResetWord();
-								}
-								else
-									goto default;
 								break;
-							case ' ':
-								if (state == SyntaxHighlighterState.NumericLiteral)
-									state = SyntaxHighlighterState.Normal;
-								ResetWord();
+							case SyntaxHighlighterState.LineComment:
 								break;
 							default:
-								if (isEmptyWord)
+								switch (c)
 								{
-									string word = GetWord();
-									if (IsKeyword(word))
+									case '\t':
+										ResetWord();
+										break;
+									case '#':
+										if (isEmptyWord)
+										{
+											isEmptyWord = false;
+											colour = Brushes.DarkBlue;
+										}
+										else
+											goto default;
+										break;
+									case '%':
+										if (isEmptyWord)
+										{
+											isEmptyWord = false;
+											colour = Brushes.Magenta;
+										}
+										else
+											goto default;
+										break;
+									case '\'':
+										if (isEmptyWord)
+										{
+											state = SyntaxHighlighterState.SingleQuoteString;
+											isEmptyWord = false;
+											colour = Brushes.DarkOrange;
+										}
+										else
+											goto default;
+										break;
+									case '"':
+										if (isEmptyWord)
+										{
+											state = SyntaxHighlighterState.DoubleQuoteString;
+											isEmptyWord = false;
+											colour = Brushes.DarkRed;
+										}
+										else
+											goto default;
+										break;
+									case '0':
+									case '1':
+									case '2':
+									case '3':
+									case '4':
+									case '5':
+									case '6':
+									case '7':
+									case '8':
+									case '9':
+										if (state == SyntaxHighlighterState.NumericLiteral && line[j - 1] == 'x')
+										{
+											colour = Brushes.Purple;
+										}
+										else if (isEmptyWord)
+										{
+											state = SyntaxHighlighterState.NumericLiteral;
+											isEmptyWord = false;
+											if (line[j + 1] == 'x')
+												colour = Brushes.Pink;
+											else
+												colour = Brushes.Purple;
+										}
+										else
+											goto default;
+										break;
+									case 'a':
+									case 'A':
+									case 'b':
+									case 'B':
+									case 'c':
+									case 'C':
+									case 'd':
+									case 'D':
+									case 'e':
+									case 'E':
+									case 'f':
+									case 'F':
+										if (state == SyntaxHighlighterState.NumericLiteral)
+											colour = Brushes.Purple;
+										else
+											goto default;
+										break;
+									case '[':
+									case ']':
+										if (state == SyntaxHighlighterState.NumericLiteral)
+										{
+											state = SyntaxHighlighterState.Normal;
+										}
+
 										colour = Brushes.Blue;
-									else if (IsType(word))
-										colour = Brushes.DarkCyan;
+										resetAfter = true;
+										break;
+									case '.':
+										if (isFirstWord
+											&& FindNextSymbol() == ':')
+										{
+											DrawRectToLineEnd(Brushes.LightPink);
+										}
+										else
+											goto default;
+										break;
+									case ':':
+									case ',':
+									case '(':
+									case ')':
+									case ';':
+									case '+':
+									case '-':
+									case '*':
+									case '=':
+										if (state == SyntaxHighlighterState.NumericLiteral
+											|| state == SyntaxHighlighterState.Normal)
+										{
+											state = SyntaxHighlighterState.Normal;
+											ResetWord();
+										}
+										else
+											goto default;
+										break;
+									case '/':
+										if (line[j + 1] == '*')
+										{
+											state = SyntaxHighlighterState.BlockComment;
+											colour = Brushes.DarkCyan;
+										}
+										else if (line[j + 1] == '/')
+										{
+											state = SyntaxHighlighterState.LineComment;
+											colour = Brushes.DarkGreen;
+											DrawRectToLineEnd(Brushes.LightGreen);
+										}
+										else if (state == SyntaxHighlighterState.NumericLiteral
+											|| state == SyntaxHighlighterState.Normal)
+										{
+											state = SyntaxHighlighterState.Normal;
+											ResetWord();
+										}
+										else
+											goto default;
+										break;
+									case ' ':
+										if (state == SyntaxHighlighterState.NumericLiteral)
+											state = SyntaxHighlighterState.Normal;
+										ResetWord();
+										break;
+									default:
+										if (isEmptyWord)
+										{
+											string word = GetWord();
+											if (IsKeyword(word, out string keyword))
+											{
+												colour = Brushes.Blue;
+												switch (keyword)
+												{
+													case "enum":
+														DrawRectToLineEnd(Brushes.LightSeaGreen);
+														break;
+													case "function":
+														DrawRectToLineEnd(Brushes.LightBlue);
+														break;
+													case "namespace":
+														DrawRectToLineEnd(Brushes.LightCyan);
+														break;
+													case "struct":
+														DrawRectToLineEnd(Brushes.LightSkyBlue);
+														break;
+												}
+											}
+											else if (IsType(word))
+												colour = Brushes.DarkCyan;
+										}
+										isEmptyWord = false;
+										break;
 								}
-								isEmptyWord = false;
 								break;
 						}
+
+					if (c == '\t')
+					{
+						int l = offset * charWidth + leftMargin;
+						e.Graphics.DrawLine(Pens.LightGray, l, top,
+							l, top + lineHeight);
+
+						offset += tabSize;
+						oTabOffset += tabSize;
+
+						tabC++;
+
+						ResetWord();
+
+						continue;
+					}
 
 					if (isFirstWord && c != ' ' && c != '\t')
 						isFirstWord = false;

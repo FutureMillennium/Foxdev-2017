@@ -8,6 +8,22 @@ namespace Foxlang
 {
 	static class Keywords
 	{
-		internal static string[] keywords = { "const", "enum", "function", "import", "new", "null", "return", "struct", "this", "unsafe", "with", "while" };
+		internal static string[] keywords = {
+			"const",
+			"else",
+			"enum",
+			"function",
+			"if",
+			"import",
+			"namespace",
+			"new",
+			"null",
+			"return",
+			"struct",
+			"this",
+			"unsafe",
+			"while",
+			"with",
+		};
 	}
 }

@@ -8,6 +8,8 @@ namespace Foxlang
 {
 	enum FoxlangType
 	{
+		Bool,
+
 		Byte, UInt8, Char,
 		Int8,
 
@@ -17,6 +19,6 @@ namespace Foxlang
 		Byte4, Address4, Index, UInt, UInt32, Pointer,
 		Int, Int32,
 
-		String
+		String,
 	}
 }

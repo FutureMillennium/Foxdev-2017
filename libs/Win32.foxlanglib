@@ -1,0 +1,34 @@
+#bits = 32;
+#extension = '.exe';
+#stringType = CString;
+
+with [callingConvention = __stdcall]:
+
+import C:
+
+with [DLLImport('Kernel32.dll')] //@
+{
+	WINBASEAPI
+	DECLSPEC_NORETURN
+	VOID
+	WINAPI
+	ExitProcess(
+		_In_ UINT uExitCode
+		);
+}
+
+with [DLLImport('User32.dll')] //@
+{
+	WINUSERAPI
+	int
+	WINAPI
+	MessageBoxA(
+		_In_opt_ HWND hWnd,
+		_In_opt_ LPCSTR lpText,
+		_In_opt_ LPCSTR lpCaption,
+		_In_ UINT uType);
+}
+
+endimport;
+
+endwith;

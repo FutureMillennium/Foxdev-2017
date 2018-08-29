@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using static Foxlang.FoxlangCompiler;
+using static FoxlangAlpha.FoxlangCompiler;
 
-namespace Foxlang
+namespace FoxlangAlpha
 {
 	partial class CompileUnit
 	{

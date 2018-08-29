@@ -1,4 +1,4 @@
-﻿using Foxlang;
+﻿using FoxlangAlpha;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -164,9 +164,19 @@ namespace Uide
 
 		void OpenFile(string path)
 		{
-			filePath = path; // @TODO more than 1 file?
+			try
+			{
+				file = File.ReadAllBytes(path);
+			}
+			catch (Exception ex)
+			{
+				errorTextBox.Text = ex.Message;
+				errorTextBox.Visible = true;
+				noDocPanel.Visible = false;
+				return;
+			}
 
-			file = File.ReadAllBytes(filePath);
+			filePath = path; // @TODO more than 1 file?
 
 			fileName = Path.GetFileName(filePath);
 			hexLines = (int)Math.Ceiling((decimal)file.Length / 16);
@@ -952,7 +962,7 @@ Mp */
 
 			sb.Append(Environment.NewLine);
 
-			foreach (Foxlang.OutputMessage msg in foxlangCompiler.outputMessages)
+			foreach (FoxlangAlpha.OutputMessage msg in foxlangCompiler.outputMessages)
 			{
 				string message = "[" + msg.type.ToString() + "] \t";
 
@@ -1233,6 +1243,79 @@ Mp */
 			int prevTabC = 0;
 			int adjBy = 0;
 
+			bool isEmptyWord = true;
+			Brush colour = Brushes.Black;
+			SyntaxHighlighterState state = SyntaxHighlighterState.Normal;
+
+			int j = 0,
+				jLast = 0;
+			string line;
+
+			void ResetWord(bool total = false)
+			{
+				if (total)
+					state = SyntaxHighlighterState.Normal;
+
+				if (state == SyntaxHighlighterState.Normal)
+				{
+					isEmptyWord = true;
+					colour = Brushes.Black;
+				}
+			}
+
+			string GetWord()
+			{
+				int iWord = j;
+				int wordStart = j;
+
+				for (; iWord < line.Length; iWord++)
+				{
+					switch (line[iWord])
+					{
+						case ' ':
+						case '\t':
+						case '#':
+						case '%':
+						case '\'':
+						case '"':
+						case ':':
+						case ',':
+						case '(':
+						case ')':
+						case ';':
+						case '+':
+						case '-':
+						case '*':
+						case '.':
+						case '[':
+						case ']':
+						case '/':
+						case '\r':
+							goto Found;
+					}
+				}
+				iWord--;
+			Found:
+				return line.Substring(wordStart, iWord - wordStart);
+
+			}
+
+			bool IsKeyword(string word)
+			{
+				if (Array.IndexOf(Foxlang.Keywords.keywords, word) != -1)
+					return true;
+				else
+					return false;
+			}
+
+			bool IsType(string word)
+			{
+				if (Enum.TryParse(word, out Foxlang.FoxlangType type))
+					return true;
+				else
+					return false;
+			}
+
 			for (; i < max; i++)
 			{
 				float top = iAdj * lineHeight + paddingWidth;
@@ -1248,36 +1331,226 @@ Mp */
 				e.Graphics.DrawString(lineNum, font, Brushes.Gray, leftMargin - e.Graphics.MeasureString(lineNum, font).Width - paddingWidth, top);
 				//e.Graphics.DrawString(lines[i + start], font, Brushes.Black, leftMargin + paddingWidth, top);
 
-				int j = 0,
-					jLast = 0;
+				j = 0;
+				jLast = 0;
 				int offset = 0;
 				int oTabOffset = 0;
 				int tabC = 0;
-				string line = lines[i + start];
+				line = lines[i + start];
 				int lenLine = line.Length;
 				bool wrappedLine = false;
+				bool isFirstWord = true;
+
+				if (state != SyntaxHighlighterState.BlockComment
+					&& state != SyntaxHighlighterState.SingleQuoteString
+					&& state != SyntaxHighlighterState.DoubleQuoteString)
+				{
+					ResetWord(true);
+					isFirstWord = true;
+				}
 
 				for (; j < line.Length; j++)
 				{
 					char c = line[j];
+					bool resetAfter = false;
 
-					if (c == '\t')
-					{
-						int l = offset * charWidth + leftMargin;
-						e.Graphics.DrawLine(Pens.LightGray, l, top,
-							l, top + lineHeight);
-
-						offset += tabSize;
-						oTabOffset += tabSize;
-
-						tabC++;
-						continue;
-					}
-					else if (c == '\r')
+					if (c == '\r')
 					{
 						lenLine--;
 						break;
-					}
+					} else switch (c)
+						{
+							case '\t':
+								{
+									int l = offset * charWidth + leftMargin;
+									e.Graphics.DrawLine(Pens.LightGray, l, top,
+										l, top + lineHeight);
+
+									offset += tabSize;
+									oTabOffset += tabSize;
+
+									tabC++;
+
+									ResetWord();
+
+									continue;
+								}
+							case '#':
+								if (isEmptyWord)
+								{
+									isEmptyWord = false;
+									colour = Brushes.DarkBlue;
+								}
+								else
+									goto default;
+								break;
+							case '%':
+								if (isEmptyWord)
+								{
+									isEmptyWord = false;
+									colour = Brushes.Magenta;
+								}
+								else
+									goto default;
+								break;
+							case '\'':
+								if (state == SyntaxHighlighterState.SingleQuoteString)
+								{
+									state = SyntaxHighlighterState.Normal;
+									resetAfter = true;
+								}
+								else if (isEmptyWord)
+								{
+									state = SyntaxHighlighterState.SingleQuoteString;
+									isEmptyWord = false;
+									colour = Brushes.DarkOrange;
+								}
+								else
+									goto default;
+								break;
+							case '"':
+								if (state == SyntaxHighlighterState.DoubleQuoteString)
+								{
+									state = SyntaxHighlighterState.Normal;
+									resetAfter = true;
+								}
+								else if (isEmptyWord)
+								{
+									state = SyntaxHighlighterState.DoubleQuoteString;
+									isEmptyWord = false;
+									colour = Brushes.DarkRed;
+								}
+								else
+									goto default;
+								break;
+							case '0':
+							case '1':
+							case '2':
+							case '3':
+							case '4':
+							case '5':
+							case '6':
+							case '7':
+							case '8':
+							case '9':
+								if (state == SyntaxHighlighterState.NumericLiteral && line[j - 1] == 'x')
+								{
+									colour = Brushes.Purple;
+								}
+								else if (isEmptyWord)
+								{
+									state = SyntaxHighlighterState.NumericLiteral;
+									isEmptyWord = false;
+									if (line[j + 1] == 'x')
+										colour = Brushes.Pink;
+									else
+										colour = Brushes.Purple;
+								}
+								else
+									goto default;
+								break;
+							case 'a':
+							case 'A':
+							case 'b':
+							case 'B':
+							case 'c':
+							case 'C':
+							case 'd':
+							case 'D':
+							case 'e':
+							case 'E':
+							case 'f':
+							case 'F':
+								if (state == SyntaxHighlighterState.NumericLiteral)
+									colour = Brushes.Purple;
+								else
+									goto default;
+								break;
+							case '[':
+							case ']':
+								if (state == SyntaxHighlighterState.NumericLiteral)
+								{
+									state = SyntaxHighlighterState.Normal;
+								}
+
+								if (state == SyntaxHighlighterState.Normal)
+								{
+									colour = Brushes.Blue;
+									resetAfter = true;
+								}
+								else
+									goto default;
+								break;
+							case '.':
+								if (isFirstWord)
+								{
+									// @TODO labels
+								}
+								else
+									goto default;
+								break;
+							case ':':
+							case ',':
+							case '(':
+							case ')':
+							case ';':
+							case '+':
+							case '-':
+							case '*':
+								if (state == SyntaxHighlighterState.NumericLiteral
+									|| state == SyntaxHighlighterState.Normal)
+								{
+									state = SyntaxHighlighterState.Normal;
+									ResetWord();
+								}
+								else
+									goto default;
+								break;
+							case '/':
+								if (state == SyntaxHighlighterState.BlockComment && line[j - 1] == '*')
+								{
+									state = SyntaxHighlighterState.Normal;
+									resetAfter = true;
+								}
+								else if (line[j + 1] == '*')
+								{
+									state = SyntaxHighlighterState.BlockComment;
+									colour = Brushes.DarkCyan;
+								}
+								else if (line[j + 1] == '/')
+								{
+									state = SyntaxHighlighterState.LineComment;
+									colour = Brushes.DarkGreen;
+								}
+								else if (state == SyntaxHighlighterState.NumericLiteral
+									|| state == SyntaxHighlighterState.Normal)
+								{
+									state = SyntaxHighlighterState.Normal;
+									ResetWord();
+								}
+								else
+									goto default;
+								break;
+							case ' ':
+								if (state == SyntaxHighlighterState.NumericLiteral)
+									state = SyntaxHighlighterState.Normal;
+								ResetWord();
+								break;
+							default:
+								if (isEmptyWord)
+								{
+									string word = GetWord();
+									if (IsKeyword(word))
+										colour = Brushes.Blue;
+									else if (IsType(word))
+										colour = Brushes.DarkCyan;
+								}
+								isEmptyWord = false;
+								break;
+						}
+
+					if (isFirstWord && c != ' ' && c != '\t')
+						isFirstWord = false;
 
 					if (offset >= maxCharsPerLine)
 					{
@@ -1313,9 +1586,12 @@ Mp */
 						wrappedLine = true;
 					}
 
-					e.Graphics.DrawString(c.ToString(), font, Brushes.Black, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
+					e.Graphics.DrawString(c.ToString(), font, colour, leftMargin + (charWidth * offset) - 2, top); // @TODO why 2?
 
 					offset++;
+
+					if (resetAfter)
+						ResetWord();
 				}
 
 				if (wrappedLine && iAdj > 0 && iAdj < lenWrappedLine.Length)

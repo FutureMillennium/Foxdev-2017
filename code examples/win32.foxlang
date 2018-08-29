@@ -1,0 +1,6 @@
+#Import(Win32);
+
+function EntryPoint() {
+	MessageBoxA(NULL, "Hello world!", "My program", 0);
+	ExitProcess(0);
+}

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using static Foxlang.FoxlangCompiler;
+using static FoxlangAlpha.FoxlangCompiler;
 
-namespace Foxlang
+namespace FoxlangAlpha
 {
 	internal partial class CompileUnit
 	{

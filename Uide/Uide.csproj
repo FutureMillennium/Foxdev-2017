@@ -76,20 +76,22 @@
     <Compile Include="Foxasm\Foxasm.ConstMathParse.cs" />
     <Compile Include="Foxasm\Instructions.cs" />
     <Compile Include="Foxasm\Foxasm.cs" />
-    <Compile Include="Foxlang\ByteCode.cs" />
+    <Compile Include="Foxlang.alpha\ByteCode.cs" />
     <Compile Include="ByteToHex.cs" />
     <Compile Include="ELFheader.cs" />
     <Compile Include="EntryPoint.cs" />
-    <Compile Include="Foxlang\CompileUnit.ConstMathParse.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.BytecodeCompileToBinary.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.cs" />
-    <Compile Include="Foxlang\CompileUnit.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.EchoBytecode.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.FoxasmCompile.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.FoxBCCompileFile.cs" />
-    <Compile Include="Foxlang\FoxlangCompiler.LexerParse.cs" />
-    <Compile Include="Foxlang\InvalidSyntaxException.cs" />
-    <Compile Include="Foxlang\types.cs" />
+    <Compile Include="Foxlang.alpha\CompileUnit.ConstMathParse.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.BytecodeCompileToBinary.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.cs" />
+    <Compile Include="Foxlang.alpha\CompileUnit.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.EchoBytecode.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.FoxasmCompile.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.FoxBCCompileFile.cs" />
+    <Compile Include="Foxlang.alpha\FoxlangCompiler.LexerParse.cs" />
+    <Compile Include="Foxlang.alpha\InvalidSyntaxException.cs" />
+    <Compile Include="Foxlang.alpha\types.cs" />
+    <Compile Include="Foxlang\FoxlangTypes.cs" />
+    <Compile Include="Foxlang\Keywords.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -99,6 +101,7 @@
     <Compile Include="SelectablePictureBox.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="SyntaxHighlighterState.cs" />
     <Compile Include="ZM01\Bitcode.cs" />
     <Compile Include="ZM01\EmulatorForm.cs">
       <SubType>Form</SubType>

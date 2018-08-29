@@ -49,6 +49,6 @@ For examples, see https://github.com/FutureMillennium/ZM01OS
 Project status: incomplete, unstable, in development
 -----------------------------------------------------
 
-There are known bugs which result in crashes. There are known incomplete features which may also result in crashes.
+There are known incomplete features which may result in crashes.
 
 Made by [Zdeněk Gromnica aka FutureMillennium](http://futuremillennium.com/).

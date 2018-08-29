@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Foxlang
+namespace FoxlangAlpha
 {
 	public enum ByteCode : UInt32
 	{

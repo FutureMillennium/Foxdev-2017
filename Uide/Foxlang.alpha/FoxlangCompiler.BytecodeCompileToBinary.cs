@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Foxlang
+namespace FoxlangAlpha
 {
 	partial class FoxlangCompiler
 	{
